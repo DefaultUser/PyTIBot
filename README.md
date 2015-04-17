@@ -7,8 +7,8 @@ bot can only connect to one server at a time.
 
 Dependencies
 ------------
-python2 (as twisted does not support python3 yet)
-twisted
+python2 (as twisted does not support python3 yet)<br/>
+twisted<br/>
 configmanager (https://github.com/DefaultUser/configmanager)
 
 For Ubuntu 14.04 the needed packages are "python2.7" and "python-twisted".
@@ -19,43 +19,49 @@ Starting the bot
 ----------------
 Adjust the configuration file to your needs.
 Start the bot with
-    python run.py
+```
+python run.py
+```
 or if your system defaults to python 3
-    python2 run.py
+```
+python2 run.py
+```
 By default pytibot.ini is used, but you can specify another configuration
 file like this
-    python run.py otherconfig.ini
+```
+python run.py otherconfig.ini
+```
 
 
 Configuration
 -------------
 Look at pytibot.ini.example for all keys.
 
-[Connection]
-*server*, *port*, *nickname* and *admins* are the mandatory fields
-*admins*, *channels* and *ignore* can be comma separated lists
+[Connection]<br/>
+*server*, *port*, *nickname* and *admins* are the mandatory fields<br/>
+*admins*, *channels* and *ignore* can be comma separated lists<br/>
 By default, admins are determined by the **nonstandard** irc reply 330. This
 returns the auth name and therefor is safe. This reply is for example sent on
 Quakenet. If the server does not support this reply, you can alternatively set
 ```
 adminbyhost = True
 ```
-which let's you specify admins by their IRC host name.
+which let's you specify admins by their IRC host name.<br/>
 **!!ATTENTION!!**
 If you don't have a cloaked host, your host will be your IP which will be
 periodically changed. If you are using a bouncer, every user of that bouncer
 will have the same host and therefor will be admin unless you are using a
 cloaked host. Use this option with care.
 
-[Commands]
+[Commands]<br/>
 You can specify which commands should be enabled here.
 The key is the command you have to type in IRC, the value is the name of the
 python function that should be executed.
 
-[Triggers]
+[Triggers]<br/>
 *enabled* - comma separated list of all triggers
 
-[Simple Triggers]
+[Simple Triggers]<br/>
 User defineable lines that the bot should send when a certain word or pattern
 is used in a message. See below.
 
@@ -67,37 +73,37 @@ interpreted as a command. In private chat, every message will be interpreted
 as a command.
 
 standard commands (can't be changed):
-```
-quit - quit the bot
-ignore - add an user to the ignore list (user will be ignored by the bot)
-join - join one or more channel
-part - leave one or more channel
-nick - change the nick
-help - print help
-reload - reload the config file
-```
+    ```
+    quit - quit the bot
+    ignore - add an user to the ignore list (user will be ignored by the bot)
+    join - join one or more channel
+    part - leave one or more channel
+    nick - change the nick
+    help - print help
+    reload - reload the config file
+    ```
 
-additional commands can be configured in the ini file (see pytibot.ini.example)
-
-
-Trigger commands
-----------------
-Additionally to commands, the bot can also be triggered by words and patterns
-in any message. There are two kinds of trigger commands:
-
-Trigger commands that run a python command:
-example: youtube url -> bot returns the title of the video
-
-Simple Trigger that can be specified by the user in the ini file:
-These can be specified under the [Simple Trigger] section
-The key will be used as trigger and the value is send to irc
-The key can be a regex
+    additional commands can be configured in the ini file (see pytibot.ini.example)
 
 
-COPYRIGHT
----------
-GPLv3, see LICENSE
-Twisted is licensed under MIT license (see twistedmatrix.com)
+    Trigger commands
+    ----------------
+    Additionally to commands, the bot can also be triggered by words and patterns
+    in any message. There are two kinds of trigger commands:
 
-Sebastian Schmidt
-schro.sb@gmail.com
+        Trigger commands that run a python command:<br/>
+        example: youtube url -> bot returns the title of the video
+
+    Simple Trigger that can be specified by the user in the ini file:<br/>
+    These can be specified under the [Simple Trigger] section<br/>
+    The key will be used as trigger and the value is send to irc<br/>
+    The key can be a regex
+
+
+    COPYRIGHT
+    ---------
+    GPLv3, see LICENSE<br/>
+    Twisted is licensed under MIT license (see twistedmatrix.com)
+
+    Sebastian Schmidt<br/>
+    schro.sb@gmail.com

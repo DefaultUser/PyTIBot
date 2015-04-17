@@ -73,37 +73,37 @@ interpreted as a command. In private chat, every message will be interpreted
 as a command.
 
 standard commands (can't be changed):
-    ```
-    quit - quit the bot
-    ignore - add an user to the ignore list (user will be ignored by the bot)
-    join - join one or more channel
-    part - leave one or more channel
-    nick - change the nick
-    help - print help
-    reload - reload the config file
-    ```
+```
+quit - quit the bot
+ignore - add an user to the ignore list (user will be ignored by the bot)
+join - join one or more channel
+part - leave one or more channel
+nick - change the nick
+help - print help
+reload - reload the config file
+```
 
-    additional commands can be configured in the ini file (see pytibot.ini.example)
-
-
-    Trigger commands
-    ----------------
-    Additionally to commands, the bot can also be triggered by words and patterns
-    in any message. There are two kinds of trigger commands:
-
-        Trigger commands that run a python command:<br/>
-        example: youtube url -> bot returns the title of the video
-
-    Simple Trigger that can be specified by the user in the ini file:<br/>
-    These can be specified under the [Simple Trigger] section<br/>
-    The key will be used as trigger and the value is send to irc<br/>
-    The key can be a regex
+additional commands can be configured in the ini file (see pytibot.ini.example)
 
 
-    COPYRIGHT
-    ---------
-    GPLv3, see LICENSE<br/>
-    Twisted is licensed under MIT license (see twistedmatrix.com)
+Trigger commands
+----------------
+Additionally to commands, the bot can also be triggered by words and patterns
+in any message. There are two kinds of trigger commands:
 
-    Sebastian Schmidt<br/>
-    schro.sb@gmail.com
+Trigger commands that run a python command:<br/>
+example: youtube url -> bot returns the title of the video
+
+Simple Trigger that can be specified by the user in the ini file:<br/>
+These can be specified under the [Simple Trigger] section<br/>
+The key will be used as trigger and the value is send to irc<br/>
+The key can be a regex
+
+
+COPYRIGHT
+---------
+GPLv3, see LICENSE<br/>
+Twisted is licensed under MIT license (see twistedmatrix.com)
+
+Sebastian Schmidt<br/>
+schro.sb@gmail.com

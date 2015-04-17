@@ -1,0 +1,34 @@
+[Connection]
+server = localhost
+port = 6667
+nickname = PyTIBot
+username =
+serverpassword =
+channels =
+adminbyhost = False
+admins =
+ignore =
+rejoinkicked = True
+
+[Commands]
+hello = hello
+tell = tell
+morse = morse
+unmorse = unmorse
+joke = joke
+say = say
+random = rand
+whois = whois
+raw = raw
+
+[Triggers]
+enabled = youtube
+
+[Simple Triggers]
+trigger = This line was triggered by $(USER) in $(CHANNEL).
+; you can also use regex as triggers, as long as they don't collide with ini syntax (contain "=" or start with "[" (use ".*[" instead))
+
+[Actions]
+userkicked = Nice work $(KICKER), noone liked $(KICKEE) anyways!
+kickedfrom = Nice try $(KICKER), but that was to easy.
+

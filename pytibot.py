@@ -39,7 +39,8 @@ class PyTIBot(irc.IRCClient):
                          "part": "part",
                          "nick": "change_nick",
                          "help": "bot_help",
-                         "reload": "reload_config"
+                         "reload": "reload_config",
+                         "about": "about"
                          }
 
     def __init__(self, config_manager):

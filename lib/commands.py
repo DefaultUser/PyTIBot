@@ -132,6 +132,15 @@ def change_nick(bot):
         bot.is_user_admin(sender).addCallback(_change_nick)
 
 
+def about(bot):
+    """Information about this bot"""
+    info = "PyTIBot - sources and info can be found at " +\
+        "https://github.com/DefaultUser/PyTIBot"
+    while True:
+        args, sender, senderhost, channel = yield
+        bot.msg(channel, info)
+
+
 def whois(bot):
     """Return the WHOISUSER reply as notice"""
     _sender = ""

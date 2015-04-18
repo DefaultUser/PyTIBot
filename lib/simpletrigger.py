@@ -20,7 +20,7 @@
 def simple_trigger(bot):
     while True:
         command, sender, senderhost, target = yield
-        msg = bot.cm.get("Simple Triggers", command).replace("$SENDER",
+        msg = bot.cm.get("Simple Triggers", command).replace("$USER",
                                                              sender)
         msg = msg.replace("$CHANNEL", target)
         bot.msg(target, msg)

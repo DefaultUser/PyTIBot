@@ -120,7 +120,12 @@ class PyTIBot(irc.IRCClient):
                 return
 
         print("%s - %s : %s" % (user, channel, msg))
-        msg = irc.stripFormatting(msg)
+        # strip the formatting
+        try:
+            msg = irc.stripFormatting(msg)
+        except AttributeError:
+            # twisted < 13.1
+            pass
 
         cmdmode = False
         # Commands

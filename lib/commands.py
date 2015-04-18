@@ -129,8 +129,9 @@ def change_nick(bot):
             bot.setNick(_newnick)
     while True:
         args, sender, senderhost, channel = yield
-        _newnick = args[0]
-        bot.is_user_admin(sender).addCallback(_change_nick)
+        if len(args):
+            _newnick = args[0]
+            bot.is_user_admin(sender).addCallback(_change_nick)
 
 
 def about(bot):
@@ -175,9 +176,10 @@ def tell(bot):
     """Send a message to a user or channel"""
     while True:
         args, sender, senderhost, channel = yield
-        targetnick = args[0]
-        body = " ".join(args[1:])
-        bot.msg(targetnick, "<" + sender + "> " + body, length=510)
+        if len(args):
+            targetnick = args[0]
+            body = " ".join(args[1:])
+            bot.msg(targetnick, "<" + sender + "> " + body, length=510)
 
 
 def morse(bot):

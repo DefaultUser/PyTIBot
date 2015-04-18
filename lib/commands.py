@@ -84,7 +84,8 @@ def ignore(bot):
     def _add_ignore(is_admin):
         if is_admin:
             for nick in _nicks:
-                bot.cm.add_to_list("Connection", "ignore", nick)
+                if nick:
+                    bot.cm.add_to_list("Connection", "ignore", nick)
     while True:
         args, sender, senderhost, channel = yield
         _nicks = args

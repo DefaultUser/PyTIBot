@@ -74,7 +74,7 @@ def bot_help(bot):
         else:
             doc = [", ".join(commands)]
         for d in doc:
-            bot.msg(channel, d)
+            bot.msg(channel, d, length=510)
 
 
 def ignore(bot):
@@ -176,7 +176,7 @@ def tell(bot):
         args, sender, senderhost, channel = yield
         targetnick = args[0]
         body = " ".join(args[1:])
-        bot.msg(targetnick, "<" + sender + "> " + body)
+        bot.msg(targetnick, "<" + sender + "> " + body, length=510)
 
 
 def morse(bot):
@@ -188,7 +188,7 @@ def morse(bot):
         for char in message:
             morsecode.append(morse_dict.get(char.upper(), char))
         morsecode = " ".join(morsecode)
-        bot.msg(channel, morsecode)
+        bot.msg(channel, morsecode, length=510)
 
 
 def unmorse(bot):
@@ -200,7 +200,7 @@ def unmorse(bot):
         newstring = ""
         for char in args:
             newstring += inv_morse_dict.get(char, char)
-        bot.msg(channel, newstring.lower())
+        bot.msg(channel, newstring.lower(), length=510)
 
 
 def joke(bot):
@@ -214,7 +214,7 @@ def joke(bot):
         if args:
             name = " ".join(args)
             cnjoke = cnjoke.replace("Chuck Norris", name)
-        bot.msg(channel, str(cnjoke))
+        bot.msg(channel, str(cnjoke), length=510)
 
 
 def say(bot):
@@ -227,7 +227,7 @@ def say(bot):
         elif ("%s: say" % bot.nickname) in message:
             message = "Don't chain this command with another bot!"
         if message:
-            bot.msg(channel, message)
+            bot.msg(channel, message, length=510)
 
 
 def rand(bot):

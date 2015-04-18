@@ -170,7 +170,8 @@ class PyTIBot(irc.IRCClient):
             # adjust $NICKNAME
             matches = [trigger for trigger in triggers if
                        re.search(re.compile(trigger.replace("$nickname",
-                                                            self.nickname)),
+                                                            self.nickname),
+                                 re.IGNORECASE),
                                  msg)]
             for trigger in matches:
                 self.simple_trigger.send((trigger, user, userhost, channel))

@@ -113,7 +113,7 @@ class PyTIBot(irc.IRCClient):
         userhost = temp.split("@")[-1]
 
         # try if the user should be ignored
-        if self.cm.has_option("Connection", "ignore"):
+        if self.cm.option_set("Connection", "ignore"):
             if any([re.search(re.compile(iu, re.IGNORECASE), user) for iu in
                     self.cm.getlist("Connection", "ignore")]):
                 print("ignoring %s" % user)

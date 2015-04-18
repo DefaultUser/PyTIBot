@@ -191,10 +191,10 @@ class PyTIBot(irc.IRCClient):
     def userKicked(self, kickee, channel, kicker, message):
         """Triggered when a user gets kicked"""
         if self.cm.has_option("Actions", "userKicked"):
-            msg = self.cm.get("Actions", "userKicked").replace("$(KICKER)",
+            msg = self.cm.get("Actions", "userKicked").replace("$KICKER",
                                                                kicker)
-            msg = msg.replace("$(KICKEE)", kickee).replace("$(CHANNEL)",
-                                                           channel)
+            msg = msg.replace("$KICKEE", kickee).replace("$CHANNEL",
+                                                         channel)
             if msg:
                 self.msg(channel, msg)
 
@@ -204,9 +204,9 @@ class PyTIBot(irc.IRCClient):
             self.join(channel)
             if self.cm.has_option("Actions", "kickedFrom"):
                 msg = self.cm.get("Actions", "kickedFrom").replace(
-                    "$(KICKER)", kicker)
-                msg = msg.replace("$(CHANNEL)", channel).replace("$(MESSAGE)",
-                                                                 message)
+                    "$KICKER", kicker)
+                msg = msg.replace("$CHANNEL", channel).replace("$MESSAGE",
+                                                               message)
                 if msg:
                     self.msg(channel, msg)
 

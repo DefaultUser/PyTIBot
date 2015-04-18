@@ -25,10 +25,10 @@ raw = raw
 enabled = youtube
 
 [Simple Triggers]
-trigger = This line was triggered by $(USER) in $(CHANNEL).
+trigger = This line was triggered by $USER in $CHANNEL.
 ; you can also use regex as triggers, as long as they don't collide with ini syntax (contain "=" or start with "[" (use ".*[" instead))
 
 [Actions]
-userkicked = Nice work $(KICKER), noone liked $(KICKEE) anyways!
-kickedfrom = Nice try $(KICKER), but that was to easy.
+userkicked = Nice work $KICKER, noone liked $KICKEE anyways!
+kickedfrom = Nice try $KICKER, but that was to easy.
 

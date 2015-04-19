@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import urllib2
+import contextlib
 import re
 from lxml import etree
 
@@ -24,20 +25,17 @@ __all__ = {r"youtube.com/watch\?v=": "youtube"}
 
 
 def youtube(bot):
-    pat = re.compile(r"youtube.com/watch\?v=[A-Za-z0-9]+\b")
+    pat = re.compile(r"youtube.com/watch\?v=[A-Za-z0-9_-]+\b")
     while True:
         message, sender, senderhost, target = yield
-        try:
-            match = re.search(pat, message)
+        match = re.search(pat, message)
+        if match is not None:
             url = "https://www." + message[match.start():match.end()]
-            res = urllib2.urlopen(url)
-            body = res.read().decode("utf-8")
-            root = etree.HTML(body)
-            title = root.findtext("head/title")
-            if title.endswith(" - YouTube"):
-                title = title[:-10]
-            title = title.encode("ascii", errors="replace")
-            bot.msg(target, "Youtube Video Title: %s" % title)
-        except AttributeError:
-            pass
-
+            with contextlib.closing(urllib2.urlopen(url)) as res:
+                body = res.read().decode("utf-8")
+                root = etree.HTML(body)
+                title = root.findtext("head/title")
+                if title.endswith(" - YouTube"):
+                    title = title[:-10]
+                title = title.encode("ascii", errors="replace")
+                bot.msg(target, "Youtube Video Title: %s" % title)

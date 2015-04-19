@@ -18,6 +18,7 @@
 
 import random
 import urllib2
+import contextlib
 import json
 import re
 import sys
@@ -208,16 +209,17 @@ def unmorse(bot):
 
 def joke(bot):
     """Chuck Norris jokes from http://icndb.com"""
+    url = "http://api.icndb.com/jokes/random/1"
     while True:
         args, sender, senderhost, channel = yield
-        res = urllib2.urlopen("http://api.icndb.com/jokes/random/1")
-        body = res.read().decode()
-        cnjoke = json.loads(body)['value'][0]['joke']
-        cnjoke = cnjoke.replace("&quot;", "\"")
-        if args:
-            name = " ".join(args)
-            cnjoke = cnjoke.replace("Chuck Norris", name)
-        bot.msg(channel, str(cnjoke), length=510)
+        with contextlib.closing(urllib2.urlopen(url)) as res:
+            body = res.read().decode()
+            cnjoke = json.loads(body)['value'][0]['joke']
+            cnjoke = cnjoke.replace("&quot;", "\"")
+            if args:
+                name = " ".join(args)
+                cnjoke = cnjoke.replace("Chuck Norris", name)
+            bot.msg(channel, str(cnjoke), length=510)
 
 
 def say(bot):

@@ -126,6 +126,7 @@ class PyTIBot(irc.IRCClient):
         except AttributeError:
             # twisted < 13.1
             pass
+        msg = msg.strip()
 
         cmdmode = False
         # Commands

@@ -37,5 +37,5 @@ def youtube(bot):
                 title = root.findtext("head/title")
                 if title.endswith(" - YouTube"):
                     title = title[:-10]
-                title = title.encode("ascii", errors="replace")
+                title = title.encode("utf-8")
                 bot.msg(target, "Youtube Video Title: %s" % title)

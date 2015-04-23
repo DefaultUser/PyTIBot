@@ -17,12 +17,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import random
-import urllib2
-import contextlib
 import json
 import re
 import sys
 from twisted.internet import defer
+from twisted.web.client import getPage
 
 morse_dict = {'A': '.-', 'B': '-...', 'C': '-.-.',
               'D': '-..', 'E': '.', 'F': '..-.',
@@ -210,16 +209,16 @@ def unmorse(bot):
 def joke(bot):
     """Chuck Norris jokes from http://icndb.com"""
     url = "http://api.icndb.com/jokes/random/1"
+
+    def _tell_joke(body, channel, name=None):
+        cnjoke = json.loads(body)['value'][0]['joke']
+        cnjoke = cnjoke.replace("&quot;", "\"")
+        if name:
+            cnjoke = cnjoke.replace("Chuck Norris", name)
+        bot.msg(channel, str(cnjoke), length=510)
     while True:
         args, sender, senderhost, channel = yield
-        with contextlib.closing(urllib2.urlopen(url)) as res:
-            body = res.read().decode()
-            cnjoke = json.loads(body)['value'][0]['joke']
-            cnjoke = cnjoke.replace("&quot;", "\"")
-            if args:
-                name = " ".join(args)
-                cnjoke = cnjoke.replace("Chuck Norris", name)
-            bot.msg(channel, str(cnjoke), length=510)
+        getPage(url).addCallback(_tell_joke, channel, " ".join(args))
 
 
 def say(bot):

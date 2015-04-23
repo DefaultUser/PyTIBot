@@ -16,8 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import urllib2
-import contextlib
+from twisted.web.client import getPage
 import re
 from lxml import etree
 
@@ -26,16 +25,18 @@ __all__ = {r"youtube.com/watch\?v=": "youtube"}
 
 def youtube(bot):
     pat = re.compile(r"youtube.com/watch\?v=[A-Za-z0-9_-]+\b")
+
+    def _send_title(body, channel):
+        body = body.decode("utf-8")
+        root = etree.HTML(body)
+        title = root.findtext("head/title")
+        if title.endswith(" - YouTube"):
+            title = title[:-10]
+        title = title.encode("utf-8")
+        bot.msg(channel, "Youtube Video Title: %s" % title)
     while True:
-        message, sender, senderhost, target = yield
+        message, sender, senderhost, channel = yield
         match = re.search(pat, message)
         if match is not None:
             url = "https://www." + message[match.start():match.end()]
-            with contextlib.closing(urllib2.urlopen(url)) as res:
-                body = res.read().decode("utf-8")
-                root = etree.HTML(body)
-                title = root.findtext("head/title")
-                if title.endswith(" - YouTube"):
-                    title = title[:-10]
-                title = title.encode("utf-8")
-                bot.msg(target, "Youtube Video Title: %s" % title)
+            getPage(url).addCallback(_send_title, channel)

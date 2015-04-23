@@ -40,28 +40,26 @@ morse_dict = {'A': '.-', 'B': '-...', 'C': '-.-.',
 
 def shutdown(bot):
     """Shut down the bot (admin function)"""
-    _channel = ""
-
-    def _shutdown(is_admin):
+    def _shutdown(is_admin, channel):
         if is_admin:
             bot.factory.autoreconnect = False
             print("Shutting DOWN")
             bot.quit()
         else:
-            bot.msg(_channel, "I won't listen to you!")
+            bot.msg(channel, "I won't listen to you!")
+
     while True:
         args, sender, senderhost, channel = yield
-        _channel = channel
-        bot.is_user_admin(sender).addCallback(_shutdown)
+        bot.is_user_admin(sender).addCallback(_shutdown, channel)
 
 
 def bot_help(bot):
     """Guess what this function does"""
     commands = {name: gen.__name__ for name, gen in bot.commands.items()}
     thismodule = sys.modules[__name__]
+
     while True:
         args, sender, senderhost, channel = yield
-        #print getattr(thismodule, args[0], "NOTFOUND")
         doc = []
         if args:
             for arg in args:
@@ -79,59 +77,51 @@ def bot_help(bot):
 
 def ignore(bot):
     """Add a nick to the ignore list"""
-    _nicks = []
-
-    def _add_ignore(is_admin):
+    def _add_ignore(is_admin, nicks):
         if is_admin:
-            for nick in _nicks:
+            for nick in nicks:
                 if nick:
                     bot.cm.add_to_list("Connection", "ignore", nick)
+
     while True:
         args, sender, senderhost, channel = yield
-        _nicks = args
-        bot.is_user_admin(sender).addCallback(_add_ignore)
+        bot.is_user_admin(sender).addCallback(_add_ignore, args)
 
 
 def join(bot):
     """Join a channel"""
-    _channels = []
-
-    def _join(is_admin):
+    def _join(is_admin, channels):
         if is_admin:
-            for c in _channels:
+            for c in channels:
                 bot.join(c)
+
     while True:
         args, sender, senderhost, channel = yield
-        _channels = args
-        bot.is_user_admin(sender).addCallback(_join)
+        bot.is_user_admin(sender).addCallback(_join, args)
 
 
 def part(bot):
     """Part channel(s)"""
-    _channels = []
-
-    def _part(is_admin):
+    def _part(is_admin, channels):
         if is_admin:
-            for c in _channels:
+            for c in channels:
                 bot.leave(c)
+
     while True:
         args, sender, senderhost, channel = yield
-        _channels = args
-        bot.is_user_admin(sender).addCallback(_part)
+        bot.is_user_admin(sender).addCallback(_part, args)
 
 
 def change_nick(bot):
     """Change the nick"""
-    _newnick = ""
-
-    def _change_nick(is_admin):
+    def _change_nick(is_admin, newnick):
         if is_admin:
-            bot.setNick(_newnick)
+            bot.setNick(newnick)
+
     while True:
         args, sender, senderhost, channel = yield
-        if len(args):
-            _newnick = args[0]
-            bot.is_user_admin(sender).addCallback(_change_nick)
+        if args:
+            bot.is_user_admin(sender).addCallback(_change_nick, args[0])
 
 
 def about(bot):
@@ -145,14 +135,12 @@ def about(bot):
 
 def whois(bot):
     """Return the WHOISUSER reply as notice"""
-    _sender = ""
+    def _reply(params, sender):
+        bot.notice(sender, ", ".join(params))
 
-    def _reply(params):
-        bot.msg(_sender, ", ".join(params))
     while True:
         args, sender, senderhost, channel = yield
-        _sender = sender
-        bot.user_info(args[0]).addCallback(_reply)
+        bot.user_info(args[0]).addCallback(_reply, sender)
 
 
 def reload_config(bot):
@@ -160,6 +148,7 @@ def reload_config(bot):
     def _reload(is_admin):
         if is_admin:
             bot.load_settings()
+
     while True:
         args, sender, senderhost, channel = yield
         bot.is_user_admin(sender).addCallback(_reload)
@@ -216,6 +205,7 @@ def joke(bot):
         if name:
             cnjoke = cnjoke.replace("Chuck Norris", name)
         bot.msg(channel, str(cnjoke), length=510)
+
     while True:
         args, sender, senderhost, channel = yield
         getPage(url).addCallback(_tell_joke, channel, " ".join(args))
@@ -255,12 +245,11 @@ list of choices"""
 
 def raw(bot):
     """Send a raw IRC line to the server"""
-    _line = ""
-
-    def _raw(is_admin):
+    def _raw(is_admin, line):
         if is_admin:
-            bot.sendLine(_line)
+            bot.sendLine(line)
+
     while True:
         args, sender, senderhost, channel = yield
-        _line = " ".join(args)
-        bot.is_user_admin(sender).addCallback(_raw)
+        line = " ".join(args)
+        bot.is_user_admin(sender).addCallback(_raw, line)

@@ -24,7 +24,7 @@ __all__ = {r"youtube.com/watch\?v=": "youtube"}
 
 
 def youtube(bot):
-    pat = re.compile(r"youtube.com/watch\?v=[A-Za-z0-9_-]+\b")
+    pat = re.compile(r"youtube.com/watch\?v=[A-Za-z0-9_&=-]+\b")
 
     def _send_title(body, channel):
         body = body.decode("utf-8")
@@ -34,6 +34,7 @@ def youtube(bot):
             title = title[:-10]
         title = title.encode("utf-8")
         bot.msg(channel, "Youtube Video Title: %s" % title)
+
     while True:
         message, sender, senderhost, channel = yield
         match = re.search(pat, message)

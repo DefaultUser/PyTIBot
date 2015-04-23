@@ -16,28 +16,25 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from twisted.web.client import getPage
 import re
-from lxml import etree
+from gdata.youtube import service as yt
 
 __all__ = {r"youtube.com/watch\?v=": "youtube"}
 
 
 def youtube(bot):
-    pat = re.compile(r"youtube.com/watch\?v=[A-Za-z0-9_&=-]+\b")
-
-    def _send_title(body, channel):
-        body = body.decode("utf-8")
-        root = etree.HTML(body)
-        title = root.findtext("head/title")
-        if title.endswith(" - YouTube"):
-            title = title[:-10]
-        title = title.encode("utf-8")
-        bot.msg(channel, "Youtube Video Title: %s" % title)
+    pat = re.compile(r"youtube.com/watch\?v=([A-Za-z0-9_-]+)"
+                     r"(&feature=youtu.be)?\b")
+    yt_service = yt.YouTubeService()
 
     while True:
         message, sender, senderhost, channel = yield
         match = re.search(pat, message)
         if match is not None:
-            url = "https://www." + message[match.start():match.end()]
-            getPage(url).addCallback(_send_title, channel)
+            video_id = match.group(1)
+            entry = yt_service.GetYouTubeVideoEntry(video_id=video_id)
+            title = entry.media.title.text
+            duration = int(entry.media.duration.seconds)
+            time = "%d:%02d" % (duration // 60, duration % 60)
+            bot.msg(channel, "Youtube Video title: %s (%s)" % (title, time),
+                    length=510)

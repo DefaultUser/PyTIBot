@@ -9,9 +9,10 @@ Dependencies
 ------------
 python2 (as twisted does not support python3 yet)<br/>
 twisted<br/>
-configmanager (https://github.com/DefaultUser/configmanager)
+configmanager (https://github.com/DefaultUser/configmanager)<br/>
+gdata-python-client (python module for google api)
 
-For Ubuntu 14.04 the needed packages are "python2.7" and "python-twisted".
+For Ubuntu 14.04 the needed packages are "python2.7", "python-twisted" and "python-gdata".
 Either adjust your PYTHONPATH to include configmanager or copy/link
 configmanager.py to the base directory of this bot.
 

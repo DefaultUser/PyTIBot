@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
+from twisted.internet import threads
 from gdata.youtube import service as yt
 
 __all__ = {r"youtube.com/watch\?v=": "youtube"}
@@ -27,14 +28,19 @@ def youtube(bot):
                      r"(&feature=youtu.be)?\b")
     yt_service = yt.YouTubeService()
 
+    def _send_title(entry, channel):
+        title = entry.media.title.text
+        duration = int(entry.media.duration.seconds)
+        time = "%d:%02d" % (duration // 60, duration % 60)
+        bot.msg(channel, "Youtube Video title: %s (%s)" % (title, time),
+                length=510)
     while True:
         message, sender, senderhost, channel = yield
         match = re.search(pat, message)
         if match is not None:
+            # get the video id
             video_id = match.group(1)
-            entry = yt_service.GetYouTubeVideoEntry(video_id=video_id)
-            title = entry.media.title.text
-            duration = int(entry.media.duration.seconds)
-            time = "%d:%02d" % (duration // 60, duration % 60)
-            bot.msg(channel, "Youtube Video title: %s (%s)" % (title, time),
-                    length=510)
+            # Don't block the main thread
+            d = threads.deferToThread(yt_service.GetYouTubeVideoEntry,
+                                      video_id=video_id)
+            d.addCallback(_send_title, channel)

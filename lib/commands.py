@@ -76,16 +76,43 @@ def bot_help(bot):
 
 
 def ignore(bot):
-    """Add a nick to the ignore list"""
-    def _add_ignore(is_admin, nicks):
+    """Modify the ignore list - use '+' or 'add' to extend, '-' or 'remove' \
+to remove from the list"""
+    def _do_ignore(is_admin, sender, args):
         if is_admin:
-            for nick in nicks:
-                if nick:
-                    bot.cm.add_to_list("Connection", "ignore", nick)
+            if len(args) < 2:
+                bot.notice(sender, "Too few arguments")
+            else:
+                task = args[0]
+                nicks = args[1:]
+
+                if task.lower() in ("+", "add"):
+                    for nick in nicks:
+                        # don't add to short nicks
+                        # may ignore everything otherwise(regex)
+                        if len(nick) > 3:
+                            bot.cm.add_to_list("Connection", "ignore", nick)
+                            bot.notice(sender, "Added %s to the ignore list"
+                                       % nick)
+                        else:
+                            bot.notice(sender, "Pattern %s too short, must "
+                                       "have at least 3 chars" % nick)
+                elif task.lower() in ("-", "remove"):
+                    for nick in nicks:
+                        if nick in bot.cm.getlist("Connection", "ignore"):
+                            bot.cm.remove_from_list("Connection", "ignore",
+                                                    nick)
+                            bot.notice(sender, "Removed %s from the ignore "
+                                       "ignore list" % nick)
+                        else:
+                            bot.notice(sender, "%s was not found in the "
+                                       "ignore list" % nick)
+                else:
+                    bot.notice(sender, "\x034Invalid call - check the help")
 
     while True:
         args, sender, senderhost, channel = yield
-        bot.is_user_admin(sender).addCallback(_add_ignore, args)
+        bot.is_user_admin(sender).addCallback(_do_ignore, sender, args)
 
 
 def join(bot):
@@ -126,8 +153,8 @@ def change_nick(bot):
 
 def about(bot):
     """Information about this bot"""
-    info = "PyTIBot - sources and info can be found at " +\
-        "https://github.com/DefaultUser/PyTIBot"
+    info = ("PyTIBot - sources and info can be found at "
+            "https://github.com/DefaultUser/PyTIBot")
     while True:
         args, sender, senderhost, channel = yield
         bot.msg(channel, info)

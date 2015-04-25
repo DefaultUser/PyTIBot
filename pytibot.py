@@ -30,7 +30,7 @@ from lib.simpletrigger import simple_trigger
 from lib import triggers
 
 
-class PyTIBot(irc.IRCClient):
+class PyTIBot(irc.IRCClient, object):
     """A simple IRC bot"""
     lineRate = 1
     _default_commands = {"quit": "shutdown",
@@ -301,3 +301,7 @@ class PyTIBot(irc.IRCClient):
             self.get_auth(user).addCallback(_cb_auth)
 
         return d
+
+    def quit(self, message=''):
+        self.factory.autoreconnect = False
+        super(PyTIBot, self).quit(message)

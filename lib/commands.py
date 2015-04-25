@@ -40,17 +40,16 @@ morse_dict = {'A': '.-', 'B': '-...', 'C': '-.-.',
 
 def shutdown(bot):
     """Shut down the bot (admin function)"""
-    def _shutdown(is_admin, channel):
+    def _shutdown(is_admin, channel, args):
         if is_admin:
-            bot.factory.autoreconnect = False
             print("Shutting DOWN")
-            bot.quit()
+            bot.quit(" ".join(args))
         else:
             bot.msg(channel, "I won't listen to you!")
 
     while True:
         args, sender, senderhost, channel = yield
-        bot.is_user_admin(sender).addCallback(_shutdown, channel)
+        bot.is_user_admin(sender).addCallback(_shutdown, channel, args)
 
 
 def bot_help(bot):

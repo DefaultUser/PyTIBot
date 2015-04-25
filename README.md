@@ -101,6 +101,34 @@ The key will be used as trigger and the value is send to irc<br/>
 The key can be a regex
 
 
+Telnet access
+-------------
+Additionally to IRC commands this bot can also be controlled via telnet.
+To turn this feature on, you need to set
+```
+open_telnet = True
+```
+under the **Connection** section.
+
+Once you are connected via telnet, you have access to a python interpreter. Run
+```
+bot = get_bot()
+```
+to retrieve the instance of the bot.
+
+You can send messages with
+```
+bot.msg(reciever, message)
+```
+where *reciever* can be a nick or channel.<br/>
+You can quit the bot with
+```
+bot.quit()
+```
+For the full list of class methods, check the source and the twisted api
+(http://twistedmatrix.com/documents/current/api/twisted.words.protocols.irc.IRCClient.html)
+
+
 COPYRIGHT
 ---------
 GPLv3, see LICENSE<br/>

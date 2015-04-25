@@ -9,6 +9,12 @@ adminbyhost = False
 admins =
 ignore =
 rejoinkicked = True
+open_telnet = True
+
+[Telnet]
+port = 9999
+username = REPLACE_ME
+password = REPLACE_ME
 
 [Commands]
 hello = hello

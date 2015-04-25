@@ -19,6 +19,7 @@
 
 from pytibotfactory import PyTIBotFactory
 from twisted.internet import reactor
+from twisted.manhole import telnet
 from configmanager import ConfigManager
 import sys
 
@@ -29,11 +30,28 @@ if __name__ == "__main__":
     configfile = sys.argv[1] if len(sys.argv) > 1 else "pytibot.ini"
     # create Config Manager
     cm = ConfigManager(configfile, delimiters=("="))
+
     if all([cm.option_set(sec, opt) for sec, opt in mandatory_settings]):
         # connect factory to host and port
         server = cm.get("Connection", "server")
         port = cm.getint("Connection", "port")
-        reactor.connectTCP(server, port, PyTIBotFactory(cm))
+        botfactory = PyTIBotFactory(cm)
+        reactor.connectTCP(server, port, botfactory)
+
+        # manhole for debugging
+        open_telnet = False
+        if cm.option_set("Connection", "open_telnet"):
+            open_telnet = cm.getboolean("Connection", "open_telnet")
+
+        if open_telnet:
+            tn_f = telnet.ShellFactory()
+            tn_f.username = cm.get("Telnet", "username")
+            tn_f.password = cm.get("Telnet", "password")
+            tn_f.namespace['get_bot'] = botfactory.get_bot
+            telnet_port = cm.getint("Telnet", "port")
+            reactor.listenTCP(telnet_port, tn_f, interface='localhost')
+
+        # start the reactor
         reactor.run()
     else:
         print("Reading config file failed, mandatory fields not set!")

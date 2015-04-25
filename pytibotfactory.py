@@ -23,6 +23,7 @@ from pytibot import PyTIBot
 class PyTIBotFactory(protocol.ClientFactory):
     """A factory for PyTIBot"""
     autoreconnect = True
+    bot = None
 
     def __init__(self, config_manager):
         self.cm = config_manager
@@ -30,7 +31,11 @@ class PyTIBotFactory(protocol.ClientFactory):
     def buildProtocol(self, addr):
         bot = PyTIBot(self.cm)
         bot.factory = self
+        self.bot = bot
         return bot
+
+    def get_bot(self):
+        return self.bot
 
     def clientConnectionLost(self, connector, reason):
         """Triggered on"""

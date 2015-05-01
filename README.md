@@ -100,6 +100,12 @@ These can be specified under the [Simple Trigger] section<br/>
 The key will be used as trigger and the value is send to irc<br/>
 The key can be a regex
 
+"$USER" and "$CHANNEL" will be expanded to the user and channel, which triggered
+the line. Also you can specify colors with "$COLOR(1,2)", where the first number
+stands for the font color and the second one is the background [optional]. Color
+range is from 0 to 15.
+**Attention**: don't put a whitespace between these numbers.
+
 
 Telnet access
 -------------

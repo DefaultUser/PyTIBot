@@ -16,11 +16,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import re
+
 
 def simple_trigger(bot):
+    pat = re.compile(r"\$COLOR\((\d{1,2}(,\d{1,2})?)\)")
     while True:
         command, sender, senderhost, channel = yield
         msg = bot.cm.get("Simple Triggers", command).replace("$USER",
                                                              sender)
         msg = msg.replace("$CHANNEL", channel)
+
+        # Replace colors
+        msg = re.sub(pat, "\x03" r"\1", msg)
+
         bot.msg(channel, msg)

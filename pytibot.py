@@ -42,6 +42,7 @@ class PyTIBot(irc.IRCClient, object):
                          "reload": "reload_config",
                          "about": "about"
                          }
+    _default_triggers = ["enable_command"]
 
     def __init__(self, config_manager):
         self.cm = config_manager
@@ -86,6 +87,7 @@ class PyTIBot(irc.IRCClient, object):
         # load the triggers
         if self.cm.has_section("Triggers"):
             enabled = self.cm.getlist("Triggers", "enabled")
+            enabled.extend(self._default_triggers)
             self.triggers = {trigger: getattr(triggers, name)(self)
                              for trigger, name in triggers.__trigs__.items()
                              if name in enabled}

@@ -20,9 +20,15 @@ import re
 import this
 from twisted.internet import threads
 from apiclient.discovery import build
+from . import commands
+import sys
+
+trigger_module = sys.modules[__name__]
 
 __trigs__ = {r"youtube.com/watch\?v=": "youtube",
-             r"^import this$": "import_this"}
+             r"^import this$": "import_this",
+             r"^from $NICKNAME\.(commands|triggers) import"
+             " (\w+)( as (\w+))?$": "enable_command"}
 
 
 def youtube(bot):
@@ -78,3 +84,68 @@ def import_this(bot):
     while True:
         message, sender, senderhost, channel = yield
         bot.msg(channel, zen)
+
+
+def enable_command(bot):
+    """Enable command or trigger with python-like syntax"""
+    __trigs_inv = dict([[v, k] for k, v in __trigs__.items()])
+
+    def _enable_command(is_admin, channel, cmd, name):
+        if not is_admin:
+            return
+
+        # no such command
+        if not hasattr(commands, cmd):
+            bot.msg(channel, "ImportError: No module named %s" % cmd)
+            return
+        # allready present
+        if cmd in bot.commands:
+            print("Command %s allready enabled" % cmd)
+            return
+
+        # add command
+        name = name if name else cmd
+        bot.commands[name] = getattr(commands, cmd)(bot)
+        next(bot.commands[name])
+        # add to config
+        bot.cm.set("Commands", name, cmd)
+        print("Added %s=%s to config" % (name, cmd))
+
+    def _enable_trigger(is_admin, channel, trigger, name):
+        if not is_admin:
+            return
+
+        # no such trigger
+        if not hasattr(trigger_module, trigger):
+            bot.msg(channel, "ImportError: No module named %s" % trigger)
+            return
+
+        # allready present
+        if trigger in bot.triggers.values():
+            print("Trigger %s allready enabled" % trigger)
+            return
+
+        #add trigger
+        regex = __trigs_inv[trigger]
+        bot.triggers[regex] = getattr(trigger_module, trigger)(bot)
+        next(bot.triggers[regex])
+        # add to config
+        bot.cm.add_to_list("Triggers", "enabled", trigger)
+        print("Added %s to config" % trigger)
+
+    while True:
+        message, sender, senderhost, channel = yield
+        pat = re.compile(r"^from %s\.(?P<type>commands|triggers) import"
+                         " (?P<cmd>\w+)( as (?P<name>\w+))?$"
+                         % bot.nickname)
+
+        match = pat.search(message)
+        _type = match.groupdict()["type"]
+        if _type == "commands":
+            _enable = _enable_command
+        else:
+            _enable = _enable_trigger
+        cmd = match.groupdict()["cmd"]
+        name = match.groupdict()["name"]
+
+        bot.is_user_admin(sender).addCallback(_enable, channel, cmd, name)

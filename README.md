@@ -93,8 +93,18 @@ Trigger commands
 Additionally to commands, the bot can also be triggered by words and patterns
 in any message. There are two kinds of trigger commands:
 
-Trigger commands that run a python command:<br/>
-example: youtube url -> bot returns the title of the video<br/>
+Trigger commands that run a python function:<br/>
+```
+from $NICKNAME.commands import cmd as name
+```
+where $NICKNAME is the nick of the bot enables the command `cmd` using the name `name`.
+
+```
+from $NICKNAME.triggers import trigger
+```
+where $NICKNAME is the nick of the bot enables the trigger `trigger`.
+
+youtube url -> bot returns the title of the video<br/>
 *ATTENTION* This trigger needs a google API key from https://code.google.com/apis/console
 ```
 [Triggers]

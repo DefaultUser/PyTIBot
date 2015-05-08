@@ -60,7 +60,7 @@ The key is the command you have to type in IRC, the value is the name of the
 python function that should be executed.
 
 [Triggers]<br/>
-*enabled* - comma separated list of all triggers
+*enabled* - comma separated list of all triggers<br/>
 specific options for the triggers
 
 [Simple Triggers]<br/>
@@ -94,7 +94,7 @@ Additionally to commands, the bot can also be triggered by words and patterns
 in any message. There are two kinds of trigger commands:
 
 Trigger commands that run a python command:<br/>
-example: youtube url -> bot returns the title of the video
+example: youtube url -> bot returns the title of the video<br/>
 *ATTENTION* This trigger needs a google API key from https://code.google.com/apis/console
 ```
 [Triggers]

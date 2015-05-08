@@ -28,6 +28,6 @@ def simple_trigger(bot):
         msg = msg.replace("$CHANNEL", channel)
 
         # Replace colors
-        msg = re.sub(pat, "\x03" r"\1", msg)
+        msg = pat.sub("\x03" r"\1", msg)
 
         bot.msg(channel, msg)

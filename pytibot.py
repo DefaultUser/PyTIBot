@@ -87,7 +87,7 @@ class PyTIBot(irc.IRCClient, object):
         if self.cm.has_section("Triggers"):
             enabled = self.cm.getlist("Triggers", "enabled")
             self.triggers = {trigger: getattr(triggers, name)(self)
-                             for trigger, name in triggers.__all__.items()
+                             for trigger, name in triggers.__trigs__.items()
                              if name in enabled}
             for trigger in self.triggers.values():
                 next(trigger)
@@ -131,7 +131,7 @@ class PyTIBot(irc.IRCClient, object):
         cmdmode = False
         # Commands
         pat = re.compile(ur"^" + self.nickname + ur"(:|,)?\s")
-        if re.search(pat, msg):
+        if pat.search(msg):
             cmdmode = True
             index = 1
 

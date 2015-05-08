@@ -20,7 +20,7 @@ import re
 from twisted.internet import threads
 from apiclient.discovery import build
 
-__all__ = {r"youtube.com/watch\?v=": "youtube"}
+__trigs__ = {r"youtube.com/watch\?v=": "youtube"}
 
 
 def youtube(bot):

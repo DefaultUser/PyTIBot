@@ -10,9 +10,9 @@ Dependencies
 python2 (as twisted does not support python3 yet)<br/>
 twisted<br/>
 configmanager (https://github.com/DefaultUser/configmanager)<br/>
-gdata-python-client (python module for google api)
+apiclient (python module for google api)
 
-For Ubuntu 14.04 the needed packages are "python2.7", "python-twisted" and "python-gdata".
+For Ubuntu 14.04 the needed packages are "python2.7", "python-twisted" and "python-googleapi".
 Either adjust your PYTHONPATH to include configmanager or copy/link
 configmanager.py to the base directory of this bot.
 
@@ -61,6 +61,7 @@ python function that should be executed.
 
 [Triggers]<br/>
 *enabled* - comma separated list of all triggers
+specific options for the triggers
 
 [Simple Triggers]<br/>
 User defineable lines that the bot should send when a certain word or pattern
@@ -94,6 +95,12 @@ in any message. There are two kinds of trigger commands:
 
 Trigger commands that run a python command:<br/>
 example: youtube url -> bot returns the title of the video
+*ATTENTION* This trigger needs a google API key from https://code.google.com/apis/console
+```
+[Triggers]
+enabled = youtube
+youtube_api_key = REPLACE_ME
+```
 
 Simple Trigger that can be specified by the user in the ini file:<br/>
 These can be specified under the [Simple Trigger] section<br/>

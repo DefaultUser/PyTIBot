@@ -17,10 +17,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
+import this
 from twisted.internet import threads
 from apiclient.discovery import build
 
-__trigs__ = {r"youtube.com/watch\?v=": "youtube"}
+__trigs__ = {r"youtube.com/watch\?v=": "youtube",
+             r"^import this$": "import_this"}
 
 
 def youtube(bot):
@@ -67,3 +69,12 @@ def youtube(bot):
                                      "contentDetails", maxResults="1")
             d = threads.deferToThread(request.execute)
             d.addCallback(_send_title, channel)
+
+
+def import_this(bot):
+    """Return the python zen"""
+    zen = "".join([this.d.get(char, char) for char in this.s])
+    zen = zen.lstrip("The Zen of Python, by Tim Peters\n\n")
+    while True:
+        message, sender, senderhost, channel = yield
+        bot.msg(channel, zen)

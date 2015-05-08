@@ -28,7 +28,7 @@ whois = whois
 raw = raw
 
 [Triggers]
-enabled = youtube
+enabled = youtube, import_this
 
 [Simple Triggers]
 trigger = This line was triggered by $USER in $CHANNEL.

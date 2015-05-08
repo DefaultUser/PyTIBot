@@ -54,11 +54,11 @@ def shutdown(bot):
 
 def bot_help(bot):
     """Guess what this function does"""
-    commands = {name: gen.__name__ for name, gen in bot.commands.items()}
     thismodule = sys.modules[__name__]
 
     while True:
         args, sender, senderhost, channel = yield
+        commands = {name: gen.__name__ for name, gen in bot.commands.items()}
         doc = []
         if args:
             for arg in args:

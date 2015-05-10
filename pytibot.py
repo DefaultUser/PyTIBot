@@ -28,6 +28,7 @@ irc.numeric_to_symbolic["330"] = "RPL_WHOISAUTH"
 from lib import commands
 from lib.simpletrigger import simple_trigger
 from lib import triggers
+import helper
 
 
 class PyTIBot(irc.IRCClient, object):
@@ -189,6 +190,8 @@ class PyTIBot(irc.IRCClient, object):
         if oldname in self.cm.getlist("Connection", "ignore"):
             self.cm.add_to_list("Connection", "ignore", newname)
 
+        self.remove_user_from_cache(oldname)
+
     def action(self, user, channel, msg):
         """Triggered by actions"""
         pass
@@ -199,6 +202,7 @@ class PyTIBot(irc.IRCClient, object):
 
     def userKicked(self, kickee, channel, kicker, message):
         """Triggered when a user gets kicked"""
+        # kick message
         if self.cm.has_option("Actions", "userKicked"):
             msg = self.cm.get("Actions", "userKicked").replace("$KICKER",
                                                                kicker)
@@ -206,6 +210,14 @@ class PyTIBot(irc.IRCClient, object):
                                                          channel)
             if msg:
                 self.msg(channel, msg)
+
+        self.remove_user_from_cache(kickee)
+
+    def userLeft(self, user, channel):
+        self.remove_user_from_cache(user)
+
+    def userQuit(self, user, quitMessage):
+        self.remove_user_from_cache(user)
 
     def kickedFrom(self, channel, kicker, message):
         """Triggered when bot gets kicked"""
@@ -219,6 +231,7 @@ class PyTIBot(irc.IRCClient, object):
                 if msg:
                     self.msg(channel, msg)
 
+    @helper.memoize_deferred
     def user_info(self, user):
         user = user.lower()
         d = defer.Deferred()
@@ -229,6 +242,7 @@ class PyTIBot(irc.IRCClient, object):
         self.whois(user)
         return d
 
+    @helper.memoize_deferred
     def get_auth(self, user):
         user = user.lower()
         d = defer.Deferred()
@@ -238,6 +252,14 @@ class PyTIBot(irc.IRCClient, object):
         self._authcallback[user][0].append(d)
         self.whois(user)
         return d
+
+    def remove_user_from_cache(self, user):
+        """Remove the info about user from get_auth and user_info cache"""
+        key = "(%s, %s)|{}" % (str(self), str(user))
+        if key in self.user_info.cache:
+            del self.user_info.cache[key]
+        if key in self.get_auth.cache:
+            del self.get_auth.cache[key]
 
     def irc_RPL_WHOISUSER(self, prefix, params):
         user = params[1].lower()
@@ -298,9 +320,11 @@ class PyTIBot(irc.IRCClient, object):
         else:
             adminbyhost = False
         if adminbyhost:
-            self.user_info(user).addCallback(_cb_userinfo)
+            maybe_def = defer.maybeDeferred(self.user_info, user)
+            maybe_def.addCallback(_cb_userinfo)
         else:
-            self.get_auth(user).addCallback(_cb_auth)
+            maybe_def = defer.maybeDeferred(self.get_auth, user)
+            maybe_def.addCallback(_cb_auth)
 
         return d
 

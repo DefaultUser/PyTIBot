@@ -54,6 +54,12 @@ periodically changed. If you are using a bouncer, every user of that bouncer
 will have the same host and therefor will be admin unless you are using a
 cloaked host. Use this option with care.
 
+[Auth]<br/>
+*service* - Auth Service(eg: NickServ, Q@CServe.quakenet.org)<br/>
+*command* - Auth command(eg: IDENTIFY, AUTH)<br/>
+Set *username*, *password* according to your account.<br/>
+*modes* - User modes for the bot (eg: +ix-d)
+
 [Commands]<br/>
 You can specify which commands should be enabled here.
 The key is the command you have to type in IRC, the value is the name of the

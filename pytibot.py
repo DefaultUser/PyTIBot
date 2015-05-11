@@ -19,7 +19,6 @@
 import re
 from twisted.words.protocols import irc
 from twisted.internet import defer
-from ConfigParser import NoOptionError
 
 # WHOIS reply for AUTH name (NONSTANDARD REPLY!)
 irc.symbolic_to_numeric["RPL_WHOISAUTH"] = "330"
@@ -138,11 +137,43 @@ class PyTIBot(irc.IRCClient, object):
             print("Added %s to config" % trigger)
         return True
 
+    def auth(self):
+        """Authenticate to the server (NickServ, Q, etc)"""
+        options_set = True
+        for option in ["service", "command", "username", "password"]:
+            options_set = options_set and self.cm.option_set("Auth", option)
+        if not options_set:
+            print("Can't auth, not all options are set")
+            return
+
+        service = self.cm.get("Auth", "service")
+        command = self.cm.get("Auth", "command")
+        name = self.cm.get("Auth", "username")
+        pw = self.cm.get("Auth", "password")
+        self.msg(service, "%s %s %s" % (command, name, pw))
+
+    def set_own_modes(self):
+        """Set user modes of the bot itself"""
+        modes = self.cm.get("Auth", "modes")
+        pat = re.compile(r"(\+(?P<add>(\w+))|-(?P<rem>(\w+)))+")
+        match = pat.search(modes)
+        if match:
+            if match.groupdict()["add"]:
+                self.mode(self.nickname, True, match.groupdict()["add"])
+            if match.groupdict()["rem"]:
+                self.mode(self.nickname, False, match.groupdict()["rem"])
+
     def signedOn(self):
         """Initial functions when signed on to server"""
-        try:
+        if self.cm.has_section("Auth"):
+            self.auth()
+
+        if self.cm.option_set("Auth", "modes"):
+            self.set_own_modes()
+
+        if self.cm.has_option("Connection", "channels"):
             channels = self.cm.getlist("Connection", "channels")
-        except NoOptionError:
+        else:
             channels = []
         for channel in channels:
             self.join(channel)

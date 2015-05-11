@@ -75,25 +75,68 @@ class PyTIBot(irc.IRCClient, object):
         else:
             cmds = {}
         cmds.update(self._default_commands)
-        self.commands = {name: getattr(commands, func)(self)
-                         for name, func in cmds.items()
-                         if hasattr(commands, func)}
-        for command in self.commands.values():
-            next(command)
+        for name, cmd in cmds.iteritems():
+            self.enable_command(cmd, name)
 
         # clear the triggers
         del self.triggers
         self.triggers = {}
 
         # load the triggers
+        trgs = self._default_triggers
         if self.cm.has_section("Triggers"):
             enabled = self.cm.getlist("Triggers", "enabled")
-            enabled.extend(self._default_triggers)
-            self.triggers = {trigger: getattr(triggers, name)(self)
-                             for trigger, name in triggers.__trigs__.items()
-                             if name in enabled}
-            for trigger in self.triggers.values():
-                next(trigger)
+            trgs.extend(enabled)
+        for trigger in trgs:
+            self.enable_trigger(trigger)
+
+    def enable_command(self, cmd, name, add_to_config=False):
+        """Enable a command - returns True at success"""
+        # no such command
+        if not hasattr(commands, cmd):
+            print("No such command: %s" % cmd)
+            return False
+
+        # allready present
+        if cmd in self.commands:
+            print("Command %s allready enabled" % cmd)
+            return True
+
+        name = name if name else cmd
+        self.commands[name] = getattr(commands, cmd)(self)
+        next(self.commands[name])
+        # add to config
+        if add_to_config:
+            self.cm.set("Commands", name, cmd)
+            print("Added %s=%s to config" % (name, cmd))
+        return True
+
+    def enable_trigger(self, trigger, add_to_config=False):
+        """Enable a trigger - return True at success"""
+        __trigs_inv = dict([[v, k] for k, v in triggers.__trigs__.items()])
+        # no such trigger
+        if not hasattr(triggers, trigger):
+            print("No such trigger: %s" % trigger)
+            return False
+
+        # allready present
+        # get the name of all generator functions in use
+        enabled = []
+        for gen in self.triggers.values():
+            enabled.append(gen.__name__)
+        if trigger in enabled:
+            print("Trigger %s allready enabled" % trigger)
+            return True
+
+        #add trigger
+        regex = __trigs_inv[trigger]
+        self.triggers[regex] = getattr(triggers, trigger)(self)
+        next(self.triggers[regex])
+        # add to config
+        if add_to_config:
+            self.cm.add_to_list("Triggers", "enabled", trigger)
+            print("Added %s to config" % trigger)
+        return True
 
     def signedOn(self):
         """Initial functions when signed on to server"""

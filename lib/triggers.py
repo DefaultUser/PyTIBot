@@ -90,48 +90,19 @@ def enable_command(bot):
     """Enable command or trigger with python-like syntax"""
     __trigs_inv = dict([[v, k] for k, v in __trigs__.items()])
 
-    def _enable_command(is_admin, channel, cmd, name):
+    def _enable(is_admin, channel, _type, cmd, name):
         if not is_admin:
             return
 
-        # no such command
-        if not hasattr(commands, cmd):
+        if _type == "commands":
+            success = bot.enable_command(cmd, name, add_to_config=True)
+        elif _type == "triggers":
+            success = bot.enable_trigger(cmd, add_to_config=True)
+        else:
+            raise RuntimeError("Something went horribly wrong")
+
+        if not success:
             bot.msg(channel, "ImportError: No module named %s" % cmd)
-            return
-        # allready present
-        if cmd in bot.commands:
-            print("Command %s allready enabled" % cmd)
-            return
-
-        # add command
-        name = name if name else cmd
-        bot.commands[name] = getattr(commands, cmd)(bot)
-        next(bot.commands[name])
-        # add to config
-        bot.cm.set("Commands", name, cmd)
-        print("Added %s=%s to config" % (name, cmd))
-
-    def _enable_trigger(is_admin, channel, trigger, name):
-        if not is_admin:
-            return
-
-        # no such trigger
-        if not hasattr(trigger_module, trigger):
-            bot.msg(channel, "ImportError: No module named %s" % trigger)
-            return
-
-        # allready present
-        if trigger in bot.triggers.values():
-            print("Trigger %s allready enabled" % trigger)
-            return
-
-        #add trigger
-        regex = __trigs_inv[trigger]
-        bot.triggers[regex] = getattr(trigger_module, trigger)(bot)
-        next(bot.triggers[regex])
-        # add to config
-        bot.cm.add_to_list("Triggers", "enabled", trigger)
-        print("Added %s to config" % trigger)
 
     while True:
         message, sender, senderhost, channel = yield
@@ -141,11 +112,8 @@ def enable_command(bot):
 
         match = pat.search(message)
         _type = match.groupdict()["type"]
-        if _type == "commands":
-            _enable = _enable_command
-        else:
-            _enable = _enable_trigger
         cmd = match.groupdict()["cmd"]
         name = match.groupdict()["name"]
 
-        bot.is_user_admin(sender).addCallback(_enable, channel, cmd, name)
+        bot.is_user_admin(sender).addCallback(_enable, channel, _type,
+                                              cmd, name)

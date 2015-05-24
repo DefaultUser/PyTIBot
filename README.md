@@ -10,7 +10,8 @@ Dependencies
 python2 (as twisted does not support python3 yet)<br/>
 twisted<br/>
 configmanager (https://github.com/DefaultUser/configmanager)<br/>
-apiclient (python module for google api)
+apiclient (python module for google api)<br/>
+xmlrpclib
 
 For Ubuntu 14.04 the needed packages are "python2.7", "python-twisted" and "python-googleapi".
 Either adjust your PYTHONPATH to include configmanager or copy/link

@@ -21,7 +21,14 @@ import json
 import re
 import sys
 from twisted.internet import defer
+from twisted.internet import threads
 from twisted.web.client import getPage
+
+try:
+    import xmlrpclib
+except ImportError:
+    import xmlrpc.client as xmlrpclib
+
 
 morse_dict = {'A': '.-', 'B': '-...', 'C': '-.-.',
               'D': '-..', 'E': '.', 'F': '..-.',
@@ -279,3 +286,51 @@ def raw(bot):
         args, sender, senderhost, channel = yield
         line = " ".join(args)
         bot.is_user_admin(sender).addCallback(_raw, line)
+
+
+def search_pypi(bot):
+    """Search for python packages from PyPI - usage: (search|info) packages"""
+    _baseurl = "https://pypi.python.org/pypi/%s/json"
+    _maxlen = 400
+    _client = xmlrpclib.ServerProxy("https://pypi.python.org/pypi")
+
+    def _handle_search_results(results, channel):
+        packagenames = [item['name'] for item in results]
+        num_packages = len(packagenames)
+        if num_packages < 10:
+            show_result = ", ".join(packagenames)
+        else:
+            show_result = ", ".join(packagenames[:10]) + " ..."
+        bot.msg(channel, str(num_packages) + " packages found: " + show_result)
+
+    def _handle_info_results(results, channel):
+        data = json.loads(results)
+        name = data["info"]["name"].encode("utf-8")
+        author = data["info"]["author"].encode("utf-8")
+        description = data["info"]["description"].encode("utf-8")
+        description = description.replace("\n", " ")
+        if len(description) > _maxlen:
+            description = description[:_maxlen] + "..."
+        bot.msg(channel, "%s by %s: %s" % (name, author, description),
+                length=510)
+        bot.msg(channel, data["info"]["package_url"].encode("utf-8"))
+
+    def _handle_error(error, arg, channel):
+        bot.msg(channel, "No such package: %s" % arg)
+
+    while True:
+        args, sender, senderhost, channel = yield
+        if len(args) < 2 or not args[0] in ["search", "info"]:
+            bot.msg(channel, "\x034Invalid call - check the help")
+            continue
+
+        if args[0] == "search":
+            for package in args[1:]:
+                d = threads.deferToThread(_client.search, ({'name': package}))
+                d.addCallback(_handle_search_results, channel)
+        elif args[0] == "info":
+            for package in args[1:]:
+                url = _baseurl % package
+                d = getPage(url)
+                d.addCallback(_handle_info_results, channel)
+                d.addErrback(_handle_error, package, channel)

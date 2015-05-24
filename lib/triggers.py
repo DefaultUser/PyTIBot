@@ -20,7 +20,6 @@ import re
 import this
 from twisted.internet import threads
 from apiclient.discovery import build
-from . import commands
 import sys
 
 trigger_module = sys.modules[__name__]

@@ -261,7 +261,8 @@ class PyTIBot(irc.IRCClient, object):
     def userRenamed(self, oldname, newname):
         """Triggered when a user changes nick"""
         # expand the ignore list
-        if oldname in self.cm.getlist("Connection", "ignore"):
+        if any([re.search(re.compile(iu, re.IGNORECASE), oldname) for iu in
+                self.cm.getlist("Connection", "ignore")]):
             self.cm.add_to_list("Connection", "ignore", newname)
 
         self.remove_user_from_cache(oldname)

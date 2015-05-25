@@ -311,8 +311,8 @@ def search_pypi(bot):
         description = description.replace("\n", " ")
         if len(description) > _maxlen:
             description = description[:_maxlen] + "..."
-        bot.msg(channel, "%s by %s: %s" % (name, author, description),
-                length=510)
+        bot.msg(channel, "\x02%s\x0f by \x02%s\x0f: %s"
+                % (name, author, description), length=510)
         bot.msg(channel, data["info"]["package_url"].encode("utf-8"))
 
     def _handle_error(error, arg, channel):

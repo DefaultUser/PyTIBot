@@ -26,6 +26,7 @@ say = say
 random = rand
 whois = whois
 raw = raw
+pypi = search_pypi
 
 [Triggers]
 enabled = youtube, import_this

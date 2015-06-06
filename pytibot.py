@@ -190,11 +190,8 @@ class PyTIBot(irc.IRCClient, object):
         userhost = temp.split("@")[-1]
 
         # try if the user should be ignored
-        if self.cm.option_set("Connection", "ignore"):
-            if any([re.search(re.compile(iu, re.IGNORECASE), user) for iu in
-                    self.cm.getlist("Connection", "ignore")]):
-                print("ignoring %s" % user)
-                return
+        if self.ignore_user(user):
+            return
 
         print("%s - %s : %s" % (user, channel, msg))
         # strip the formatting
@@ -258,11 +255,24 @@ class PyTIBot(irc.IRCClient, object):
         """Triggered when own nick changes"""
         self.nickname = nick
 
+    def ignore_user(self, user):
+        """Test whether to ignore the user"""
+        if self.cm.option_set("Connection", "ignore"):
+            for iu in self.cm.getlist("Connection", "ignore"):
+                try:
+                    if re.search(re.compile(iu, re.IGNORECASE), user):
+                        print("ignoring %s" % user)
+                        return True
+                except re.error:
+                    if iu in user:
+                        print("ignoring %s" % user)
+                        return True
+        return False
+
     def userRenamed(self, oldname, newname):
         """Triggered when a user changes nick"""
         # expand the ignore list
-        if any([re.search(re.compile(iu, re.IGNORECASE), oldname) for iu in
-                self.cm.getlist("Connection", "ignore")]):
+        if self.ignore_user(oldname):
             self.cm.add_to_list("Connection", "ignore", newname)
 
         self.remove_user_from_cache(oldname)

@@ -34,7 +34,7 @@ def youtube(bot):
     pat = re.compile(r"youtube.com/watch\?v=([A-Za-z0-9_-]+)"
                      r"(&feature=youtu.be)?\b")
     duration_pattern = re.compile(r"PT(?P<hours>[0-9]{1,2}H)?(?P<minutes>"
-                                  "[0-9]{1,2}M)(?P<seconds>[0-9]{1,2}S)")
+                                  "[0-9]{1,2}M)?(?P<seconds>[0-9]{1,2}S)")
     yt_service = None
     if bot.cm.option_set("Triggers", "youtube_api_key"):
         YOUTUBE_API_SERVICE_NAME = "youtube"
@@ -54,9 +54,11 @@ def youtube(bot):
             duration = "%d:%02d:%02d" % (int(gd["hours"][:-1]),
                                          int(gd["minutes"][:-1]),
                                          int(gd["seconds"][:-1]))
-        else:
+        elif gd["minutes"]:
             duration = "%d:%02d" % (int(gd["minutes"][:-1]),
                                     int(gd["seconds"][:-1]))
+        else:
+            duration = "0:%02d" % (int(gd["seconds"][:-1]))
         bot.msg(channel, "Youtube Video title: %s (%s)" % (title, duration),
                 length=510)
 

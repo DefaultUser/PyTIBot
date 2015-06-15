@@ -17,10 +17,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
-
+import color
 
 def simple_trigger(bot):
     pat = re.compile(r"\$COLOR\((\d{1,2}(,\d{1,2})?)\)")
+    rainbow = re.compile(r"\$RAINBOW\(([^)]+)\)")
     while True:
         command, sender, senderhost, channel = yield
         msg = bot.cm.get("Simple Triggers", command).replace("$USER",
@@ -29,5 +30,6 @@ def simple_trigger(bot):
 
         # Replace colors
         msg = pat.sub("\x03" r"\1", msg)
+        msg = rainbow.sub(lambda match: color.rainbow(match.group(1))+"\x0f", msg);
 
         bot.msg(channel, msg)

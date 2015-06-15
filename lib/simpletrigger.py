@@ -30,6 +30,6 @@ def simple_trigger(bot):
 
         # Replace colors
         msg = pat.sub("\x03" r"\1", msg)
-        msg = rainbow.sub(lambda match: color.rainbow(match.group(1))+"\x0f", msg);
+        msg = rainbow.sub(lambda match: color.rainbow(match.group(1))+"\x0f",msg)
 
         bot.msg(channel, msg)

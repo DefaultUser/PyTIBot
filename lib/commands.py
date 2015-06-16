@@ -18,11 +18,10 @@
 
 import random
 import json
-import re
 import sys
-from twisted.internet import defer
 from twisted.internet import threads
 from twisted.web.client import getPage
+from . import color
 
 try:
     import xmlrpclib
@@ -71,10 +70,11 @@ def bot_help(bot):
             for arg in args:
                 try:
                     _gen = getattr(thismodule, commands[arg])
-                    doc.append("\x034" + arg + ": \x032" +
-                               _gen.__doc__)
-                except (AttributeError, KeyError), e:
-                    doc.append("\x034No command called \x033" + arg)
+                    doc.append(color.colored(arg+": ", "red") +
+                               color.colored(_gen.__doc__, "dark_blue"))
+                except (AttributeError, KeyError):
+                    doc.append(color.colored("No command called ", "red") +
+                               color.colored(arg, "dark_green"))
         else:
             doc = [", ".join(commands)]
         for d in doc:
@@ -114,7 +114,9 @@ to remove from the list"""
                             bot.notice(sender, "%s was not found in the "
                                        "ignore list" % nick)
                 else:
-                    bot.notice(sender, "\x034Invalid call - check the help")
+                    bot.notice(sender, 
+                               color.colored("Invalid call - ""check the help",
+                                             "red"))
 
     while True:
         args, sender, senderhost, channel = yield
@@ -272,7 +274,7 @@ list of choices"""
             else:
                 result = random.choice(args)
         except (IndexError, ValueError):
-            result = "\x034Invalid call - check the help"
+            result = color.colored("Invalid call - check the help", "red")
         bot.msg(channel, result)
 
 
@@ -321,7 +323,8 @@ def search_pypi(bot):
     while True:
         args, sender, senderhost, channel = yield
         if len(args) < 2 or not args[0] in ["search", "info"]:
-            bot.msg(channel, "\x034Invalid call - check the help")
+            bot.msg(channel, color.colored("Invalid call - check the help",
+                                           "red"))
             continue
 
         if args[0] == "search":

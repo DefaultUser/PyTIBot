@@ -31,6 +31,7 @@ __trigs__ = {r"youtube.com/watch\?v=": "youtube",
 
 
 def youtube(bot):
+    """Send title and duration of a youtube video to IRC"""
     pat = re.compile(r"youtube.com/watch\?v=([A-Za-z0-9_-]+)"
                      r"(&feature=youtu.be)?\b")
     duration_pattern = re.compile(r"PT(?P<hours>[0-9]{1,2}H)?(?P<minutes>"
@@ -79,7 +80,7 @@ def youtube(bot):
 
 
 def import_this(bot):
-    """Return the python zen"""
+    """Send the python zen to IRC"""
     zen = "".join([this.d.get(char, char) for char in this.s])
     zen = zen.lstrip("The Zen of Python, by Tim Peters\n\n")
     while True:
@@ -89,8 +90,6 @@ def import_this(bot):
 
 def enable_command(bot):
     """Enable command or trigger with python-like syntax"""
-    __trigs_inv = dict([[v, k] for k, v in __trigs__.items()])
-
     def _enable(is_admin, channel, _type, cmd, name):
         if not is_admin:
             return

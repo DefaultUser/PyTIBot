@@ -17,9 +17,11 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
-import color
+from . import color
 
 def simple_trigger(bot):
+    """Send a user defined reply to IRC when the corresponding trigger is mentioned
+    """
     pat = re.compile(r"\$COLOR\((\d{1,2}(,\d{1,2})?)\)")
     rainbow = re.compile(r"\$RAINBOW\(([^)]+)\)")
     while True:
@@ -29,7 +31,7 @@ def simple_trigger(bot):
         msg = msg.replace("$CHANNEL", channel)
 
         # Replace colors
-        msg = pat.sub("\x03" r"\1", msg)
+        msg = pat.sub(color._colortoken + r"\1", msg)
         msg = rainbow.sub(lambda match: color.rainbow(match.group(1))+"\x0f",msg)
 
         bot.msg(channel, msg)

@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
-from . import color
+from helper import formatting
 
 def simple_trigger(bot):
     """Send a user defined reply to IRC when the corresponding trigger is mentioned
@@ -31,7 +31,7 @@ def simple_trigger(bot):
         msg = msg.replace("$CHANNEL", channel)
 
         # Replace colors
-        msg = pat.sub(color._colortoken + r"\1", msg)
-        msg = rainbow.sub(lambda match: color.rainbow(match.group(1))+"\x0f",msg)
+        msg = pat.sub(formatting._COLOR + r"\1", msg)
+        msg = rainbow.sub(lambda match: formatting.rainbow(match.group(1)), msg)
 
         bot.msg(channel, msg)

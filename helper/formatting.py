@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# PyTIBot - IRC Bot using python and the twisted library
+# PyTIBot - Formatting Helper
 # Copyright (C) <2015>  <Sebastian Schmidt, Mattia Basaglia>
 
 # This program is free software: you can redistribute it and/or modify
@@ -16,6 +16,16 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+## \brief Token to start underlined text
+_UNDERLINE = "\x1f"
+## \brief Token to start bold text
+_BOLD = "\x02"
+## \brief Token to start colored text
+_COLOR = "\x03"
+## \brief Token to start italic text
+_ITALIC = "\x1d"
+## \brief Token to end formatted text
+_NORMAL = "\x0f"
 
 ## \brief Maps color names to the corresponding mIRC numerical values
 ## (as a two-digit strings)
@@ -38,8 +48,6 @@ color_code = {
     "gray"        : "15"
 }
 
-## \brief Token to start colored text
-_colortoken = "\x03"
 
 def colored(text, fgcolor, bgcolor=None, endtoken=False):
     """
@@ -57,8 +65,8 @@ def colored(text, fgcolor, bgcolor=None, endtoken=False):
     else:
         colorinfo = color_code[fgcolor]
     if endtoken:
-        return _colortoken + colorinfo + text + _colortoken
-    return _colortoken + colorinfo + text
+        return _COLOR + colorinfo + text + _COLOR
+    return _COLOR + colorinfo + text
 
 
 def rainbow_color(factor, colors):
@@ -84,6 +92,39 @@ def rainbow(text, colors=["red","dark_yellow","green","cyan","blue","magenta"]):
         newcolor = rainbow_color(float(index)/len(text), colors)
         if newcolor != color:
             color = newcolor
-            ret += _colortoken + color
+            ret += _COLOR + color
         ret += char
-    return ret
+    return ret + _COLOR
+
+
+def underlined(text, endtoken=False):
+    """
+    \brief Return a underlined string
+    \param endtoken end the underlined text
+    \returns A underlined string
+    """
+    if endtoken:
+        return _UNDERLINE + text + _UNDERLINE
+    return _UNDERLINE + text
+
+
+def italic(text, endtoken=False):
+    """
+    \brief Return a italic string
+    \param endtoken end the italic text
+    \returns A italic string
+    """
+    if endtoken:
+        return _ITALIC + text + _ITALIC
+    return _ITALIC + text
+
+
+def bold(text, endtoken=False):
+    """
+    \brief Return a bold string
+    \param endtoken end the bold text
+    \returns A bold string
+    """
+    if endtoken:
+        return _BOLD + text + _BOLD
+    return _BOLD + text

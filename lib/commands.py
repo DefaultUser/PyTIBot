@@ -21,7 +21,7 @@ import json
 import sys
 from twisted.internet import threads
 from twisted.web.client import getPage
-from . import color
+from helper import formatting
 
 try:
     import xmlrpclib
@@ -70,11 +70,11 @@ def bot_help(bot):
             for arg in args:
                 try:
                     _gen = getattr(thismodule, commands[arg])
-                    doc.append(color.colored(arg+": ", "red") +
-                               color.colored(_gen.__doc__, "dark_blue"))
+                    doc.append(formatting.colored(arg+": ", "red") +
+                               formatting.colored(_gen.__doc__, "dark_blue"))
                 except (AttributeError, KeyError):
-                    doc.append(color.colored("No command called ", "red") +
-                               color.colored(arg, "dark_green"))
+                    doc.append(formatting.colored("No command called ", "red") +
+                               formatting.colored(arg, "dark_green"))
         else:
             doc = [", ".join(commands)]
         for d in doc:
@@ -115,8 +115,8 @@ to remove from the list"""
                                        "ignore list" % nick)
                 else:
                     bot.notice(sender, 
-                               color.colored("Invalid call - ""check the help",
-                                             "red"))
+                               formatting.colored("Invalid call - check the help",
+                                                  "red"))
 
     while True:
         args, sender, senderhost, channel = yield
@@ -274,7 +274,7 @@ list of choices"""
             else:
                 result = random.choice(args)
         except (IndexError, ValueError):
-            result = color.colored("Invalid call - check the help", "red")
+            result = formatting.colored("Invalid call - check the help", "red")
         bot.msg(channel, result)
 
 
@@ -313,8 +313,9 @@ def search_pypi(bot):
         description = description.replace("\n", " ")
         if len(description) > _maxlen:
             description = description[:_maxlen] + "..."
-        bot.msg(channel, "\x02%s\x0f by \x02%s\x0f: %s"
-                % (name, author, description), length=510)
+        bot.msg(channel, "%s by %s: %s" % (formatting.bold(name, True),
+                                           formatting.bold(author, True),
+                                           description), length=510)
         bot.msg(channel, data["info"]["package_url"].encode("utf-8"))
 
     def _handle_error(error, arg, channel):
@@ -323,7 +324,7 @@ def search_pypi(bot):
     while True:
         args, sender, senderhost, channel = yield
         if len(args) < 2 or not args[0] in ["search", "info"]:
-            bot.msg(channel, color.colored("Invalid call - check the help",
+            bot.msg(channel, formatting.colored("Invalid call - check the help",
                                            "red"))
             continue
 

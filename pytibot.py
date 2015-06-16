@@ -27,7 +27,7 @@ irc.numeric_to_symbolic["330"] = "RPL_WHOISAUTH"
 from lib import commands
 from lib.simpletrigger import simple_trigger
 from lib import triggers
-import helper
+from helper import decorators
 
 
 class PyTIBot(irc.IRCClient, object):
@@ -185,7 +185,6 @@ class PyTIBot(irc.IRCClient, object):
     def privmsg(self, user, channel, msg):
         """Triggered by messages"""
         # strip '!'
-        print user
         user, temp = user.split('!', 1)
         userhost = temp.split("@")[-1]
 
@@ -316,7 +315,7 @@ class PyTIBot(irc.IRCClient, object):
                 if msg:
                     self.msg(channel, msg)
 
-    @helper.memoize_deferred
+    @decorators.memoize_deferred
     def user_info(self, user):
         user = user.lower()
         d = defer.Deferred()
@@ -327,7 +326,7 @@ class PyTIBot(irc.IRCClient, object):
         self.whois(user)
         return d
 
-    @helper.memoize_deferred
+    @decorators.memoize_deferred
     def get_auth(self, user):
         user = user.lower()
         d = defer.Deferred()

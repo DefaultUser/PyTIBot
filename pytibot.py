@@ -127,7 +127,7 @@ class PyTIBot(irc.IRCClient, object):
             print("Trigger %s allready enabled" % trigger)
             return True
 
-        #add trigger
+        # add trigger
         regex = __trigs_inv[trigger]
         self.triggers[regex] = getattr(triggers, trigger)(self)
         next(self.triggers[regex])
@@ -319,7 +319,7 @@ class PyTIBot(irc.IRCClient, object):
     def user_info(self, user):
         user = user.lower()
         d = defer.Deferred()
-        if not user in self._usercallback:
+        if user not in self._usercallback:
             self._usercallback[user] = [[], []]
 
         self._usercallback[user][0].append(d)
@@ -330,7 +330,7 @@ class PyTIBot(irc.IRCClient, object):
     def get_auth(self, user):
         user = user.lower()
         d = defer.Deferred()
-        if not user in self._authcallback:
+        if user not in self._authcallback:
             self._authcallback[user] = [[], []]
 
         self._authcallback[user][0].append(d)
@@ -347,7 +347,7 @@ class PyTIBot(irc.IRCClient, object):
 
     def irc_RPL_WHOISUSER(self, prefix, params):
         user = params[1].lower()
-        if not user in self._usercallback:
+        if user not in self._usercallback:
             # Never asked for it
             return
         self._usercallback[user][1] += params[1:]
@@ -371,7 +371,7 @@ class PyTIBot(irc.IRCClient, object):
 
     def irc_RPL_WHOISAUTH(self, prefix, params):
         user = params[1].lower()
-        if not user in self._authcallback:
+        if user not in self._authcallback:
             # Never asked for it
             return
         self._authcallback[user][1] += params[1:]

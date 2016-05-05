@@ -19,6 +19,7 @@
 import random
 import json
 import sys
+import subprocess
 from twisted.internet import threads
 from twisted.web.client import getPage
 from helper import formatting
@@ -114,7 +115,7 @@ to remove from the list"""
                             bot.notice(sender, "%s was not found in the "
                                        "ignore list" % nick)
                 else:
-                    bot.notice(sender, 
+                    bot.notice(sender,
                                formatting.colored("Invalid call - check the help",
                                                   "red"))
 
@@ -325,7 +326,7 @@ def search_pypi(bot):
         args, sender, senderhost, channel = yield
         if len(args) < 2 or not args[0] in ["search", "info"]:
             bot.msg(channel, formatting.colored("Invalid call - check the help",
-                                           "red"))
+                                                "red"))
             continue
 
         if args[0] == "search":
@@ -338,3 +339,22 @@ def search_pypi(bot):
                 d = getPage(url)
                 d.addCallback(_handle_info_results, channel)
                 d.addErrback(_handle_error, package, channel)
+
+
+def fortune(bot):
+    """Unix fortune"""
+    while True:
+        args, sender, senderhost, channel = yield
+        try:
+            cmd = ["fortune"]
+            cmd.extend(args)
+            p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE)
+            output, errors = p.communicate()
+            if p.returncode or errors:
+                print p.returncode, errors
+                bot.msg(channel, errors.strip())
+            else:
+                bot.msg(channel, output.strip())
+        except OSError:
+            print "Fortune does not seem to be installed"

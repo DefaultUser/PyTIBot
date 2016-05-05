@@ -19,7 +19,6 @@
 import re
 import this
 from twisted.internet import threads
-from apiclient.discovery import build
 import sys
 
 trigger_module = sys.modules[__name__]
@@ -38,6 +37,8 @@ def youtube(bot):
                                   "[0-9]{1,2}M)?(?P<seconds>[0-9]{1,2}S)")
     yt_service = None
     if bot.cm.option_set("Triggers", "youtube_api_key"):
+        from apiclient.discovery import build
+
         YOUTUBE_API_SERVICE_NAME = "youtube"
         YOUTUBE_API_VERSION = "v3"
         YOUTUBE_API_KEY = bot.cm.get("Triggers", "youtube_api_key")

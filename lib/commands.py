@@ -19,7 +19,7 @@
 import random
 import json
 import sys
-import subprocess
+import os
 from twisted.internet import threads
 from twisted.web.client import getPage
 from helper import formatting
@@ -343,18 +343,68 @@ def search_pypi(bot):
 
 def fortune(bot):
     """Unix fortune"""
+    paths = [r"/usr/share/fortune/", r"/usr/share/games/fortune/"]
+
+    def _find_files():
+        """
+        Find all fortune files in the system
+        """
+        fortune_files = []
+        # only one should be used, but check both anyways
+        for path in paths:
+            if not os.path.isdir(path):
+                continue
+            for root, dirs, files in os.walk(path):
+                for f in files:
+                    if "." in f:
+                        continue
+                    fortune_files.append(os.path.join(root, f))
+        return fortune_files
+
+    def _display_filename(filename):
+        """
+        Strip the fortune base path
+        """
+        for path in paths:
+            if filename.startswith(path):
+                return filename.replace(path, "", 1)
+
+    def _get_random_fortune(filename):
+        """
+        Get a random fortune out of the file <filename>
+        """
+        with open(filename) as f:
+            data = f.read()
+        fortunes = data.split("\n%\n")
+        # remove empty strings
+        while "" in fortunes:
+            fortunes.remove("")
+        fortune = random.choice(fortunes).strip()
+        if _display_filename(filename).startswith("off/"):
+            fortune = fortune.encode("rot13")
+        return fortune
+
     while True:
         args, sender, senderhost, channel = yield
-        try:
-            cmd = ["fortune"]
-            cmd.extend(args)
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE)
-            output, errors = p.communicate()
-            if p.returncode or errors:
-                print p.returncode, errors
-                bot.msg(channel, errors.strip())
+        fortune_files = _find_files()
+        if args == ["list"]:
+            options = []
+            for f in fortune_files:
+                options.append(_display_filename(f))
+            bot.msg(channel, "Available fortunes: {}".format(options))
+        else:
+            considered_files = []
+            if not args:
+                considered_files = fortune_files
             else:
-                bot.msg(channel, output.strip())
-        except OSError:
-            print "Fortune does not seem to be installed"
+                for arg in args:
+                    for f in fortune_files:
+                        if arg == _display_filename(f):
+                            considered_files.append(f)
+                            break
+            # nothing found?
+            if not considered_files:
+                bot.msg(channel, "No fortunes found")
+            else:
+                result = _get_random_fortune(random.choice(considered_files))
+                bot.msg(channel, result)

@@ -343,7 +343,8 @@ def search_pypi(bot):
 
 def fortune(bot):
     """Unix fortune"""
-    paths = [r"/usr/share/fortune/", r"/usr/share/games/fortune/"]
+    paths = [r"/usr/share/fortune/", r"/usr/share/games/fortune/",
+             r"/usr/share/fortunes/", r"/usr/share/games/fortunes/"]
 
     def _find_files():
         """

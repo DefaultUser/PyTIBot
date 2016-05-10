@@ -342,9 +342,11 @@ def search_pypi(bot):
 
 
 def fortune(bot):
-    """Unix fortune"""
+    """Unix fortune: fortune list for available fortunes, fortune -l to \
+allow long fortunes"""
     paths = [r"/usr/share/fortune/", r"/usr/share/games/fortune/",
              r"/usr/share/fortunes/", r"/usr/share/games/fortunes/"]
+    num_lines_short = 3
 
     def _find_files():
         """
@@ -370,7 +372,7 @@ def fortune(bot):
             if filename.startswith(path):
                 return filename.replace(path, "", 1)
 
-    def _get_random_fortune(filename):
+    def _get_random_fortune(filename, onlyshort=True):
         """
         Get a random fortune out of the file <filename>
         """
@@ -380,7 +382,14 @@ def fortune(bot):
         # remove empty strings
         while "" in fortunes:
             fortunes.remove("")
-        fortune = random.choice(fortunes).strip()
+        if onlyshort:
+            for fortune in fortunes[:]:
+                # last line has no "\n"
+                if fortune.count("\n") >= num_lines_short:
+                    fortunes.remove(fortune)
+        if not fortunes:
+            return "No fortunes found"
+        fortune = random.choice(fortunes)
         if _display_filename(filename).startswith("off/"):
             fortune = fortune.encode("rot13")
         return fortune
@@ -392,11 +401,21 @@ def fortune(bot):
             options = []
             for f in fortune_files:
                 options.append(_display_filename(f))
-            bot.msg(channel, "Available fortunes: {}".format(options))
+            bot.msg(channel, "Available fortunes: {}".format(
+                ", ".join(options)))
         else:
             considered_files = []
+            only_short = True
+            if args and args[0] == "-l":
+                print "long"
+                only_short = False
+                args.pop(0)
+            else:
+                print "short"
             if not args:
-                considered_files = fortune_files
+                # Don't use offensive fortunes by default
+                considered_files = [f for f in fortune_files if not
+                                    f.startswith("/off")]
             else:
                 for arg in args:
                     for f in fortune_files:
@@ -407,5 +426,6 @@ def fortune(bot):
             if not considered_files:
                 bot.msg(channel, "No fortunes found")
             else:
-                result = _get_random_fortune(random.choice(considered_files))
+                result = _get_random_fortune(random.choice(considered_files),
+                                             only_short)
                 bot.msg(channel, result)

@@ -345,7 +345,9 @@ def fortune(bot):
     """Unix fortune: fortune list for available fortunes, fortune -l to \
 allow long fortunes"""
     paths = [r"/usr/share/fortune/", r"/usr/share/games/fortune/",
-             r"/usr/share/fortunes/", r"/usr/share/games/fortunes/"]
+             r"/usr/share/fortunes/", r"/usr/share/games/fortunes/",
+             os.path.join(os.path.dirname(os.path.dirname(
+                 os.path.abspath(__file__))), "fortunes/")]
     num_lines_short = 3
 
     def _find_files():
@@ -407,11 +409,8 @@ allow long fortunes"""
             considered_files = []
             only_short = True
             if args and args[0] == "-l":
-                print "long"
                 only_short = False
                 args.pop(0)
-            else:
-                print "short"
             if not args:
                 # Don't use offensive fortunes by default
                 considered_files = [f for f in fortune_files if not

@@ -102,16 +102,16 @@ class PyTIBot(irc.IRCClient, object):
 
     def setup_logging(self):
         if self.cm.has_section("Logging"):
-            if self.cm.has_option("channels"):
+            if self.cm.has_option("Logging", "channels"):
                 self.log_channels = self.cm.getlist("Logging", "channels")
             else:
                 self.log_channels = []
                 return
-            if self.cm.has_option("directory"):
+            if self.cm.has_option("Logging", "directory"):
                 log_dir = self.cm.get("Logging", "directory")
             else:
                 log_dir = os.path.join(get_script_dir(), "logs")
-            if self.cm.has_option("rotation_policy"):
+            if self.cm.has_option("Logging", "rotation_policy"):
                 when = self.cm.get("Logging", "rotation_policy")
             else:
                 when = "W0"
@@ -406,10 +406,10 @@ class PyTIBot(irc.IRCClient, object):
             logger.info("{} left the channel".format(user))
 
     def userQuit(self, user, quitMessage):
-        channel = channel.lower()
         self.remove_user_from_cache(user)
 
         for channel in self.userlist.keys():
+            channel = channel.lower()
             if user in self.userlist[channel]:
                 self.userlist[channel].remove(user)
                 if channel in self.log_channels:

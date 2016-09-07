@@ -160,6 +160,20 @@ For the full list of class methods, check the source and the twisted api
 (http://twistedmatrix.com/documents/current/api/twisted.words.protocols.irc.IRCClient.html)
 
 
+Logging
+-------
+This bot can also be used to log channel activity.
+```
+[Logging]
+channels = #mysuperchannel, #myweirdchannel
+directory = /tmp/log/
+rotation_policy = w0
+```
+Every channel is logged to a different file<br/>
+**rotation_policy** follows the same rules as the **TimedRotatingFileHandler** from python's **logging** module
+(https://docs.python.org/2/library/logging.handlers.html#logging.handlers.TimedRotatingFileHandler)
+
+
 COPYRIGHT
 ---------
 GPLv3, see LICENSE<br/>

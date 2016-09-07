@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015>  <Sebastian Schmidt>
+# Copyright (C) <2015-2016>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -49,7 +49,6 @@ def shutdown(bot):
     """Shut down the bot (admin function)"""
     def _shutdown(is_admin, channel, args):
         if is_admin:
-            print("Shutting DOWN")
             bot.quit(" ".join(args))
         else:
             bot.msg(channel, "I won't listen to you!")

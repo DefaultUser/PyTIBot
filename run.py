@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015>  <Sebastian Schmidt>
+# Copyright (C) <2015-2016>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ from twisted.internet import reactor
 from twisted.manhole import telnet
 from configmanager import ConfigManager
 import sys
+import logging
 
 mandatory_settings = [("Connection", "server"), ("Connection", "port"),
                       ("Connection", "nickname"), ("Connection", "admins")]
@@ -54,5 +55,5 @@ if __name__ == "__main__":
         # start the reactor
         reactor.run()
     else:
-        print("Reading config file failed, mandatory fields not set!")
-        print("Please reconfigure")
+        logging.critical("Reading config file failed, mandatory fields not set!")
+        logging.critical("Please reconfigure")

@@ -31,6 +31,7 @@ class ExtendedLogger(logging.Logger):
 
 
 logging.setLoggerClass(ExtendedLogger)
+logging.root.setLevel(logging.INFO)
 
 
 def setup_logger(channel, log_dir, log_level=logging.INFO, log_when="W0"):

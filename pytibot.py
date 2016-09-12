@@ -115,12 +115,18 @@ class PyTIBot(irc.IRCClient, object):
                 when = self.cm.get("Logging", "rotation_policy")
             else:
                 when = "W0"
+            if (self.cm.has_option("Logging", "log_minor") and
+                    self.cm.getboolean("Logging", "log_minor")):
+                log_level = log.INFO_MINOR
+            else:
+                log_level = logging.INFO
             for n, channel in enumerate(self.log_channels):
                 if not channel.startswith("#"):
                     channel = "#" + channel
                 # make all channels lowercase
                 self.log_channels[n] = channel.lower()
-                log.setup_logger(channel.lower(), log_dir, log_when=when)
+                log.setup_logger(channel.lower(), log_dir,
+                                 log_level=log_level, log_when=when)
 
     def enable_command(self, cmd, name, add_to_config=False):
         """Enable a command - returns True at success"""
@@ -335,7 +341,7 @@ class PyTIBot(irc.IRCClient, object):
         channel = channel.lower()
         if channel in self.log_channels:
             logger = logging.getLogger(channel)
-            logger.info("{} changed the topic to: {}".format(nick, newTopic))
+            logger.info_minor("{} changed the topic to: {}".format(nick, newTopic))
 
     def userJoined(self, user, channel):
         """Triggered when a user changes nick"""
@@ -344,7 +350,7 @@ class PyTIBot(irc.IRCClient, object):
         logging.info("{} joined {}".format(user, channel))
         if channel in self.log_channels:
             logger = logging.getLogger(channel)
-            logger.info("{} joined the channel".format(user))
+            logger.info_minor("{} joined the channel".format(user))
 
     def userRenamed(self, oldname, newname):
         """Triggered when a user changes nick"""
@@ -355,7 +361,7 @@ class PyTIBot(irc.IRCClient, object):
                 self.userlist.append(newname)
                 if channel in self.log_channels:
                     logger = logging.getLogger(channel)
-                    logger.info("{} is now known as {}".format(oldname, newname))
+                    logger.info_minor("{} is now known as {}".format(oldname, newname))
         # expand the ignore list
         if self.ignore_user(oldname):
             self.cm.add_to_list("Connection", "ignore", newname)
@@ -393,7 +399,7 @@ class PyTIBot(irc.IRCClient, object):
 
         if channel in self.log_channels:
             logger = logging.getLogger(channel)
-            logger.info("{} was kicked by {} ({})".format(kickee, kicker,
+            logger.info_minor("{} was kicked by {} ({})".format(kickee, kicker,
                                                           message))
 
     def userLeft(self, user, channel):
@@ -403,7 +409,7 @@ class PyTIBot(irc.IRCClient, object):
 
         if channel in self.log_channels:
             logger = logging.getLogger(channel)
-            logger.info("{} left the channel".format(user))
+            logger.info_minor("{} left the channel".format(user))
 
     def userQuit(self, user, quitMessage):
         self.remove_user_from_cache(user)
@@ -414,7 +420,7 @@ class PyTIBot(irc.IRCClient, object):
                 self.userlist[channel].remove(user)
                 if channel in self.log_channels:
                     logger = logging.getLogger(channel)
-                    logger.info("{} quit ({})".format(user, quitMessage))
+                    logger.info_minor("{} quit ({})".format(user, quitMessage))
 
     def kickedFrom(self, channel, kicker, message):
         """Triggered when bot gets kicked"""
@@ -432,7 +438,7 @@ class PyTIBot(irc.IRCClient, object):
         self.userlist.pop(channel)
         if channel in self.log_channels:
             logger = logging.getLogger(channel)
-            logger.info("This bot was kicked by {} ({})".format(kicker,
+            logger.warn("This bot was kicked by {} ({})".format(kicker,
                                                                 message))
 
     @decorators.memoize_deferred

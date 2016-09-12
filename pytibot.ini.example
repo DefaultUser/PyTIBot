@@ -11,6 +11,12 @@ ignore =
 rejoinkicked = True
 open_telnet = True
 
+[Logging]
+channels = #mysuperchannel, #myweirdchannel
+directory = /tmp/log/
+rotation_policy = w0
+log_minor = True
+
 [Telnet]
 port = 9999
 username = REPLACE_ME

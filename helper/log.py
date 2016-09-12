@@ -20,8 +20,17 @@ import logging
 import logging.handlers
 import os
 
-
+INFO_MINOR = logging.INFO - 5
+logging.addLevelName(INFO_MINOR, "INFO_MINOR")
 log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+
+
+class ExtendedLogger(logging.Logger):
+    def info_minor(self, msg, *args, **kwargs):
+        self.log(INFO_MINOR, msg, *args, **kwargs)
+
+
+logging.setLoggerClass(ExtendedLogger)
 
 
 def setup_logger(channel, log_dir, log_level=logging.INFO, log_when="W0"):

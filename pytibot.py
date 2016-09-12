@@ -357,8 +357,8 @@ class PyTIBot(irc.IRCClient, object):
         for channel in self.userlist.keys():
             channel = channel.lower()
             if oldname in self.userlist[channel]:
-                self.userlist.remove(oldname)
-                self.userlist.append(newname)
+                self.userlist[channel].remove(oldname)
+                self.userlist[channel].append(newname)
                 if channel in self.log_channels:
                     logger = logging.getLogger(channel)
                     logger.info_minor("{} is now known as {}".format(oldname, newname))

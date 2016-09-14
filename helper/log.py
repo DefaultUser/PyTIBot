@@ -31,13 +31,15 @@ class ExtendedLogger(logging.Logger):
 
 
 logging.setLoggerClass(ExtendedLogger)
-logging.root.setLevel(logging.INFO)
+logging.basicConfig(level=logging.INFO)
 
 
 def setup_logger(channel, log_dir, log_level=logging.INFO, log_when="W0"):
     name = channel.lstrip("#")
     logger = logging.getLogger(channel.lower())
     logger.setLevel(log_level)
+    # don't propagate to parent loggers
+    logger.propagate = False
     # don't add multiple handlers for the same logger
     if not logger.handlers:
         # log to file

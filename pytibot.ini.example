@@ -9,7 +9,7 @@ adminbyhost = False
 admins =
 ignore =
 rejoinkicked = True
-open_telnet = True
+open_manhole = True
 
 [Logging]
 channels = #mysuperchannel, #myweirdchannel
@@ -17,10 +17,8 @@ directory = /tmp/log/
 rotation_policy = w0
 log_minor = True
 
-[Telnet]
-port = 9999
-username = REPLACE_ME
-password = REPLACE_ME
+[Manhole]
+telnetPort = 9999
 
 [Commands]
 hello = hello

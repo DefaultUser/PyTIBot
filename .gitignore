@@ -6,3 +6,6 @@ Doxyfile
 html/
 latex/
 logs/
+*.cache
+manhole_cred
+*.log

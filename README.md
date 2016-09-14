@@ -7,12 +7,14 @@ bot can only connect to one server at a time.
 
 Dependencies
 ------------
-python2 (as twisted does not support python3 yet)<br/>
-twisted<br/>
-configmanager (https://github.com/DefaultUser/configmanager)<br/>
-apiclient (python module for google api)<br/>
-xmlrpclib<br/>
+```
+python2 (as twisted does not support python3 yet)
+twisted
+configmanager (https://github.com/DefaultUser/configmanager)
+apiclient (python module for google api)
+xmlrpclib
 Unix fortune
+```
 
 For Ubuntu 14.04 the needed packages are "python2.7", "python-twisted" and "python-googleapi".
 Either adjust your PYTHONPATH to include configmanager or copy/link
@@ -23,16 +25,16 @@ Starting the bot
 Adjust the configuration file to your needs.
 Start the bot with
 ```
-python run.py
+twistd PyTIBot
 ```
-or if your system defaults to python 3
+or if you don't want to run it as a daemon
 ```
-python2 run.py
+twistd -n PyTIBot
 ```
 By default pytibot.ini is used, but you can specify another configuration
 file like this
 ```
-python run.py otherconfig.ini
+twistd PyTIBot -c otherconfig.ini
 ```
 
 
@@ -132,16 +134,22 @@ range is from 0 to 15.
 **Attention**: don't put a whitespace between these numbers.
 
 
-Telnet access
+Manhole access
 -------------
 Additionally to IRC commands this bot can also be controlled via telnet.
 To turn this feature on, you need to set
 ```
-open_telnet = True
+open_manhole = True
 ```
-under the **Connection** section.
+under the **Connection** section. You need to also set the port in the configuration file:
+```
+[Manhole]
+telnetPort = 9999
+```
+You also need to specify login credentials in the file *manhole_cred* in the form of *user:password*.
 
-Once you are connected via telnet, you have access to a python interpreter. Run
+Once you are connected via telnet, you have **full** access to a python interpreter -
+**ONLY GIVE LOGIN CREDENTIALS TO PEOPLE YOU ABSOLUTELY TRUST**. Run
 ```
 bot = get_bot()
 ```

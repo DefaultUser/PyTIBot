@@ -19,6 +19,19 @@
 import functools
 
 
+def memoize(f):
+    f.cache = {}
+
+    @functools.wraps(f)
+    def inner(*args, **kwargs):
+        key = "(" + ", ".join([str(arg) for arg in args]) + ")"
+        key = key + "|" + str(kwargs)
+        if not key in f.cache:
+            f.cache[key] = f(*args, **kwargs)
+        return f.cache[key]
+    return inner
+
+
 def memoize_deferred(f):
     """Cache the result of a function - result should be wraped in a
     defer.maybeDeferred"""

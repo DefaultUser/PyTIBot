@@ -129,6 +129,8 @@ class PyTIBot(irc.IRCClient, object):
                 self.log_channels[n] = channel.lower()
                 log.setup_logger(channel.lower(), log_dir,
                                  log_level=log_level, log_when=when)
+        else:
+            self.log_channels = []
 
     def enable_command(self, cmd, name, add_to_config=False):
         """Enable a command - returns True at success"""

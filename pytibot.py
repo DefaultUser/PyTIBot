@@ -33,8 +33,10 @@ from lib import triggers
 from helper import decorators, log
 
 
+@decorators.memoize
 def get_script_dir():
-    return os.path.dirname(os.path.realpath(sys.argv[0]))
+    """Return the directory that this file is in"""
+    return os.path.dirname(os.path.realpath(__file__))
 
 
 class PyTIBot(irc.IRCClient, object):
@@ -321,6 +323,7 @@ class PyTIBot(irc.IRCClient, object):
     def nickChanged(self, nick):
         """Triggered when own nick changes"""
         self.nickname = nick
+        logging.info("Changed own nick to " + nick)
 
     def ignore_user(self, user):
         """Test whether to ignore the user"""
@@ -338,10 +341,13 @@ class PyTIBot(irc.IRCClient, object):
 
     def topicUpdated(self, user, channel, newTopic):
         nick = user.split("!")[0]
+        logging.info("{} changed the topic of {} to {}".format(nick, channel,
+                                                               newTopic))
         channel = channel.lower()
         if channel in self.log_channels:
             logger = logging.getLogger(channel)
-            logger.info_minor("{} changed the topic to: {}".format(nick, newTopic))
+            logger.info_minor("{} changed the topic to: {}".format(nick,
+                                                                   newTopic))
 
     def userJoined(self, user, channel):
         """Triggered when a user changes nick"""
@@ -354,6 +360,7 @@ class PyTIBot(irc.IRCClient, object):
 
     def userRenamed(self, oldname, newname):
         """Triggered when a user changes nick"""
+        logging.info("{} is now known as {}".format(oldname, newname))
         for channel in self.userlist.keys():
             channel = channel.lower()
             if oldname in self.userlist[channel]:
@@ -370,21 +377,24 @@ class PyTIBot(irc.IRCClient, object):
 
     def action(self, user, channel, data):
         """Triggered by actions"""
+        nick = user.split("!")[0]
+        logging.info("{} | {} {}".format(channel, nick, data))
         channel = channel.lower()
         if channel in self.log_channels:
             logger = logging.getLogger(channel)
-            logger.info("{} {}".format(user.split("!")[0], data))
+            logger.info("{} {}".format(nick, data))
 
     def noticed(self, user, channel, message):
         """Triggered by notice"""
+        nick = user.split("!")[0]
+        logging.info("{} | {} {}".format(channel, nick, message))
         channel = channel.lower()
         if channel in self.log_channels:
             logger = logging.getLogger(channel)
-            logger.info("Notice: {} {}".format(user.split("!")[0], message))
+            logger.info("Notice: {} {}".format(nick, message))
 
     def userKicked(self, kickee, channel, kicker, message):
         """Triggered when a user gets kicked"""
-        channel = channel.lower()
         # kick message
         if self.cm.has_option("Actions", "userKicked"):
             msg = self.cm.get("Actions", "userKicked").replace("$KICKER",
@@ -394,13 +404,16 @@ class PyTIBot(irc.IRCClient, object):
             if msg:
                 self.msg(channel, msg)
 
+        logging.info("{} was kicked from {} by {} ({})".format(kickee, channel,
+                                                               kicker, message))
+        channel = channel.lower()
         self.remove_user_from_cache(kickee)
         self.userlist[channel].remove(kickee)
 
         if channel in self.log_channels:
             logger = logging.getLogger(channel)
             logger.info_minor("{} was kicked by {} ({})".format(kickee, kicker,
-                                                          message))
+                                                                message))
 
     def userLeft(self, user, channel):
         channel = channel.lower()
@@ -438,7 +451,7 @@ class PyTIBot(irc.IRCClient, object):
         self.userlist.pop(channel)
         if channel in self.log_channels:
             logger = logging.getLogger(channel)
-            logger.warn("This bot was kicked by {} ({})".format(kicker,
+            logger.warning("This bot was kicked by {} ({})".format(kicker,
                                                                 message))
 
     @decorators.memoize_deferred

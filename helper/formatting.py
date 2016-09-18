@@ -30,22 +30,22 @@ _NORMAL = "\x0f"
 ## \brief Maps color names to the corresponding mIRC numerical values
 ## (as a two-digit strings)
 color_code = {
-    "black"       : "00",
-    "white"       : "01",
-    "dark_blue"   : "02",
-    "dark_green"  : "03",
-    "red"         : "04",
-    "dark_red"    : "05",
+    "black": "00",
+    "white": "01",
+    "dark_blue": "02",
+    "dark_green": "03",
+    "red": "04",
+    "dark_red": "05",
     "dark_magenta": "06",
-    "dark_yellow" : "07",
-    "yellow"      : "08",
-    "green"       : "09",
-    "dark_cyan"   : "10",
-    "cyan"        : "11",
-    "blue"        : "12",
-    "magenta"     : "13",
-    "dark_gray"   : "14",
-    "gray"        : "15"
+    "dark_yellow": "07",
+    "yellow": "08",
+    "green": "09",
+    "dark_cyan": "10",
+    "cyan": "11",
+    "blue": "12",
+    "magenta": "13",
+    "dark_gray": "14",
+    "gray": "15"
 }
 
 
@@ -79,7 +79,8 @@ def rainbow_color(factor, colors):
     return color_code[colors[int(factor*len(colors))]]
 
 
-def rainbow(text, colors=["red","dark_yellow","green","cyan","blue","magenta"]):
+def rainbow(text, colors=["red", "dark_yellow", "green", "cyan", "blue",
+                          "magenta"]):
     """
     \brief Colorize a string as a rainbow
     \param text          Input text

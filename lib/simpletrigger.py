@@ -19,6 +19,7 @@
 import re
 from helper import formatting
 
+
 def simple_trigger(bot):
     """Send a user defined reply to IRC when the corresponding trigger is mentioned
     """
@@ -32,6 +33,7 @@ def simple_trigger(bot):
 
         # Replace colors
         msg = pat.sub(formatting._COLOR + r"\1", msg)
-        msg = rainbow.sub(lambda match: formatting.rainbow(match.group(1)), msg)
+        msg = rainbow.sub(lambda match: formatting.rainbow(match.group(1)),
+                          msg)
 
         bot.msg(channel, msg)

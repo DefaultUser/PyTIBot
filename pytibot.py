@@ -454,7 +454,7 @@ class PyTIBot(irc.IRCClient, object):
         if channel in self.log_channels:
             logger = logging.getLogger(channel)
             logger.warning("This bot was kicked by {} ({})".format(kicker,
-                                                                message))
+                                                                   message))
 
     @decorators.memoize_deferred
     def user_info(self, user):

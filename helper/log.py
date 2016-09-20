@@ -22,7 +22,7 @@ import os
 
 INFO_MINOR = logging.INFO - 5
 logging.addLevelName(INFO_MINOR, "INFO_MINOR")
-log_formatter = logging.Formatter('%(asctime)s %(levelname)s %(message)s')
+log_formatter = logging.Formatter('%(asctime)s %(message)s')
 
 
 class ExtendedLogger(logging.Logger):
@@ -40,6 +40,11 @@ def setup_logger(channel, log_dir, log_level=logging.INFO, log_when="W0"):
     logger.setLevel(log_level)
     # don't propagate to parent loggers
     logger.propagate = False
+    # dateformat for the formatter
+    if log_when.upper().startswith("W"):
+        log_formatter.datefmt = '%Y-%m-%d_%H:%M:%S'
+    else:
+        log_formatter.datefmt = '%H:%M:%S'
     # don't add multiple handlers for the same logger
     if not logger.handlers:
         # log to file

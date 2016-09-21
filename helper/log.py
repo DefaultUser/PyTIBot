@@ -19,22 +19,80 @@
 import logging
 import logging.handlers
 import os
-
-INFO_MINOR = logging.INFO - 5
-logging.addLevelName(INFO_MINOR, "INFO_MINOR")
-log_formatter = logging.Formatter('%(asctime)s %(message)s')
+import yaml
 
 
-class ExtendedLogger(logging.Logger):
-    def info_minor(self, msg, *args, **kwargs):
-        self.log(INFO_MINOR, msg, *args, **kwargs)
+# additional logging levels for channel logs
+TOPIC = 11
+logging.addLevelName(TOPIC, "TOPIC")
+NICK = 12
+logging.addLevelName(NICK, "NICK")
+JOIN = 13
+logging.addLevelName(JOIN, "JOIN")
+PART = 14
+logging.addLevelName(PART, "PART")
+QUIT = 15
+logging.addLevelName(QUIT, "QUIT")
+KICK = 16
+logging.addLevelName(KICK, "KICK")
+NOTICE = 17
+logging.addLevelName(NOTICE, "NOTICE")
+ACTION = 18
+logging.addLevelName(ACTION, "ACTION")
+MSG = 19
+logging.addLevelName(MSG, "MSG")
+
+msg_templates = {TOPIC: "%(user)s changed the topic to: %(topic)s",
+                 NICK: "%(oldnick)s is now known as %(newnick)s",
+                 JOIN: "%(user)s joined the channel",
+                 PART: "%(user)s left the channel",
+                 QUIT: "%(user)s (%(quitMessage)s)",
+                 KICK: "%(kickee)s was kicked by %(kicker)s (%(message)s)",
+                 NOTICE: "[%(user)20s %(message)s]",
+                 ACTION: "%(user)s %(data)s",
+                 MSG: "%(user)20s | %(message)s"}
 
 
-logging.setLoggerClass(ExtendedLogger)
+class ChannelLogger(logging.Logger):
+    def topic(self, user, topic):
+        self.log(TOPIC, msg_templates[TOPIC], {"user": user, "topic": topic})
+
+    def nick(self, oldnick, newnick):
+        self.log(NICK, msg_templates[NICK], {"oldnick": oldnick,
+                                             "newnick": newnick})
+
+    def join(self, user):
+        self.log(JOIN, msg_templates[JOIN], {"user": user})
+
+    def part(self, user):
+        self.log(PART, msg_templates[PART], {"user": user})
+
+    def quit(self, user, quitMessage):
+        self.log(QUIT, msg_templates[QUIT], {"user": user,
+                                             "quitMessage": quitMessage})
+
+    def kick(self, kickee, kicker, message):
+        self.log(KICK, msg_templates[KICK], {"kickee": kickee,
+                                             "kicker": kicker,
+                                             "message": message})
+
+    def notice(self, user, message):
+        self.log(NOTICE, msg_templates[NOTICE], {"user": user,
+                                                 "message": message})
+
+    def action(self, user, data):
+        self.log(ACTION, msg_templates[ACTION], {"user": user, "data": data})
+
+    def msg(self, user, message):
+        self.log(MSG, msg_templates[MSG], {"user": user, "message": message})
+
+
+txt_formatter = logging.Formatter('%(asctime)s %(message)s')
+logging.setLoggerClass(ChannelLogger)
 logging.basicConfig(level=logging.INFO)
 
 
-def setup_logger(channel, log_dir, log_level=logging.INFO, log_when="W0"):
+def setup_logger(channel, log_dir, log_level=NOTICE, log_when="W0"):
     name = channel.lstrip("#")
     logger = logging.getLogger(channel.lower())
     logger.setLevel(log_level)
@@ -42,9 +100,9 @@ def setup_logger(channel, log_dir, log_level=logging.INFO, log_when="W0"):
     logger.propagate = False
     # dateformat for the formatter
     if log_when.upper().startswith("W"):
-        log_formatter.datefmt = '%Y-%m-%d_%H:%M:%S'
+        txt_formatter.datefmt = '%Y-%m-%d_%H:%M:%S'
     else:
-        log_formatter.datefmt = '%H:%M:%S'
+        txt_formatter.datefmt = '%H:%M:%S'
     # don't add multiple handlers for the same logger
     if not logger.handlers:
         # log to file
@@ -52,5 +110,5 @@ def setup_logger(channel, log_dir, log_level=logging.INFO, log_when="W0"):
             os.makedirs(log_dir)
         log_handler = logging.handlers.TimedRotatingFileHandler(
             os.path.join(log_dir, name), when=log_when)
-        log_handler.setFormatter(log_formatter)
+        log_handler.setFormatter(txt_formatter)
         logger.addHandler(log_handler)

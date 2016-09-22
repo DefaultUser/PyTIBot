@@ -11,12 +11,12 @@ Dependencies
 python2 (as twisted does not support python3 yet)
 twisted
 configmanager (https://github.com/DefaultUser/configmanager)
-apiclient (python module for google api)
+python-yaml
 xmlrpclib
-Unix fortune
+apiclient (python module for google api) (optional)
+Unix fortune (optional)
 ```
 
-For Ubuntu 14.04 the needed packages are "python2.7", "python-twisted" and "python-googleapi".
 Either adjust your PYTHONPATH to include configmanager or copy/link
 configmanager.py to the base directory of this bot.
 

@@ -50,7 +50,7 @@ msg_templates = {TOPIC: "%(user)s changed the topic to: %(topic)s",
                  QUIT: "%(user)s (%(quitMessage)s)",
                  KICK: "%(kickee)s was kicked by %(kicker)s (%(message)s)",
                  NOTICE: "[%(user)20s %(message)s]",
-                 ACTION: "%(user)s %(data)s",
+                 ACTION: "*%(user)20s %(data)s",
                  MSG: "%(user)20s | %(message)s"}
 
 

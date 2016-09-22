@@ -20,6 +20,7 @@ import logging
 import logging.handlers
 import os
 import yaml
+import time
 
 
 # additional logging levels for channel logs
@@ -87,13 +88,33 @@ class ChannelLogger(logging.Logger):
         self.log(MSG, msg_templates[MSG], {"user": user, "message": message})
 
 
+class YAMLFormatter(object):
+    logged_fields = ["levelname", "levelno", "msg", "name"]
+
+    def format(self, record):
+        timestruct = time.localtime(record.created)
+        d = {}
+        d["time"] = time.strftime('%Y-%m-%d_%H:%M:%S', timestruct)
+        d["timezone"] = time.tzname[timestruct.tm_isdst]
+        for field in YAMLFormatter.logged_fields:
+            d[field] = record.__dict__[field]
+        d.update(record.__dict__["args"])
+        return yaml.dump(d, explicit_start=True, default_flow_style=False)
+
+
 txt_formatter = logging.Formatter('%(asctime)s %(message)s')
+yaml_formatter = YAMLFormatter()
 logging.setLoggerClass(ChannelLogger)
 logging.basicConfig(level=logging.INFO)
 
 
-def setup_logger(channel, log_dir, log_level=NOTICE, log_when="W0"):
+def setup_logger(channel, log_dir, log_level=NOTICE, log_when="W0",
+                 yaml=False):
     name = channel.lstrip("#")
+    if yaml:
+        name += ".yaml"
+    else:
+        name += ".txt"
     logger = logging.getLogger(channel.lower())
     logger.setLevel(log_level)
     # don't propagate to parent loggers
@@ -110,5 +131,8 @@ def setup_logger(channel, log_dir, log_level=NOTICE, log_when="W0"):
             os.makedirs(log_dir)
         log_handler = logging.handlers.TimedRotatingFileHandler(
             os.path.join(log_dir, name), when=log_when)
-        log_handler.setFormatter(txt_formatter)
+        if yaml:
+            log_handler.setFormatter(yaml_formatter)
+        else:
+            log_handler.setFormatter(txt_formatter)
         logger.addHandler(log_handler)

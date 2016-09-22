@@ -122,13 +122,18 @@ class PyTIBot(irc.IRCClient, object):
                 log_level = log.TOPIC
             else:
                 log_level = log.NOTICE
+            if self.cm.option_set("Logging", "yaml"):
+                yaml = self.cm.getboolean("Logging", "yaml")
+            else:
+                yaml = False
             for n, channel in enumerate(self.log_channels):
                 if not channel.startswith("#"):
                     channel = "#" + channel
                 # make all channels lowercase
                 self.log_channels[n] = channel.lower()
                 log.setup_logger(channel.lower(), log_dir,
-                                 log_level=log_level, log_when=when)
+                                 log_level=log_level,
+                                 log_when=when, yaml=yaml)
         else:
             self.log_channels = []
 
@@ -568,3 +573,4 @@ class PyTIBot(irc.IRCClient, object):
         self.factory.autoreconnect = False
         logging.info("Shutting down")
         super(PyTIBot, self).quit(message)
+

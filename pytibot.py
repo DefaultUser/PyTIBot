@@ -61,6 +61,7 @@ class PyTIBot(irc.IRCClient, object):
             self.password = self.cm.get("Connection", "serverpassword")
         self._usercallback = {}
         self._authcallback = {}
+        self.log_channels = []
         self.commands = {}
         self.triggers = {}
         self.userlist = {}

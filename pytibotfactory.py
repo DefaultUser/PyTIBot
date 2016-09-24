@@ -28,6 +28,7 @@ class PyTIBotFactory(protocol.ClientFactory):
 
     def __init__(self, config_manager):
         self.cm = config_manager
+        self.bot = None
 
     def buildProtocol(self, addr):
         bot = PyTIBot(self.cm)

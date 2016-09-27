@@ -25,15 +25,19 @@ class PyTIBotFactory(protocol.ClientFactory):
     """A factory for PyTIBot"""
     autoreconnect = True
     bot = None
+    MAX_ATTEMPTS = 5
+    RECONNECT_DELAY = 60
 
     def __init__(self, config_manager):
         self.cm = config_manager
         self.bot = None
+        self.connection_attempts = 0
 
     def buildProtocol(self, addr):
         bot = PyTIBot(self.cm)
         bot.factory = self
         self.bot = bot
+        self.connection_attempts = 0
         return bot
 
     def get_bot(self):
@@ -57,5 +61,11 @@ class PyTIBotFactory(protocol.ClientFactory):
             for channel in self.bot.log_channels:
                 logger = logging.getLogger(channel.lower())
                 logger.error("Connection failed")
-        reactor.stop()
+        if self.connection_attempts < PyTIBotFactory.MAX_ATTEMPTS:
+            reactor.callLater(PyTIBotFactory.RECONNECT_DELAY,
+                              connector.connect)
+            self.connection_attempts += 1
+        else:
+            logging.critical("Connection can't be established - Shutting down")
+            reactor.stop()
 

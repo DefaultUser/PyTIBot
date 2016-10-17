@@ -23,14 +23,14 @@ import logging
 import os
 import sys
 
-# WHOIS reply for AUTH name (NONSTANDARD REPLY!)
-irc.symbolic_to_numeric["RPL_WHOISAUTH"] = "330"
-irc.numeric_to_symbolic["330"] = "RPL_WHOISAUTH"
-
 from lib import commands
 from lib.simpletrigger import simple_trigger
 from lib import triggers
 from helper import decorators, log
+
+# WHOIS reply for AUTH name (NONSTANDARD REPLY!)
+irc.symbolic_to_numeric["RPL_WHOISAUTH"] = "330"
+irc.numeric_to_symbolic["330"] = "RPL_WHOISAUTH"
 
 
 @decorators.memoize
@@ -235,7 +235,7 @@ class PyTIBot(irc.IRCClient, object):
         # user can also be a channel
         user = user.lower()
         if user in self.log_channels:
-            logger= logging.getLogger(user)
+            logger = logging.getLogger(user)
             logger.msg(self.nickname, message)
 
     def joined(self, channel):
@@ -281,7 +281,7 @@ class PyTIBot(irc.IRCClient, object):
 
         cmdmode = False
         # Commands
-        pat = re.compile(ur"^" + self.nickname + ur"(:|,)?\s")
+        pat = re.compile(r"^" + self.nickname + r"(:|,)?\s")
         if pat.search(msg):
             cmdmode = True
             index = 1
@@ -412,7 +412,8 @@ class PyTIBot(irc.IRCClient, object):
                 self.msg(channel, msg)
 
         logging.info("{} was kicked from {} by {} ({})".format(kickee, channel,
-                                                               kicker, message))
+                                                               kicker,
+                                                               message))
         channel = channel.lower()
         self.remove_user_from_cache(kickee)
         self.userlist[channel].remove(kickee)
@@ -444,7 +445,8 @@ class PyTIBot(irc.IRCClient, object):
     def kickedFrom(self, channel, kicker, message):
         """Triggered when bot gets kicked"""
         channel = channel.lower()
-        logging.warning("Kicked from {} by {} ({})".format(channel, kicker, message))
+        logging.warning("Kicked from {} by {} ({})".format(channel, kicker,
+                                                           message))
         if self.cm.getboolean("Connection", "rejoinKicked"):
             self.join(channel)
             if self.cm.has_option("Actions", "kickedFrom"):
@@ -574,4 +576,3 @@ class PyTIBot(irc.IRCClient, object):
         self.factory.autoreconnect = False
         logging.info("Shutting down")
         super(PyTIBot, self).quit(message)
-

@@ -20,7 +20,6 @@ import re
 from twisted.words.protocols import irc
 from twisted.internet import defer
 import logging
-import os
 import sys
 
 from lib import commands
@@ -31,12 +30,6 @@ from helper import decorators, log
 # WHOIS reply for AUTH name (NONSTANDARD REPLY!)
 irc.symbolic_to_numeric["RPL_WHOISAUTH"] = "330"
 irc.numeric_to_symbolic["330"] = "RPL_WHOISAUTH"
-
-
-@decorators.memoize
-def get_script_dir():
-    """Return the directory that this file is in"""
-    return os.path.dirname(os.path.realpath(__file__))
 
 
 class PyTIBot(irc.IRCClient, object):
@@ -110,10 +103,6 @@ class PyTIBot(irc.IRCClient, object):
             else:
                 self.log_channels = []
                 return
-            if self.cm.has_option("Logging", "directory"):
-                log_dir = self.cm.get("Logging", "directory")
-            else:
-                log_dir = os.path.join(get_script_dir(), "logs")
             if self.cm.has_option("Logging", "rotation_policy"):
                 when = self.cm.get("Logging", "rotation_policy")
             else:
@@ -132,7 +121,7 @@ class PyTIBot(irc.IRCClient, object):
                     channel = "#" + channel
                 # make all channels lowercase
                 self.log_channels[n] = channel.lower()
-                log.setup_logger(channel.lower(), log_dir,
+                log.setup_logger(channel.lower(), self.cm,
                                  log_level=log_level,
                                  log_when=when, yaml=yaml)
         else:

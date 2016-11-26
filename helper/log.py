@@ -23,6 +23,9 @@ import yaml
 import time
 import sys
 
+from helper import decorators
+from helper import filesystem as fs
+
 
 # additional logging levels for channel logs
 TOPIC = 11
@@ -53,6 +56,15 @@ msg_templates = {TOPIC: "%(user)s changed the topic to: %(topic)s",
                  NOTICE: "[%(user)20s %(message)s]",
                  ACTION: "*%(user)20s %(data)s",
                  MSG: "%(user)20s | %(message)s"}
+
+
+@decorators.memoize
+def get_log_dir(cm):
+    if cm.has_option("Logging", "directory"):
+        log_dir = cm.get("Logging", "directory")
+    else:
+        log_dir = fs.get_abs_path("logs")
+    return log_dir
 
 
 class ChannelLogger(logging.Logger):
@@ -229,8 +241,7 @@ def yaml_namer(name):
     return name[:index] + name[index:].replace(".yaml", "") + ".yaml"
 
 
-def setup_logger(channel, log_dir, log_level=NOTICE, log_when="W0",
-                 yaml=False):
+def setup_logger(channel, cm, log_level=NOTICE, log_when="W0", yaml=False):
     name = channel.lstrip("#")
     if yaml:
         name += ".yaml"
@@ -248,9 +259,10 @@ def setup_logger(channel, log_dir, log_level=NOTICE, log_when="W0",
     # don't add multiple handlers for the same logger
     if not logger.handlers:
         # log to file
-        if not os.path.isdir(log_dir):
-            os.makedirs(log_dir)
-        log_handler = TimedRotatingFileHandler(os.path.join(log_dir, name),
+        if not fs.isdir("logs"):
+            os.makedirs(get_log_dir())
+        log_handler = TimedRotatingFileHandler(os.path.join(get_log_dir(cm),
+                                                            name),
                                                when=log_when)
         if yaml:
             log_handler.setFormatter(yaml_formatter)

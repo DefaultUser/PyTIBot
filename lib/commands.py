@@ -20,9 +20,11 @@ import random
 import json
 import sys
 import os
+import logging
 from twisted.internet import threads
 from twisted.web.client import getPage
 from helper import formatting
+from helper import filesystem as fs
 
 try:
     import xmlrpclib
@@ -345,8 +347,7 @@ def fortune(bot):
 allow long fortunes"""
     paths = [r"/usr/share/fortune/", r"/usr/share/games/fortune/",
              r"/usr/share/fortunes/", r"/usr/share/games/fortunes/",
-             os.path.join(os.path.dirname(os.path.dirname(
-                 os.path.abspath(__file__))), "fortunes/")]
+             fs.get_abs_path("fortunes")]
     num_lines_short = 3
 
     def _find_files():
@@ -371,7 +372,7 @@ allow long fortunes"""
         """
         for path in paths:
             if filename.startswith(path):
-                return filename.replace(path, "", 1)
+                return filename.replace(path, "", 1).lstrip("/")
 
     def _get_random_fortune(filename, onlyshort=True):
         """

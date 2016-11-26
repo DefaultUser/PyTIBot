@@ -103,10 +103,6 @@ class PyTIBot(irc.IRCClient, object):
             else:
                 self.log_channels = []
                 return
-            if self.cm.has_option("Logging", "rotation_policy"):
-                when = self.cm.get("Logging", "rotation_policy")
-            else:
-                when = "W0"
             if (self.cm.has_option("Logging", "log_minor") and
                     self.cm.getboolean("Logging", "log_minor")):
                 log_level = log.TOPIC
@@ -122,8 +118,7 @@ class PyTIBot(irc.IRCClient, object):
                 # make all channels lowercase
                 self.log_channels[n] = channel.lower()
                 log.setup_logger(channel.lower(), self.cm,
-                                 log_level=log_level,
-                                 log_when=when, yaml=yaml)
+                                 log_level=log_level, yaml=yaml)
         else:
             self.log_channels = []
 

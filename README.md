@@ -175,15 +175,13 @@ This bot can also be used to log channel activity.
 [Logging]
 channels = #mysuperchannel, #myweirdchannel
 directory = /tmp/log/
-rotation_policy = w0
 log_minor = True
 yaml = True
 ```
 Every channel is logged to a different file<br/>
 If **log_minor** is **False**, join and part messages are not logged to file<br/>
 If **yaml** is **True**, channel logs are saved as yaml documents<br/>
-**rotation_policy** follows the same rules as the **TimedRotatingFileHandler** from python's **logging** module
-(https://docs.python.org/2/library/logging.handlers.html#logging.handlers.TimedRotatingFileHandler)
+Log rotation will be applied at midnight.
 
 
 COPYRIGHT

@@ -241,7 +241,7 @@ def yaml_namer(name):
     return name[:index] + name[index:].replace(".yaml", "") + ".yaml"
 
 
-def setup_logger(channel, cm, log_level=NOTICE, log_when="W0", yaml=False):
+def setup_logger(channel, cm, log_level=NOTICE, yaml=False):
     name = channel.lstrip("#")
     if yaml:
         name += ".yaml"
@@ -252,10 +252,7 @@ def setup_logger(channel, cm, log_level=NOTICE, log_when="W0", yaml=False):
     # don't propagate to parent loggers
     logger.propagate = False
     # dateformat for the formatter
-    if log_when.upper().startswith("W"):
-        txt_formatter.datefmt = '%Y-%m-%d_%H:%M:%S'
-    else:
-        txt_formatter.datefmt = '%H:%M:%S'
+    txt_formatter.datefmt = '%H:%M:%S'
     # don't add multiple handlers for the same logger
     if not logger.handlers:
         # log to file
@@ -263,7 +260,7 @@ def setup_logger(channel, cm, log_level=NOTICE, log_when="W0", yaml=False):
             os.makedirs(get_log_dir())
         log_handler = TimedRotatingFileHandler(os.path.join(get_log_dir(cm),
                                                             name),
-                                               when=log_when)
+                                               when="midnight")
         if yaml:
             log_handler.setFormatter(yaml_formatter)
             log_handler.namer = yaml_namer

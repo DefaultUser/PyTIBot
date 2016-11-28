@@ -17,7 +17,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
-import this
 from twisted.internet import threads
 import sys
 
@@ -82,6 +81,7 @@ def youtube(bot):
 
 def import_this(bot):
     """Send the python zen to IRC"""
+    import this
     zen = "".join([this.d.get(char, char) for char in this.s])
     zen = zen.lstrip("The Zen of Python, by Tim Peters\n\n")
     while True:

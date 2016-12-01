@@ -13,6 +13,7 @@ twisted
 configmanager (https://github.com/DefaultUser/configmanager)
 python-yaml
 xmlrpclib
+appdirs
 apiclient (python module for google api) (optional)
 Unix fortune (optional)
 ```
@@ -40,6 +41,20 @@ twistd PyTIBot -c otherconfig.ini
 
 Configuration
 -------------
+Configuration files need to be located in the OS specific config directory.
+On Linux and Unix:
+```
+~/.config/PyTIBot/
+```
+On Mac OS X:
+```
+~/Library/Application Support/PyTIBot/
+```
+On Windows:
+```
+C:\Users\<username>\AppData\Local\PyTIBot
+```
+
 Look at pytibot.ini.example for all keys.
 
 [Connection]<br/>

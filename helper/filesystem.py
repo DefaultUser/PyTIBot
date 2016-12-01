@@ -14,9 +14,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import appdirs
 import os
 import pytibot
 from helper.decorators import memoize
+
+
+adirs = appdirs.AppDirs(appname="PyTIBot")
 
 
 @memoize
@@ -24,17 +28,25 @@ def get_base_dir():
     """Return the base directory for this project"""
     return os.path.dirname(os.path.realpath(pytibot.__file__))
 
+
+@memoize
+def config_file(name="pytibot.ini"):
+    return os.path.join(adirs.user_config_dir, name)
+
+
 def isfile(path):
     """Checks if a file exists in the virtual filesystem
 
     path needs to use the UNIX style path separator('/')"""
     return os.path.isfile(get_abs_path(path))
 
+
 def isdir(path):
     """Checks if a path exists in the virtual filesystem
 
     path needs to use the UNIX style path separator('/')"""
     return os.path.isdir(get_abs_path(path))
+
 
 @memoize
 def get_abs_path(path):
@@ -46,11 +58,13 @@ def get_abs_path(path):
         path.remove("")
     return os.path.join(get_base_dir(), *path)
 
+
 def listdir(directory):
     """List all files in the given directory of the virtual filesystem"""
     if not isdir(directory):
         raise SystemError("No such directory: {}".format(directory))
     return os.listdir(get_abs_path(directory))
+
 
 def get_contents(path):
     """Return the contents of a file in the virtual filesystem

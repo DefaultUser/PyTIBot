@@ -20,11 +20,13 @@ from twisted.python import usage
 from twisted.plugin import IPlugin
 from twisted.application.service import IServiceMaker, MultiService
 from twisted.application import internet
+import os
 
 from configmanager import ConfigManager
 
 from pytibotfactory import PyTIBotFactory
 from twisted.conch import manhole_tap
+from helper import filesystem as fs
 
 
 mandatory_settings = [("Connection", "server"), ("Connection", "port"),
@@ -45,8 +47,9 @@ class PyTIBotServiceMaker(object):
         """
         Create an instance of PyTIBot
         """
-        cm = ConfigManager(options["config"], delimiters=("="))
-        if not all([cm.option_set(sec, opt) for sec, opt in mandatory_settings]):
+        cm = ConfigManager(fs.config_file(options["config"]), delimiters=("="))
+        if not all([cm.option_set(sec, opt) for sec, opt in
+                    mandatory_settings]):
             raise EnvironmentError("Reading config file failed, mandatory"
                                    " fields not set!\nPlease reconfigure")
 
@@ -74,7 +77,8 @@ class PyTIBotServiceMaker(object):
             else:
                 sshPort = None
             options = {'namespace': {'get_bot': ircbotfactory.get_bot},
-                       'passwd': 'manhole_cred',
+                       'passwd': os.path.join(fs.adirs.user_config_dir,
+                                              'manhole_cred'),
                        'sshPort': sshPort,
                        'telnetPort': telnetPort}
             tn_sv = manhole_tap.makeService(options)

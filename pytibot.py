@@ -25,7 +25,7 @@ import sys
 from lib import commands
 from lib.simpletrigger import simple_trigger
 from lib import triggers
-from helper import decorators, log
+from util import decorators, log
 
 # WHOIS reply for AUTH name (NONSTANDARD REPLY!)
 irc.symbolic_to_numeric["RPL_WHOISAUTH"] = "330"

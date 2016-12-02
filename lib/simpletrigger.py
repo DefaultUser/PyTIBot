@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
-from helper import formatting
+from util import formatting
 
 
 def simple_trigger(bot):

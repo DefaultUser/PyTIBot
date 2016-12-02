@@ -26,7 +26,7 @@ from configmanager import ConfigManager
 
 from pytibotfactory import PyTIBotFactory
 from twisted.conch import manhole_tap
-from helper import filesystem as fs
+from util import filesystem as fs
 
 
 mandatory_settings = [("Connection", "server"), ("Connection", "port"),

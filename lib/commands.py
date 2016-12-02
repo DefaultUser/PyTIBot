@@ -23,8 +23,8 @@ import os
 import logging
 from twisted.internet import threads
 from twisted.web.client import getPage
-from helper import formatting
-from helper import filesystem as fs
+from util import formatting
+from util import filesystem as fs
 
 try:
     import xmlrpclib

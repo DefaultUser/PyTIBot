@@ -30,8 +30,8 @@ _NORMAL = "\x0f"
 ## \brief Maps color names to the corresponding mIRC numerical values
 ## (as a two-digit strings)
 color_code = {
-    "black": "00",
-    "white": "01",
+    "white": "00",
+    "black": "01",
     "dark_blue": "02",
     "dark_green": "03",
     "red": "04",
@@ -85,7 +85,8 @@ def rainbow(text, colors=["red", "dark_yellow", "green", "cyan", "blue",
     \brief Colorize a string as a rainbow
     \param text          Input text
     \param colors        Color names to be featured in the rainbow
-    \returns A string with valid IRC color codes inserted at the right positions
+    \returns A string with valid IRC color codes inserted at the right
+    positions
     """
     ret = ""
     color = ""

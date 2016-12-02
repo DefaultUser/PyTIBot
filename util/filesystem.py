@@ -17,7 +17,7 @@
 import appdirs
 import os
 import pytibot
-from helper.decorators import memoize
+from util.decorators import memoize
 
 
 adirs = appdirs.AppDirs(appname="PyTIBot")

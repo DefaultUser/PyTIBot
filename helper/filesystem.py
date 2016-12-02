@@ -50,12 +50,17 @@ def isdir(path):
 
 @memoize
 def get_abs_path(path):
-    """Return the absolute path of a file in the virtual filesystem"""
+    """Return the absolute path of a file in the virtual filesystem
+
+    if there are multiple files/directories with the same virtual path
+    the one in adirs.user_data_dir is used"""
     path = path.split("/")
     if "." in path or ".." in path:
         raise SystemError("Relative paths are not supported")
     while "" in path:
         path.remove("")
+    if os.path.exists(os.path.join(adirs.user_data_dir, *path)):
+        return os.path.join(adirs.user_data_dir, *path)
     return os.path.join(get_base_dir(), *path)
 
 
@@ -63,7 +68,12 @@ def listdir(directory):
     """List all files in the given directory of the virtual filesystem"""
     if not isdir(directory):
         raise SystemError("No such directory: {}".format(directory))
-    return os.listdir(get_abs_path(directory))
+    ls = set()
+    if os.path.isdir(os.path.join(get_base_dir(), directory)):
+        ls.update(os.listdir(os.path.join(adirs.user_data_dir, directory)))
+    if os.path.isdir(os.path.join(adirs.user_data_dir, directory)):
+        ls.update(os.listdir(os.path.join(adirs.user_data_dir, directory)))
+    return list(ls)
 
 
 def get_contents(path):

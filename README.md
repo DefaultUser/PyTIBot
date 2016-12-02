@@ -92,6 +92,21 @@ specific options for the triggers
 User defineable lines that the bot should send when a certain word or pattern
 is used in a message. See below.
 
+User supplied content (like additional files for the fortune command) can be read
+from the user's data directory:
+On Linux and Unix:
+```
+~/.local/share/PyTIBot/
+```
+On Mac OS X:
+```
+~/Library/Application Support/PyTIBot/
+```
+On Windows:
+```
+C:\Users\<username>\AppData\Local\PyTIBot
+```
+
 
 Commands
 --------
@@ -99,7 +114,7 @@ If an IRC message starts with the nick of the bot, the message will be
 interpreted as a command. In private chat, every message will be interpreted
 as a command.
 
-standard commands (can't be changed):
+Standard commands (can't be changed):
 ```
 quit - quit the bot
 ignore - add an user to the ignore list (user will be ignored by the bot)
@@ -110,7 +125,7 @@ help - print help
 reload - reload the config file
 ```
 
-additional commands can be configured in the ini file (see pytibot.ini.example)
+Additional commands can be configured in the ini file (see pytibot.ini.example)
 
 
 Trigger commands

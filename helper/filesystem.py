@@ -70,7 +70,7 @@ def listdir(directory):
         raise SystemError("No such directory: {}".format(directory))
     ls = set()
     if os.path.isdir(os.path.join(get_base_dir(), directory)):
-        ls.update(os.listdir(os.path.join(adirs.user_data_dir, directory)))
+        ls.update(os.listdir(os.path.join(get_base_dir(), directory)))
     if os.path.isdir(os.path.join(adirs.user_data_dir, directory)):
         ls.update(os.listdir(os.path.join(adirs.user_data_dir, directory)))
     return list(ls)

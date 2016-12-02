@@ -213,6 +213,20 @@ If **log_minor** is **False**, join and part messages are not logged to file<br/
 If **yaml** is **True**, channel logs are saved as yaml documents<br/>
 Log rotation will be applied at midnight.
 
+If the log directory is not set, the standard user log directory is used:
+On Linux and Unix:
+```
+~/.cache/PyTIBot/log/
+```
+On Mac OS X:
+```
+~/Library/Logs/PyTIBot/
+```
+On Windows:
+```
+C:\Users\<username>\AppData\Local\PyTIBot\Logs\
+```
+
 
 COPYRIGHT
 ---------

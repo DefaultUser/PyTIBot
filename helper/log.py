@@ -63,7 +63,7 @@ def get_log_dir(cm):
     if cm.has_option("Logging", "directory"):
         log_dir = cm.get("Logging", "directory")
     else:
-        log_dir = fs.get_abs_path("logs")
+        log_dir = fs.adirs.user_log_dir
     return log_dir
 
 
@@ -256,8 +256,8 @@ def setup_logger(channel, cm, log_level=NOTICE, yaml=False):
     # don't add multiple handlers for the same logger
     if not logger.handlers:
         # log to file
-        if not fs.isdir("logs"):
-            os.makedirs(get_log_dir())
+        if not os.path.isdir(get_log_dir(cm)):
+            os.makedirs(get_log_dir(cm))
         log_handler = TimedRotatingFileHandler(os.path.join(get_log_dir(cm),
                                                             name),
                                                when="midnight")

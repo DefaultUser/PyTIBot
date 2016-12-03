@@ -20,12 +20,14 @@ from twisted.python import usage
 from twisted.plugin import IPlugin
 from twisted.application.service import IServiceMaker, MultiService
 from twisted.application import internet
+from twisted.web.server import Site
 import os
 
 from configmanager import ConfigManager
 
 from pytibotfactory import PyTIBotFactory
 from twisted.conch import manhole_tap
+from lib.httplog import BasePage
 from util import filesystem as fs
 
 
@@ -83,6 +85,17 @@ class PyTIBotServiceMaker(object):
                        'telnetPort': telnetPort}
             tn_sv = manhole_tap.makeService(options)
             tn_sv.setServiceParent(mService)
+
+        http_log_server = False
+        if cm.option_set("HTTPLogServer", "enable"):
+            http_log_server = cm.getboolean("HTTPLogServer", "enable")
+
+        if http_log_server:
+            root = BasePage(cm)
+            httpfactory = Site(root)
+            http_sv = internet.TCPServer(cm.getint("HTTPLogServer", "port"),
+                                         httpfactory)
+            http_sv.setServiceParent(mService)
 
         return mService
 

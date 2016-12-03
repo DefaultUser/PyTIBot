@@ -16,6 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+
+import re
+
 ## \brief Token to start underlined text
 _UNDERLINE = "\x1f"
 ## \brief Token to start bold text
@@ -47,6 +50,12 @@ color_code = {
     "dark_gray": "14",
     "gray": "15"
 }
+
+## \brief hex color codes for mIRC numerical values
+hex_colors = ["#FFFFFF", "#000000", "#00007F", "#009300", "#FF0000",
+              "#7F0000", "#9C009C", "#FC7F00", "#FFFF00", "#00FC00",
+              "#009393", "#00FFFF", "#0000FC", "#FF00FF", "#7F7F7F",
+              "#D2D2D2"]
 
 
 def colored(text, fgcolor, bgcolor=None, endtoken=False):
@@ -130,3 +139,70 @@ def bold(text, endtoken=False):
     if endtoken:
         return _BOLD + text + _BOLD
     return _BOLD + text
+
+
+format_pattern = re.compile("(\x1f)|(\x02)|(\x03)(\\d{1,2}(,\\d{1,2})?)?|"
+                            "(\x1d)|(\x0f)")
+# underline, bold, color, (fg,bg?), (,bg), italic, normal
+
+
+def _info_dict_to_style(info_dict):
+    style = ""
+    if info_dict["underline"]:
+        style += "text-decoration:underline "
+    if info_dict["bold"]:
+        style += "font-weight:bold "
+    if info_dict["fg"]:
+        style += "color:{} ".format(hex_colors[info_dict["fg"]])
+    if info_dict["bg"]:
+        style += "background-color:{} ".format(
+            hex_colors[info_dict["bg"]])
+    if info_dict["italic"]:
+        style += "font-style:italic "
+    style = style.strip()
+
+    if style:
+        return '<span style="{style}">{{text}}</span>'.format(style=style)
+    return "{text}"
+
+
+def to_html(text):
+    """
+    \brief Convert a string with IRC formatting information to html formatting
+    """
+    # <span style="color:{color}">{substr}</span>
+    # <span style="background-color:{bg_color}">{substr}</span>
+    # <span style="text-decoration:underline">{substr}</span>
+    # <span style="font-style:italic">{substr}</span>
+    # <span style="font-weight:bold">{substr}</span>
+    substrings = format_pattern.split(text)
+    if len(substrings) % 8:
+        # first substring has no formatting information
+        html = substrings[0]
+        start = 1
+    else:
+        html = ""
+        start = 0
+    info_dict = {"underline": False, "bold": False, "fg": None, "bg": None,
+                 "italic": False}
+    for i in range(start, len(substrings), 8):
+        if substrings[i]:
+            info_dict["underline"] = not info_dict["underline"]
+        if substrings[i+1]:
+            info_dict["bold"] = not info_dict["bold"]
+        if substrings[i+2]:
+            if "," in substrings[i+3]:
+                fg, bg = [int(val) for val in substrings[i+3].split(",")]
+            else:
+                fg = int(substrings[i+3])
+                bg = None
+            info_dict["fg"] = fg
+            info_dict["bg"] = bg
+        if substrings[i+5]:
+            info_dict["italic"] = not info_dict["italic"]
+        if substrings[i+6]:
+            # big reset switch
+            info_dict = {"underline": False, "bold": False, "fg": None,
+                         "bg": None, "italic": False}
+        html += _info_dict_to_style(info_dict).format(text=substrings[i+7])
+    return html

@@ -17,6 +17,12 @@ directory = /tmp/log/
 log_minor = True
 yaml = True
 
+[HTTPLogServer]
+enable = True
+channels = #mysuperchannel
+port = 8080
+title = Awesome Log Server
+
 [Manhole]
 telnetPort = 9999
 

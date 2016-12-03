@@ -227,11 +227,22 @@ On Windows:
 C:\Users\<username>\AppData\Local\PyTIBot\Logs\
 ```
 
+You can also use the builtin http server to create a webpage that shows the channel logs
+(only works if you use yaml logs)
+```
+[HTTPLogServer]
+enable = True
+channels = #mysuperchannel
+port = 8080
+title = Awesome Log Server
+```
+
 
 COPYRIGHT
 ---------
 GPLv3, see LICENSE<br/>
-Twisted is licensed under MIT license (see twistedmatrix.com)
+Twisted is licensed under MIT license (see twistedmatrix.com)<br/>
+Modernizr is licensed under MIT license
 
 Sebastian Schmidt<br/>
 schro.sb@gmail.com

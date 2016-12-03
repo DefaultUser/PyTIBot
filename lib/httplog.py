@@ -37,8 +37,8 @@ date_regex = re.compile(r"^(19|20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|"
                         r"[12][0-9]|3[01])$")
 
 line_templates = defaultdict(str, {
-    "MSG": '<tr><td width=20ch>{time}</td><td class="user" width=35ch>&lt;'
-           '{user}&gt;</td><td>{message}</td></tr>',
+    "MSG": '<tr><td width=20ch>{time}</td><td class="user" width=35ch>'
+           '{user}</td><td>{message}</td></tr>',
     "ACTION": '<tr><td width=20ch>{time}</td><td class="user" width=35ch><i>'
               '*{user}</i></td><td><i>{data}</i></td></tr>',
     "NOTICE": '<tr><td width=20ch>{time}</td><td class="user" width=35ch>'

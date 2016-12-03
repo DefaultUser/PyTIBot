@@ -100,7 +100,7 @@ class BasePage(Resource, object):
     def render_GET(self, request):
         data = ""
         for channel in self.channels:
-            data += "<a href='{0}'>{0}</a>".format(channel)
+            data += "<a href='{0}'>{0}</a>".format(channel.lstrip("#"))
         return base_page_template.format(title=self.title, data=data,
                                          header=header, footer=footer)
 

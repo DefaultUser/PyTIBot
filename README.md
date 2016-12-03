@@ -236,6 +236,9 @@ channels = #mysuperchannel
 port = 8080
 title = Awesome Log Server
 ```
+The style of the website can be customized by adding apropriate files to the "resources" folder
+of your user data directory. You can also add a "favicon.ico". All files in that folder that do
+not end with ".html" or ".inc" will be publicly available.
 
 
 COPYRIGHT

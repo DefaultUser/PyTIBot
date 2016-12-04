@@ -147,22 +147,22 @@ format_pattern = re.compile("(\x1f)|(\x02)|(\x03)(\\d{1,2}(,\\d{1,2})?)?|"
 
 
 def _info_dict_to_style(info_dict):
-    style = ""
+    styles = []
     if info_dict["underline"]:
-        style += "text-decoration:underline "
+        styles.append("text-decoration:underline")
     if info_dict["bold"]:
-        style += "font-weight:bold "
+        styles.append("font-weight:bold")
     if info_dict["fg"]:
-        style += "color:{} ".format(hex_colors[info_dict["fg"]])
+        styles.append("color:{}".format(hex_colors[info_dict["fg"]]))
     if info_dict["bg"]:
-        style += "background-color:{} ".format(
-            hex_colors[info_dict["bg"]])
+        styles.append("background-color:{}".format(
+            hex_colors[info_dict["bg"]]))
     if info_dict["italic"]:
-        style += "font-style:italic "
-    style = style.strip()
+        styles.append("font-style:italic")
 
-    if style:
-        return '<span style="{style}">{{text}}</span>'.format(style=style)
+    if styles:
+        return '<span style="{style}">{{text}}</span>'.format(
+            style=";".join(styles))
     return "{text}"
 
 

@@ -191,7 +191,10 @@ def to_html(text):
         if substrings[i+1]:
             info_dict["bold"] = not info_dict["bold"]
         if substrings[i+2]:
-            if "," in substrings[i+3]:
+            if not substrings[i+3]:
+                fg = None
+                bg = None
+            elif "," in substrings[i+3]:
                 fg, bg = [int(val) for val in substrings[i+3].split(",")]
             else:
                 fg = int(substrings[i+3])

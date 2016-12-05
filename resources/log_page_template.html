@@ -2,19 +2,8 @@
 <html>
 <head>
     <meta charset=utf-8>
-    <style>
-        td {{
-            text-align: left;
-        }}
-        table td.user {{
-            text-align: right;
-        }}
-        table td tr {{
-            padding: 15px;
-        }}
-    </style>
     <title>{title}</title>
-    <link href="pytibot.css" rel="stylesheet">
+    <link href="/pytibot.css" rel="stylesheet">
     <link href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" rel="stylesheet">
     <script src="https://code.jquery.com/jquery-3.1.1.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
@@ -31,7 +20,7 @@
 </head>
 <body>
     {header}
-    <form method="PUT" style="width:50%" id="MyForm">
+    <form method="PUT" id="MyForm">
         <input name="date" type="date" id="DatePicker">
 
         <select name="level" id="LevelPicker">

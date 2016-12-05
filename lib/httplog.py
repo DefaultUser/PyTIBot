@@ -37,25 +37,25 @@ date_regex = re.compile(r"^(19|20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|"
                         r"[12][0-9]|3[01])$")
 
 line_templates = defaultdict(str, {
-    "MSG": '<tr><td width=20ch>{time}</td><td class="user" width=35ch>'
+    "MSG": '<tr><td class="time">{time}</td><td class="user">'
            '{user}</td><td>{message}</td></tr>',
-    "ACTION": '<tr><td width=20ch>{time}</td><td class="user" width=35ch><i>'
+    "ACTION": '<tr><td class="time">{time}</td><td class="user"><i>'
               '*{user}</i></td><td><i>{data}</i></td></tr>',
-    "NOTICE": '<tr><td width=20ch>{time}</td><td class="user" width=35ch>'
+    "NOTICE": '<tr><td class="time">{time}</td><td class="user">'
               '[{user}</td><td>{message}]</td></tr>',
-    "KICK": '<tr><td width=20ch>{time}</td><td class="user" width=35ch>&lt;'
+    "KICK": '<tr><td class="time">{time}</td><td class="user">&lt;'
             '--</td><td>{kickee} was kicked by {kicker}({message})</td></tr>',
-    "QUIT": '<tr><td width=20ch>{time}</td><td class="user" width=35ch>&lt;'
+    "QUIT": '<tr><td class="time">{time}</td><td class="user">&lt;'
             '--</td><td>QUIT: {user}({quitMessage})</td></tr>',
-    "PART": '<tr><td width=20ch>{time}</td><td class="user" width=35ch>&lt;'
+    "PART": '<tr><td class="time">{time}</td><td class="user">&lt;'
             '--</td><td>{user} left the channel</td></tr>',
-    "JOIN": '<tr><td width=20ch>{time}</td><td class="user" width=35ch>--&gt;'
+    "JOIN": '<tr><td class="time">{time}</td><td class="user">--&gt;'
             '</td><td>{user} joined the channel</td></tr>',
-    "NICK": '<tr><td width=20ch>{time}</td><td class="user" width=35ch></td>'
+    "NICK": '<tr><td class="time">{time}</td><td class="user"></td>'
             '<td>{oldnick} is now known as {newnick}</td></tr>',
-    "TOPIC": '<tr><td width=20ch>{time}</td><td class="user" width=35ch></td>'
+    "TOPIC": '<tr><td class="time">{time}</td><td class="user"></td>'
              '<td>{user} changed the topic to: {topic}</td></tr>',
-    "ERROR": '<tr><td width=20ch>{time}</td><td class="user" width=35ch><span'
+    "ERROR": '<tr><td class="time">{time}</td><td class="user"><span'
              ' style="color:#FF0000">ERROR</span></td><td>{msg}</td></tr>'})
 
 

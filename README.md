@@ -231,9 +231,11 @@ You can also use the builtin http server to create a webpage that shows the chan
 (only works if you use yaml logs)
 ```
 [HTTPLogServer]
-enable = True
 channels = #mysuperchannel
 port = 8080
+sslport = 8081
+certificate = /path/to/cert.pem
+privkey = /path/to/privkey.pem
 title = Awesome Log Server
 ```
 The style of the website can be customized by adding apropriate files to the "resources" folder

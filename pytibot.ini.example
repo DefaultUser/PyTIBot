@@ -18,9 +18,11 @@ log_minor = True
 yaml = True
 
 [HTTPLogServer]
-enable = True
 channels = #mysuperchannel
 port = 8080
+sslport = 8081
+certificate = /path/to/cert.pem
+privkey = /path/to/privkey.pem
 title = Awesome Log Server
 
 [Manhole]

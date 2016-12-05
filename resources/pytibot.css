@@ -1,11 +1,6 @@
-html {
-    padding: 10px;
-}
-
 body {
     background-color: #eeeeee;
     height: 100%;
-    width: 100%;
 }
 
 form {
@@ -13,11 +8,15 @@ form {
 }
 
 tr:nth-child(even) {
+    background-color: #eeeefc;
+}
+
+tr:nth-child(odd) {
     background-color: #f6f6f6;
 }
 
-td {
-    text-align: left;
+table {
+    width: 100%
 }
 
 table td.user {
@@ -32,4 +31,30 @@ table td.time {
 
 table td {
     padding: 8px;
+    text-align: left;
+}
+
+.accordion label{
+    padding: 15px;
+    position: relative;
+    z-index: 20;
+    display: block;
+    cursor: pointer;
+    background: #ccccdd;
+    text-align: center;
+}
+.accordion input:checked + label{
+    background: #ddddee;
+}
+.accordion input{
+    display: none;
+}
+.accordion article{
+    overflow: hidden;
+    height: 0px;
+    position: relative;
+    z-index: 10;
+}
+.accordion input:checked ~ article.accordion-article{
+    height: auto;
 }

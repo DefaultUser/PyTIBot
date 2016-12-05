@@ -24,6 +24,7 @@ import logging
 import os
 import re
 from collections import defaultdict
+from datetime import datetime, timedelta
 
 from util import log, formatting
 from util import filesystem as fs
@@ -61,6 +62,7 @@ line_templates = defaultdict(str, {
 
 base_page_template = fs.get_contents("resources/base_page_template.html")
 log_page_template = fs.get_contents("resources/log_page_template.html")
+search_page_template = fs.get_contents("resources/search_page_template.html")
 header = fs.get_contents("resources/header.inc")
 footer = fs.get_contents("resources/footer.inc")
 
@@ -154,11 +156,92 @@ class LogPage(Resource, object):
 
 
 class SearchPage(Resource, object):
+    LOGS_PER_PAGE = 10
+
     def __init__(self, channel, log_dir, title):
         super(SearchPage, self).__init__()
         self.channel = channel
         self.log_dir = log_dir
         self.title = title
+        logs = [f for f in os.listdir(log_dir) if f.startswith(channel) and
+                f.endswith(".yaml")]
+        self.oldest_date = min(logs).rstrip(".yaml").lstrip(channel+".")
+
+    @staticmethod
+    def get_occurences(term, path):
+        occurences = []
+        with open(path) as f:
+            data = f.read()
+            # plaintext search is faster if the term is not found
+            if term.lower() in data.lower():
+                for data in yaml.load_all(data):
+                    if (data["levelname"] == "MSG" and
+                            term.lower() in data["message"].lower()):
+                        data["time"] = data["time"][11:]
+                        data["message"] = formatting.to_html(data["message"])
+                        occurences.append(data)
+        if occurences:
+            return ("<ul class='accordion'><div><input id='id{id}' "
+                    "type='checkbox'/><label for='id{id}'>{date}</label>"
+                    "<article class='accordion-article'><a href=/{channel}?"
+                    "date={date}>Full log</a><table>" +
+                    "".join([line_templates[data["levelname"]].format(
+                             **data) for data in occurences]) +
+                    "</table></article></div></ul>")
+        return None
+
+    def _search_logs(self, request):
+        query = request.args["q"][0]
+        if "start" in request.args and request.args["start"][0]:
+            try:
+                date = datetime.strptime(request.args["start"][0], "%Y-%m-%d")
+            except ValueError:
+                log_data = "Invalid date specified"
+                request.write(search_page_template.format(log_data=log_data,
+                                                          title=self.title,
+                                                          header=header,
+                                                          footer=footer))
+                request.finish()
+                return
+        else:
+            date = datetime.today()
+        if len(query) < 4:
+            log_data = "Search term to short"
+        else:
+            log_data = ""
+            datestr = date.strftime("%Y-%m-%d")
+            count = 0
+            while count < SearchPage.LOGS_PER_PAGE:
+                date = date - timedelta(days=1)
+                datestr = date.strftime("%Y-%m-%d")
+                filename = "{}.{}.yaml".format(self.channel, datestr)
+                path = os.path.join(self.log_dir, filename)
+                try:
+                    occurences = SearchPage.get_occurences(query, path)
+                    if occurences:
+                        count += 1
+                        log_data += occurences.format(channel=self.channel,
+                                                      date=datestr, id=count)
+                except IOError:
+                    # file does not exist
+                    pass
+                if datestr <= self.oldest_date:
+                    break
+            else:
+                log_data += "<a href='?q={}&start={}'>Next</a>".format(query,
+                                                                       datestr)
+            if not log_data:
+                log_data = "No Logs found containg: {}".format(query)
+        request.write(search_page_template.format(log_data=log_data,
+                                                  title=self.title,
+                                                  header=header,
+                                                  footer=footer))
+        request.finish()
 
     def render_GET(self, request):
-        return "Not implemented yet"
+        if not request.args or request.args["q"] == ['']:
+            return search_page_template.format(log_data="", title=self.title,
+                                               header=header, footer=footer)
+        d = threads.deferToThread(self._search_logs, request)
+        d.addErrback(_onError, request)
+        return NOT_DONE_YET

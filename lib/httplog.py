@@ -129,7 +129,7 @@ class LogPage(Resource, object):
                 filename = "{}.yaml".format(self.channel)
         if filename and os.path.isfile(os.path.join(self.log_dir, filename)):
             with open(os.path.join(self.log_dir, filename)) as logfile:
-                log_data = '<table style="width:100%">'
+                log_data = '<table>'
                 for data in yaml.load_all(logfile):
                     if data["levelno"] > MIN_LEVEL:
                         data["time"] = data["time"][11:]

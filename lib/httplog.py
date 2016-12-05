@@ -152,11 +152,6 @@ class LogPage(Resource, object):
         d.addErrback(_onError, request)
         return NOT_DONE_YET
 
-    def render_PUT(self, request):
-        return log_page_template.format(log_data="", title=self.title,
-                                        header=header, footer=footer,
-                                        channel=self.channel)
-
 
 class SearchPage(Resource, object):
     def __init__(self, channel, log_dir, title):

@@ -74,6 +74,16 @@ def _onError(failure, request):
     request.finish()
 
 
+def _prepare_yaml_element(element):
+    """Prepare a yaml element for display in html"""
+    element["time"] = element["time"][11:]
+    for key, val in element.items():
+        if type(element[key]) == str:
+            element[key] = val.replace("<", "&lt").replace(">", "&gt")
+    if "message" in element:
+        element["message"] = formatting.to_html(element["message"])
+
+
 class BasePage(Resource, object):
     def __init__(self, cm):
         super(BasePage, self).__init__()
@@ -132,10 +142,7 @@ class LogPage(Resource, object):
                 log_data = '<table>'
                 for data in yaml.load_all(logfile):
                     if data["levelno"] > MIN_LEVEL:
-                        data["time"] = data["time"][11:]
-                        if "message" in data:
-                            data["message"] = formatting.to_html(
-                                data["message"])
+                        _prepare_yaml_element(data)
                         log_data += line_templates[data["levelname"]].format(
                             **data)
                 log_data += '</table>'
@@ -175,8 +182,7 @@ class SearchPage(Resource, object):
                 for data in yaml.load_all(data):
                     if (data["levelname"] == "MSG" and
                             term.lower() in data["message"].lower()):
-                        data["time"] = data["time"][11:]
-                        data["message"] = formatting.to_html(data["message"])
+                        _prepare_yaml_element(data)
                         occurences.append(data)
         if occurences:
             return ("<ul class='accordion'><div><input id='id{id}' "

@@ -19,22 +19,26 @@
     </script>
 </head>
 <body>
-    {header}
-    <form method="PUT" id="MyForm">
-        <input name="date" type="date" id="DatePicker">
+    <div id="container">
+        {header}
+        <div id="main">
+            <form method="PUT" id="MyForm">
+                <input name="date" type="date" id="DatePicker">
 
-        <select name="level" id="LevelPicker">
-            <option value=10>ALL</option>
-            <option value=11>MOST</option>
-            <option value=16 selected>IMPORTANT</option>
-        </select>
+                <select name="level" id="LevelPicker">
+                    <option value=10>ALL</option>
+                    <option value=11>MOST</option>
+                    <option value=16 selected>IMPORTANT</option>
+                </select>
 
-        <button>Show log</button>
-    </form>
+                <button>Show log</button>
+            </form>
 
-    <a href='{channel}/search'>Search</a>
+            <a href='{channel}/search'>Search</a>
 
-    <p id="txtblock">{log_data}</p>
-    {footer}
+            <p id="txtblock">{log_data}</p>
+        </div>
+        {footer}
+    </div>
 </body>
 </html>

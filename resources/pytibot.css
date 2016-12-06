@@ -1,10 +1,12 @@
-body {
+html, body {
     background-color: #eeeeee;
     height: 100%;
+    margin: 0;
 }
 
 form {
-    margin: 10px
+    margin: 0;
+    padding: 15px;
 }
 
 tr:nth-child(even) {
@@ -57,4 +59,27 @@ table td {
 }
 .accordion input:checked ~ article.accordion-article{
     height: auto;
+}
+
+#container {
+    min-height:100%;
+    position:relative;
+}
+
+#main {
+    margin: 15px;
+    padding-bottom: 50px;
+}
+
+header {
+    padding:10px;
+}
+
+footer {
+    height: 50px;
+    position:absolute;
+    bottom:0;
+    width:100%;
+    text-align: center;
+    background-color: #aaaaaa;
 }

@@ -6,14 +6,18 @@
     <link href="/pytibot.css" rel="stylesheet">
 </head>
 <body>
-    {header}
-    <form method="PUT" id="MyForm">
-        <input name="q" id="SearchTerm">
+    <div id="container">
+        {header}
+        <div id="main">
+            <form method="PUT" id="MyForm">
+                <input name="q" id="SearchTerm">
 
-        <button>Search</button>
-    </form>
+                <button>Search</button>
+            </form>
 
-    <p id="txtblock">{log_data}</p>
-    {footer}
+            <p id="txtblock">{log_data}</p>
+        </div>
+        {footer}
+    </div>
 </body>
 </html>

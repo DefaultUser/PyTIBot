@@ -120,11 +120,6 @@ class BasePage(BaseResource):
                                            f.endswith(".inc")):
                 self.putChild(f, File(fs.get_abs_path(relpath)))
 
-    #def getChild(self, name, request):
-        #if name == '':
-            #return self
-        #return super(BasePage, self).getChild(name, request)
-
     def render_GET(self, request):
         data = ""
         for channel in self.channels:
@@ -141,16 +136,13 @@ class LogPage(BaseResource):
         self.title = title
         self.putChild("search", SearchPage(channel, log_dir, title))
 
-    #def getChild(self, name, request):
-        #if name == '':
-            #return self
-        #return super(LogPage, self).getChild(name, request)
-
     def _show_log(self, request):
         log_data = "Log not found"
         MIN_LEVEL = LEVEL_IMPORTANT
-        if "level" in request.args:
+        try:
             MIN_LEVEL = int(request.args["level"][0])
+        except (KeyError, ValueError):
+            pass
         filename = None
         if "date" in request.args:
             date = request.args["date"][0]
@@ -192,11 +184,6 @@ class SearchPage(BaseResource):
         logs = [f for f in os.listdir(log_dir) if f.startswith(channel) and
                 f.endswith(".yaml")]
         self.oldest_date = min(logs).rstrip(".yaml").lstrip(channel+".")
-
-    #def getChild(self, name, request):
-        #if name == '':
-            #return self
-        #return super(SearchPage, self).getChild(name, request)
 
     @staticmethod
     def get_occurences(term, path):
@@ -262,7 +249,8 @@ class SearchPage(BaseResource):
                 log_data += "<a href='?q={}&start={}'>Next</a>".format(query,
                                                                        datestr)
             if not log_data:
-                log_data = "No Logs found containg: {}".format(query)
+                log_data = "No Logs found containg: {}".format(
+                    htmlescape(query))
         request.write(search_page_template.format(log_data=log_data,
                                                   title=self.title,
                                                   header=header,

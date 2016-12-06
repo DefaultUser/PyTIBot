@@ -192,11 +192,11 @@ class SearchPage(BaseResource):
             data = f.read()
             # plaintext search is faster if the term is not found
             if term.lower() in data.lower():
-                for data in yaml.load_all(data):
-                    if (data["levelname"] == "MSG" and
-                            term.lower() in data["message"].lower()):
-                        _prepare_yaml_element(data)
-                        occurences.append(data)
+                for element in yaml.load_all(data):
+                    if (element["levelname"] == "MSG" and
+                            term.lower() in element["message"].lower()):
+                        _prepare_yaml_element(element)
+                        occurences.append(element)
         if occurences:
             return ("<ul class='accordion'><div><input id='id{id}' "
                     "type='checkbox'/><label for='id{id}'>{date}</label>"

@@ -93,7 +93,14 @@ def _prepare_yaml_element(element):
                                          element["message"])
 
 
-class BasePage(Resource, object):
+class BaseResource(Resource, object):
+    def getChild(self, name, request):
+        if name == '':
+            return self
+        return super(BaseResource, self).getChild(name, request)
+
+
+class BasePage(BaseResource):
     def __init__(self, cm):
         super(BasePage, self).__init__()
         if cm.option_set("HTTPLogServer", "title"):
@@ -113,10 +120,10 @@ class BasePage(Resource, object):
                                            f.endswith(".inc")):
                 self.putChild(f, File(fs.get_abs_path(relpath)))
 
-    def getChild(self, name, request):
-        if name == '':
-            return self
-        return super(BasePage, self).getChild(name, request)
+    #def getChild(self, name, request):
+        #if name == '':
+            #return self
+        #return super(BasePage, self).getChild(name, request)
 
     def render_GET(self, request):
         data = ""
@@ -126,13 +133,18 @@ class BasePage(Resource, object):
                                          header=header, footer=footer)
 
 
-class LogPage(Resource, object):
+class LogPage(BaseResource):
     def __init__(self, channel, log_dir, title):
         super(LogPage, self).__init__()
         self.channel = channel
         self.log_dir = log_dir
         self.title = title
         self.putChild("search", SearchPage(channel, log_dir, title))
+
+    #def getChild(self, name, request):
+        #if name == '':
+            #return self
+        #return super(LogPage, self).getChild(name, request)
 
     def _show_log(self, request):
         log_data = "Log not found"
@@ -169,7 +181,7 @@ class LogPage(Resource, object):
         return NOT_DONE_YET
 
 
-class SearchPage(Resource, object):
+class SearchPage(BaseResource):
     LOGS_PER_PAGE = 10
 
     def __init__(self, channel, log_dir, title):
@@ -180,6 +192,11 @@ class SearchPage(Resource, object):
         logs = [f for f in os.listdir(log_dir) if f.startswith(channel) and
                 f.endswith(".yaml")]
         self.oldest_date = min(logs).rstrip(".yaml").lstrip(channel+".")
+
+    #def getChild(self, name, request):
+        #if name == '':
+            #return self
+        #return super(SearchPage, self).getChild(name, request)
 
     @staticmethod
     def get_occurences(term, path):
@@ -213,7 +230,8 @@ class SearchPage(Resource, object):
                 request.write(search_page_template.format(log_data=log_data,
                                                           title=self.title,
                                                           header=header,
-                                                          footer=footer))
+                                                          footer=footer,
+                                                          channel=self.channel))
                 request.finish()
                 return
         else:
@@ -248,13 +266,15 @@ class SearchPage(Resource, object):
         request.write(search_page_template.format(log_data=log_data,
                                                   title=self.title,
                                                   header=header,
-                                                  footer=footer))
+                                                  footer=footer,
+                                                  channel=self.channel))
         request.finish()
 
     def render_GET(self, request):
         if not request.args or request.args["q"] == ['']:
             return search_page_template.format(log_data="", title=self.title,
-                                               header=header, footer=footer)
+                                               header=header, footer=footer,
+                                               channel=self.channel)
         d = threads.deferToThread(self._search_logs, request)
         d.addErrback(_onError, request)
         return NOT_DONE_YET

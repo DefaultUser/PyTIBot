@@ -25,6 +25,11 @@ import os
 import re
 from collections import defaultdict
 from datetime import datetime, timedelta
+try:
+    from html import escape as htmlescape
+except ImportError:
+    # python2
+    from cgi import escape as htmlescape
 
 from util import log, formatting
 from util import filesystem as fs
@@ -79,7 +84,7 @@ def _prepare_yaml_element(element):
     element["time"] = element["time"][11:]
     for key, val in element.items():
         if type(element[key]) == str:
-            element[key] = val.replace("<", "&lt").replace(">", "&gt")
+            element[key] = htmlescape(val)
     if "message" in element:
         element["message"] = formatting.to_html(element["message"])
 

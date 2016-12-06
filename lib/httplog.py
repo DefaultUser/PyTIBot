@@ -147,9 +147,7 @@ class LogPage(Resource, object):
 
     def render_GET(self, request):
         if not request.args:
-            return log_page_template.format(log_data="", title=self.title,
-                                            header=header, footer=footer,
-                                            channel=self.channel)
+            request.args["date"] = ["current"]
         d = threads.deferToThread(self._show_log, request)
         d.addErrback(_onError, request)
         return NOT_DONE_YET

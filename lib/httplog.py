@@ -41,6 +41,8 @@ LEVEL_IMPORTANT = 16
 
 date_regex = re.compile(r"^(19|20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|"
                         r"[12][0-9]|3[01])$")
+url_pat = re.compile(r"(https?:\/\/([\da-z\.-]+)\.([a-z\.]{2,6})"
+                     r"([\/\w\.-]*)*)")
 
 line_templates = defaultdict(str, {
     "MSG": '<tr><td class="time">{time}</td><td class="user">'
@@ -87,6 +89,8 @@ def _prepare_yaml_element(element):
             element[key] = htmlescape(val)
     if "message" in element:
         element["message"] = formatting.to_html(element["message"])
+        element["message"] = url_pat.sub(r"<a href='\1'>\1</a>",
+                                         element["message"])
 
 
 class BasePage(Resource, object):

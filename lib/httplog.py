@@ -30,6 +30,7 @@ import logging
 import os
 import re
 import time
+from datetime import datetime
 from collections import defaultdict
 from datetime import datetime, timedelta
 try:
@@ -153,7 +154,9 @@ class LogPage(BaseResource):
         filename = None
         if "date" in request.args:
             date = request.args["date"][0]
-            if date_regex.match(date):
+            if date == datetime.today().strftime("%Y-%m-%d"):
+                filename = "{}.yaml".format(self.channel)
+            elif date_regex.match(date):
                 filename = "{}.{}.yaml".format(self.channel, date)
             elif date == "current":
                 filename = "{}.yaml".format(self.channel)
@@ -292,7 +295,8 @@ class SearchPage(BaseResource):
                              "</article></div></ul>")
             else:
                 if not results.is_last_page():
-                    log_data += "<a href='?q={}&page={}'>Next</a>".format(querystr, page+1)
+                    log_data += "<a href='?q={}&page={}'>Next</a>".format(
+                        querystr, page+1)
             if not results:
                 log_data = "No Logs found containg: {}".format(
                     htmlescape(querystr))

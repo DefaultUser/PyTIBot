@@ -14,6 +14,7 @@ configmanager (https://github.com/DefaultUser/configmanager)
 python-yaml
 xmlrpclib
 appdirs
+whoosh
 apiclient (python module for google api) (optional)
 Unix fortune (optional)
 ```

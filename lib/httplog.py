@@ -17,12 +17,19 @@
 from twisted.web.server import Site, NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.web.static import File
+from twisted.words.protocols import irc
 from twisted.internet import threads
+from twisted.internet.task import LoopingCall
+
+from whoosh.index import create_in
+from whoosh import fields
+from whoosh.qparser import QueryParser
 
 import yaml
 import logging
 import os
 import re
+import time
 from collections import defaultdict
 from datetime import datetime, timedelta
 try:
@@ -174,83 +181,121 @@ class LogPage(BaseResource):
 
 
 class SearchPage(BaseResource):
-    LOGS_PER_PAGE = 10
+    PAGELEN = 10
 
     def __init__(self, channel, log_dir, title):
         super(SearchPage, self).__init__()
         self.channel = channel
         self.log_dir = log_dir
         self.title = title
-        logs = [f for f in os.listdir(log_dir) if f.startswith(channel) and
-                f.endswith(".yaml")]
-        self.oldest_date = min(logs).rstrip(".yaml").lstrip(channel+".")
+        self.last_index_update = 0
+        d = threads.deferToThread(self._setup_index)
 
-    @staticmethod
-    def get_occurences(term, path):
-        occurences = []
+    def _fields_from_yaml(self, name):
+        path = os.path.join(self.log_dir, name)
         with open(path) as f:
-            data = f.read()
-            # plaintext search is faster if the term is not found
-            if term.lower() in data.lower():
-                for element in yaml.load_all(data):
-                    if (element["levelname"] == "MSG" and
-                            term.lower() in element["message"].lower()):
-                        _prepare_yaml_element(element)
-                        occurences.append(element)
-        if occurences:
-            return ("<ul class='accordion'><div><input id='id{id}' "
-                    "type='checkbox'/><label for='id{id}'>{date}</label>"
-                    "<article class='accordion-article'><a href=/{channel}?"
-                    "date={date}>Full log</a><table>" +
-                    "".join([line_templates[data["levelname"]].format(
-                             **data) for data in occurences]) +
-                    "</table></article></div></ul>")
-        return None
+            content = []
+            for element in yaml.load_all(f.read()):
+                if element["levelname"] == "MSG":
+                    msg = irc.stripFormatting(element["message"])
+                    content.append(msg.decode("utf-8"))
+            datestr = name.lstrip(self.channel+".").rstrip(".yaml")
+            try:
+                date = datetime.strptime(datestr, "%Y-%m-%d")
+            except ValueError:
+                # default to today
+                date = datetime.now()
+            c = u" ... ".join(content)
+        return c, date
+
+    def _setup_index(self):
+        schema = fields.Schema(path=fields.ID(stored=True),
+                               content=fields.TEXT(stored=True),
+                               date=fields.DATETIME(stored=True,
+                                                    sortable=True))
+        indexpath = os.path.join(fs.adirs.user_cache_dir, "index",
+                                 self.channel)
+        if not os.path.exists(indexpath):
+            os.makedirs(indexpath)
+        self.ix = create_in(indexpath, schema)
+        writer = self.ix.writer()
+        for name in os.listdir(self.log_dir):
+            if name.startswith(self.channel+".") and name.endswith(".yaml"):
+                c, date = self._fields_from_yaml(name)
+                writer.add_document(path=unicode(name), content=c, date=date)
+        writer.commit()
+        self.last_index_update = time.time()
+        lc = LoopingCall(self.update_index)
+        lc.start(300, now=False)
+
+    def _update_index(self):
+        with self.ix.searcher() as searcher:
+            writer = self.ix.writer()
+            indexed_paths = set()
+            for field in searcher.all_stored_fields():
+                indexed_paths.add(field["path"])
+        for name in os.listdir(self.log_dir):
+            if name.startswith(self.channel+".") and name.endswith(".yaml"):
+                if name not in indexed_paths:
+                    c, date = self._fields_from_yaml(name)
+                    writer.add_document(path=unicode(name), content=c,
+                                        date=date)
+        # <channelname>.yaml is the only file that can change
+        name = u"{}.yaml".format(self.channel)
+        path = os.path.join(self.log_dir, name)
+        if os.path.isfile(path):
+            modtime = os.path.getmtime(path)
+            if modtime > self.last_index_update:
+                c, date = self._fields_from_yaml(name)
+                if name in indexed_paths:
+                    writer.delete_by_term("path", name)
+                writer.update_document(path=name, content=c, date=date)
+        writer.commit()
+        self.last_index_update = time.time()
+
+    def update_index(self):
+        return threads.deferToThread(self._update_index)
 
     def _search_logs(self, request):
-        query = request.args["q"][0]
-        if "start" in request.args and request.args["start"][0]:
+        querystr = request.args["q"][0]
+        if "page" in request.args:
             try:
-                date = datetime.strptime(request.args["start"][0], "%Y-%m-%d")
+                page = int(request.args["page"][0])
             except ValueError:
-                log_data = "Invalid date specified"
-                request.write(search_page_template.format(log_data=log_data,
-                                                          title=self.title,
-                                                          header=header,
-                                                          footer=footer,
-                                                          channel=self.channel))
-                request.finish()
-                return
+                page = -1
         else:
-            date = datetime.today()
-        if len(query) < 4:
-            log_data = "Search term to short"
-        else:
+            page = 1
+        if page < 1:
+            log_data = "Invalid page number specified"
+            request.write(search_page_template.format(log_data=log_data,
+                                                      title=self.title,
+                                                      header=header,
+                                                      footer=footer,
+                                                      channel=self.channel))
+            request.finish()
+            return
+        with self.ix.searcher() as searcher:
+            query = QueryParser("content", self.ix.schema).parse(querystr)
+            results = searcher.search_page(query, page,
+                                           pagelen=SearchPage.PAGELEN,
+                                           sortedby="date", reverse=True)
             log_data = ""
-            datestr = date.strftime("%Y-%m-%d")
-            count = 0
-            while count < SearchPage.LOGS_PER_PAGE:
-                date = date - timedelta(days=1)
-                datestr = date.strftime("%Y-%m-%d")
-                filename = "{}.{}.yaml".format(self.channel, datestr)
-                path = os.path.join(self.log_dir, filename)
-                try:
-                    occurences = SearchPage.get_occurences(query, path)
-                    if occurences:
-                        count += 1
-                        log_data += occurences.format(channel=self.channel,
-                                                      date=datestr, id=count)
-                except IOError:
-                    # file does not exist
-                    pass
-                if datestr <= self.oldest_date:
-                    break
+            for hit in results:
+                log_data += ("<ul class='accordion'><div><input id='id{date}' "
+                             "type='checkbox'/><label for='id{date}'>{date}"
+                             "</label><article class='accordion-article'>"
+                             "<a href='/{channel}?date={date}'>Full log</a>"
+                             "</br>".format(channel=self.channel,
+                                            date=hit["date"].strftime(
+                                                "%Y-%m-%d")) +
+                             hit.highlights("content") +
+                             "</article></div></ul>")
             else:
-                log_data += "<a href='?q={}&start={}'>Next</a>".format(query,
-                                                                       datestr)
-            if not log_data:
+                if not results.is_last_page():
+                    log_data += "<a href='?q={}&page={}'>Next</a>".format(querystr, page+1)
+            if not results:
                 log_data = "No Logs found containg: {}".format(
-                    htmlescape(query))
+                    htmlescape(querystr))
         request.write(search_page_template.format(log_data=log_data,
                                                   title=self.title,
                                                   header=header,

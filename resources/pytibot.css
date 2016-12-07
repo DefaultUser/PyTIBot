@@ -61,6 +61,10 @@ table td {
     height: auto;
 }
 
+b.match {
+    background-color: #9999ff;
+}
+
 #container {
     min-height:100%;
     position:relative;

@@ -76,7 +76,7 @@ footer = fs.get_contents("resources/footer.inc")
 
 def _onError(failure, request):
     logging.error(failure.getTraceback())
-    request.setResponseCode(404)
+    request.setResponseCode(500)
     request.write("An error occured, please contact the administrator")
     request.finish()
 

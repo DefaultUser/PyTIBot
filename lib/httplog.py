@@ -173,6 +173,7 @@ class LogPage(BaseResource):
                 filename = "{}.{}.yaml".format(self.channel, date)
             elif date == "current":
                 filename = "{}.yaml".format(self.channel)
+                date = datetime.today().strftime("%Y-%m-%d")
         if filename and os.path.isfile(os.path.join(self.log_dir, filename)):
             with open(os.path.join(self.log_dir, filename)) as logfile:
                 log_data = '<table>'
@@ -184,7 +185,7 @@ class LogPage(BaseResource):
                 log_data += '</table>'
         request.write(_as_bytes(log_page_template.format(
             log_data=log_data, title=self.title, header=header,
-            footer=footer, channel=self.channel)))
+            footer=footer, channel=self.channel, date=date, Level=MIN_LEVEL)))
         request.finish()
 
     def render_GET(self, request):

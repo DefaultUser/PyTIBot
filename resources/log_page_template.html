@@ -23,16 +23,21 @@
         {header}
         <div id="main">
             <form method="PUT" id="MyForm">
-                <input name="date" type="date" id="DatePicker">
+                <input name="date" type="date" id="DatePicker" value="{date}">
 
                 <select name="level" id="LevelPicker">
                     <option value=10>ALL</option>
                     <option value=11>MOST</option>
-                    <option value=16 selected>IMPORTANT</option>
+                    <option value=16>IMPORTANT</option>
                 </select>
 
                 <button>Show log</button>
             </form>
+            <script>
+            $(function() {{
+                $("#LevelPicker").val({Level});
+            }});
+            </script>
 
             <a href='/{channel}/search'>Search</a>
 

@@ -196,7 +196,7 @@ class LogPage(BaseResource):
 
 
 class SearchPage(BaseResource):
-    PAGELEN = 10
+    PAGELEN = 5
 
     def __init__(self, channel, log_dir, title):
         super(SearchPage, self).__init__()
@@ -297,15 +297,12 @@ class SearchPage(BaseResource):
                                            sortedby="date", reverse=True)
             log_data = ""
             for hit in results:
-                log_data += ("<ul class='accordion'><div><input id='id{date}' "
-                             "type='checkbox'/><label for='id{date}'>{date}"
-                             "</label><article class='accordion-article'>"
-                             "<a href='/{channel}?date={date}'>Full log</a>"
-                             "</br>".format(channel=self.channel,
-                                            date=hit["date"].strftime(
-                                                "%Y-%m-%d")) +
+                log_data += ("<ul><div><label><a href='/{channel}?date="
+                             "{date}'>{date}</a></label>".format(
+                                 channel=self.channel,
+                                 date=hit["date"].strftime("%Y-%m-%d")) +
                              hit.highlights("content") +
-                             "</article></div></ul>")
+                             "</div></ul>")
             else:
                 if not results.is_last_page():
                     log_data += "<a href='?q={}&page={}'>Next</a>".format(

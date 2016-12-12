@@ -36,29 +36,13 @@ table td {
     text-align: left;
 }
 
-.accordion label{
+label{
     padding: 15px;
     position: relative;
     z-index: 20;
     display: block;
-    cursor: pointer;
     background: #ccccdd;
     text-align: center;
-}
-.accordion input:checked + label{
-    background: #ddddee;
-}
-.accordion input{
-    display: none;
-}
-.accordion article{
-    overflow: hidden;
-    height: 0px;
-    position: relative;
-    z-index: 10;
-}
-.accordion input:checked ~ article.accordion-article{
-    height: auto;
 }
 
 b.match {

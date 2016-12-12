@@ -78,7 +78,7 @@ class PyTIBot(irc.IRCClient, object):
         else:
             cmds = {}
         cmds.update(self._default_commands)
-        for name, cmd in cmds.iteritems():
+        for name, cmd in cmds.items():
             self.enable_command(cmd, name)
 
         # clear the triggers
@@ -291,7 +291,7 @@ class PyTIBot(irc.IRCClient, object):
         # Triggers
         matches = [(re.search(re.compile(regex.replace("$NICKNAME",
                                                        self.nickname)), msg),
-                   gen) for regex, gen in self.triggers.iteritems()]
+                   gen) for regex, gen in self.triggers.items()]
 
         # filter out empty matches
         matches = [gen for match, gen in matches if match]

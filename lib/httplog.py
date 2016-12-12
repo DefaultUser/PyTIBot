@@ -33,14 +33,19 @@ import time
 from datetime import datetime
 from collections import defaultdict
 from datetime import datetime, timedelta
-try:
-    from html import escape as htmlescape
-except ImportError:
-    # python2
-    from cgi import escape as htmlescape
 
 from util import log, formatting
 from util import filesystem as fs
+
+import sys
+
+# py3 compatability
+if sys.version_info.major == 3:
+    unicode = str
+    from html import escape as htmlescape
+else:
+    # python2
+    from cgi import escape as htmlescape
 
 
 LEVEL_ALL = 10
@@ -82,6 +87,12 @@ header = fs.get_contents("resources/header.inc")
 footer = fs.get_contents("resources/footer.inc")
 
 
+def _as_bytes(data):
+    if sys.version_info.major == 3:
+        return bytes(data, "utf-8")
+    return data
+
+
 def _onError(failure, request):
     logging.error(failure.getTraceback())
     request.setResponseCode(500)
@@ -103,7 +114,7 @@ def _prepare_yaml_element(element):
 
 class BaseResource(Resource, object):
     def getChild(self, name, request):
-        if name == '':
+        if name == b'':
             return self
         return super(BaseResource, self).getChild(name, request)
 
@@ -119,21 +130,23 @@ class BasePage(BaseResource):
         self.channels = cm.getlist("HTTPLogServer", "channels")
         for channel in self.channels:
             name = channel.lstrip("#")
-            self.putChild(name, LogPage(name, log.get_log_dir(cm),
-                                        "#{} - {}".format(name, self.title)))
+            self.putChild(_as_bytes(name), LogPage(name, log.get_log_dir(cm),
+                                                   "#{} - {}".format(
+                                                       name, self.title)))
         # add resources
         for f in fs.listdir("resources"):
             relpath = "/".join(["resources", f])
             if fs.isfile(relpath) and not (f.endswith(".html") or
                                            f.endswith(".inc")):
-                self.putChild(f, File(fs.get_abs_path(relpath)))
+                self.putChild(_as_bytes(f), File(fs.get_abs_path(relpath)))
 
     def render_GET(self, request):
         data = ""
         for channel in self.channels:
             data += "<a href='{0}'>{0}</a>".format(channel.lstrip("#"))
-        return base_page_template.format(title=self.title, data=data,
-                                         header=header, footer=footer)
+        return _as_bytes(base_page_template.format(title=self.title, data=data,
+                                                   header=header,
+                                                   footer=footer))
 
 
 class LogPage(BaseResource):
@@ -142,18 +155,18 @@ class LogPage(BaseResource):
         self.channel = channel
         self.log_dir = log_dir
         self.title = title
-        self.putChild("search", SearchPage(channel, log_dir, title))
+        self.putChild(b"search", SearchPage(channel, log_dir, title))
 
     def _show_log(self, request):
         log_data = "Log not found"
         MIN_LEVEL = LEVEL_IMPORTANT
         try:
-            MIN_LEVEL = int(request.args["level"][0])
+            MIN_LEVEL = int(request.args[b"level"][0])
         except (KeyError, ValueError):
             pass
         filename = None
-        if "date" in request.args:
-            date = request.args["date"][0]
+        if b"date" in request.args:
+            date = unicode(request.args[b"date"][0], "utf-8")
             if date == datetime.today().strftime("%Y-%m-%d"):
                 filename = "{}.yaml".format(self.channel)
             elif date_regex.match(date):
@@ -169,15 +182,14 @@ class LogPage(BaseResource):
                         log_data += line_templates[data["levelname"]].format(
                             **data)
                 log_data += '</table>'
-        request.write(log_page_template.format(log_data=log_data,
-                                               title=self.title,
-                                               header=header, footer=footer,
-                                               channel=self.channel))
+        request.write(_as_bytes(log_page_template.format(
+            log_data=log_data, title=self.title, header=header,
+            footer=footer, channel=self.channel)))
         request.finish()
 
     def render_GET(self, request):
         if not request.args:
-            request.args["date"] = ["current"]
+            request.args[b"date"] = [b"current"]
         d = threads.deferToThread(self._show_log, request)
         d.addErrback(_onError, request)
         return NOT_DONE_YET
@@ -201,7 +213,10 @@ class SearchPage(BaseResource):
             for element in yaml.load_all(f.read()):
                 if element["levelname"] == "MSG":
                     msg = irc.stripFormatting(element["message"])
-                    content.append(msg.decode("utf-8"))
+                    if sys.version_info.major == 3:
+                        content.append(msg)
+                    else:
+                        content.append(msg.decode("utf-8"))
             datestr = name.lstrip(self.channel+".").rstrip(".yaml")
             try:
                 date = datetime.strptime(datestr, "%Y-%m-%d")
@@ -260,21 +275,19 @@ class SearchPage(BaseResource):
         return threads.deferToThread(self._update_index)
 
     def _search_logs(self, request):
-        querystr = request.args["q"][0]
-        if "page" in request.args:
+        querystr = unicode(request.args[b"q"][0], "utf-8")
+        if b"page" in request.args:
             try:
-                page = int(request.args["page"][0])
+                page = int(request.args[b"page"][0])
             except ValueError:
                 page = -1
         else:
             page = 1
         if page < 1:
             log_data = "Invalid page number specified"
-            request.write(search_page_template.format(log_data=log_data,
-                                                      title=self.title,
-                                                      header=header,
-                                                      footer=footer,
-                                                      channel=self.channel))
+            request.write(_as_bytes(search_page_template.format(
+                log_data=log_data, title=self.title, header=header,
+                footer=footer, channel=self.channel)))
             request.finish()
             return
         with self.ix.searcher() as searcher:
@@ -300,18 +313,18 @@ class SearchPage(BaseResource):
             if not results:
                 log_data = "No Logs found containg: {}".format(
                     htmlescape(querystr))
-        request.write(search_page_template.format(log_data=log_data,
-                                                  title=self.title,
-                                                  header=header,
-                                                  footer=footer,
-                                                  channel=self.channel))
+        request.write(_as_bytes(search_page_template.format(
+            log_data=log_data, title=self.title, header=header,
+            footer=footer, channel=self.channel)))
         request.finish()
 
     def render_GET(self, request):
-        if not request.args or request.args["q"] == ['']:
-            return search_page_template.format(log_data="", title=self.title,
-                                               header=header, footer=footer,
-                                               channel=self.channel)
+        if b"q" not in request.args or request.args[b"q"] == ['']:
+            return _as_bytes(search_page_template.format(log_data="",
+                                                         title=self.title,
+                                                         header=header,
+                                                         footer=footer,
+                                                         channel=self.channel))
         d = threads.deferToThread(self._search_logs, request)
         d.addErrback(_onError, request)
         return NOT_DONE_YET

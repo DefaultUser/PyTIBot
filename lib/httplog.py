@@ -94,9 +94,10 @@ def _as_bytes(data):
 
 def _onError(failure, request):
     logging.error(failure.getTraceback())
-    request.setResponseCode(500)
-    request.write("An error occured, please contact the administrator")
-    request.finish()
+    if not request.finished:
+        request.setResponseCode(500)
+        request.write("An error occured, please contact the administrator")
+        request.finish()
 
 
 def _prepare_yaml_element(element):

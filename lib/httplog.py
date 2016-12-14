@@ -311,6 +311,8 @@ class SearchPage(BaseResource):
             if not results:
                 log_data = "No Logs found containg: {}".format(
                     htmlescape(querystr))
+        if sys.version_info.major < 3:
+            log_data = log_data.encode("utf-8")
         request.write(_as_bytes(search_page_template.format(
             log_data=log_data, title=self.title, header=header,
             footer=footer, channel=self.channel)))

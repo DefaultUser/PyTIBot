@@ -54,7 +54,7 @@ LEVEL_IMPORTANT = 16
 
 date_regex = re.compile(r"^(19|20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|"
                         r"[12][0-9]|3[01])$")
-url_pat = re.compile(r"(((https?)|(ftps?)|(sftp))://[^\s)]+)")
+url_pat = re.compile(r"(((https?)|(ftps?)|(sftp))://[^\s\")]+)")
 
 line_templates = defaultdict(str, {
     "MSG": '<tr><td class="time">{time}</td><td class="user">'

@@ -135,9 +135,9 @@ class BasePage(BaseResource):
         # add resources
         for f in fs.listdir("resources"):
             relpath = "/".join(["resources", f])
-            if fs.isfile(relpath) and not (f.endswith(".html") or
-                                           f.endswith(".inc")):
-                self.putChild(_as_bytes(f), File(fs.get_abs_path(relpath)))
+            if not (f.endswith(".html") or f.endswith(".inc")):
+                self.putChild(_as_bytes(f), File(fs.get_abs_path(relpath),
+                                                 defaultType="text/plain"))
 
     def render_GET(self, request):
         data = ""

@@ -28,8 +28,9 @@ from configmanager import ConfigManager
 
 from pytibotfactory import PyTIBotFactory
 from twisted.conch import manhole_tap
-from lib.httplog import BasePage
+from lib.httplog import BasePage, LogPage
 from util import filesystem as fs
+from util import log
 
 
 mandatory_settings = [("Connection", "server"), ("Connection", "port"),
@@ -89,7 +90,16 @@ class PyTIBotServiceMaker(object):
 
         if (cm.option_set("HTTPLogServer", "port") or
                 cm.option_set("HTTPLogServer", "sslport")):
-            root = BasePage(cm)
+            channels = cm.getlist("HTTPLogServer", "channels")
+            if len(channels) == 1:
+                if cm.option_set("HTTPLogServer", "title"):
+                    title = cm.get("HTTPLogServer", "title")
+                else:
+                    title = "PyTIBot Log Server"
+                root = LogPage(channels[0], log.get_log_dir(cm), title,
+                               singlechannel=True)
+            else:
+                root = BasePage(cm)
             httpfactory = Site(root)
             if cm.option_set("HTTPLogServer", "port"):
                 http_sv = internet.TCPServer(cm.getint("HTTPLogServer",

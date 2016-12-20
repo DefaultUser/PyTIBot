@@ -143,19 +143,33 @@ class BasePage(BaseResource):
     def render_GET(self, request):
         data = ""
         for channel in self.channels:
-            data += "<a href='{0}'>{0}</a>".format(channel.lstrip("#"))
+            data += "<a href='{0}'>{0}</a><br/>".format(channel.lstrip("#"))
         return _as_bytes(base_page_template.format(title=self.title, data=data,
                                                    header=header,
                                                    footer=footer))
 
 
 class LogPage(BaseResource):
-    def __init__(self, channel, log_dir, title):
+    def __init__(self, channel, log_dir, title, singlechannel=False):
         super(LogPage, self).__init__()
-        self.channel = channel
+        self.channel = channel.lstrip("#")
         self.log_dir = log_dir
         self.title = title
-        self.putChild(b"search", SearchPage(channel, log_dir, title))
+        self.singlechannel = singlechannel
+        self.putChild(b"search", SearchPage(self.channel, log_dir, title,
+                                            singlechannel=singlechannel))
+
+        if singlechannel:
+            for f in fs.listdir("resources"):
+                relpath = "/".join(["resources", f])
+                if not (f.endswith(".html") or f.endswith(".inc")):
+                    self.putChild(_as_bytes(f), File(fs.get_abs_path(relpath),
+                                                     defaultType="text/plain"))
+
+    def channel_link(self):
+        if self.singlechannel:
+            return ""
+        return self.channel
 
     def _show_log(self, request):
         log_data = "Log not found"
@@ -185,7 +199,8 @@ class LogPage(BaseResource):
                 log_data += '</table>'
         request.write(_as_bytes(log_page_template.format(
             log_data=log_data, title=self.title, header=header,
-            footer=footer, channel=self.channel, date=date, Level=MIN_LEVEL)))
+            footer=footer, channel=self.channel_link(), date=date,
+            Level=MIN_LEVEL)))
         request.finish()
 
     def render_GET(self, request):
@@ -199,12 +214,13 @@ class LogPage(BaseResource):
 class SearchPage(BaseResource):
     PAGELEN = 5
 
-    def __init__(self, channel, log_dir, title):
+    def __init__(self, channel, log_dir, title, singlechannel=False):
         super(SearchPage, self).__init__()
         self.channel = channel
         self.log_dir = log_dir
         self.title = title
         self.last_index_update = 0
+        self.singlechannel = singlechannel
         d = threads.deferToThread(self._setup_index)
 
     def _fields_from_yaml(self, name):
@@ -275,6 +291,11 @@ class SearchPage(BaseResource):
     def update_index(self):
         return threads.deferToThread(self._update_index)
 
+    def channel_link(self):
+        if self.singlechannel:
+            return ".."
+        return "/{}".format(self.channel)
+
     def _search_logs(self, request):
         querystr = unicode(request.args[b"q"][0], "utf-8")
         if b"page" in request.args:
@@ -298,9 +319,9 @@ class SearchPage(BaseResource):
                                            sortedby="date", reverse=True)
             log_data = ""
             for hit in results:
-                log_data += ("<ul><div><label><a href='/{channel}?date="
+                log_data += ("<ul><div><label><a href='{channel}?date="
                              "{date}'>{date}</a></label>".format(
-                                 channel=self.channel,
+                                 channel=self.channel_link(),
                                  date=hit["date"].strftime("%Y-%m-%d")) +
                              hit.highlights("content") +
                              "</div></ul>")
@@ -315,16 +336,14 @@ class SearchPage(BaseResource):
             log_data = log_data.encode("utf-8")
         request.write(_as_bytes(search_page_template.format(
             log_data=log_data, title=self.title, header=header,
-            footer=footer, channel=self.channel)))
+            footer=footer, channel=self.channel_link())))
         request.finish()
 
     def render_GET(self, request):
         if b"q" not in request.args or request.args[b"q"] == ['']:
-            return _as_bytes(search_page_template.format(log_data="",
-                                                         title=self.title,
-                                                         header=header,
-                                                         footer=footer,
-                                                         channel=self.channel))
+            return _as_bytes(search_page_template.format(
+                log_data="", title=self.title, header=header,
+                footer=footer, channel=self.channel_link()))
         d = threads.deferToThread(self._search_logs, request)
         d.addErrback(_onError, request)
         return NOT_DONE_YET

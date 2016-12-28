@@ -11,6 +11,7 @@ Dependencies
 python2 (as twisted does not support python3 yet)
 twisted
 configmanager (https://github.com/DefaultUser/configmanager)
+treq
 python-yaml
 xmlrpclib
 appdirs

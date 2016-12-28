@@ -21,8 +21,8 @@ import json
 import sys
 import os
 import logging
-from twisted.internet import threads
-from twisted.web.client import getPage
+from twisted.internet import threads, defer
+from treq import get
 from util import formatting
 from util import filesystem as fs
 
@@ -236,8 +236,10 @@ def joke(bot):
     """Chuck Norris jokes from http://icndb.com"""
     url = "http://api.icndb.com/jokes/random/1"
 
-    def _tell_joke(body, channel, name=None):
-        cnjoke = json.loads(body)['value'][0]['joke']
+    @defer.inlineCallbacks
+    def _tell_joke(response, channel, name=None):
+        data = yield response.json()
+        cnjoke = data['value'][0]['joke']
         cnjoke = cnjoke.replace("&quot;", "\"")
         if name:
             cnjoke = cnjoke.replace("Chuck Norris", name)
@@ -245,7 +247,7 @@ def joke(bot):
 
     while True:
         args, sender, senderhost, channel = yield
-        getPage(url).addCallback(_tell_joke, channel, " ".join(args))
+        get(url).addCallback(_tell_joke, channel, " ".join(args))
 
 
 def say(bot):
@@ -294,7 +296,7 @@ def raw(bot):
 
 def search_pypi(bot):
     """Search for python packages from PyPI - usage: (search|info) packages"""
-    _baseurl = "https://pypi.python.org/pypi/%s/json"
+    _baseurl = "https://pypi.python.org/pypi/{}/json"
     _maxlen = 400
     _client = xmlrpclib.ServerProxy("https://pypi.python.org/pypi")
 
@@ -307,8 +309,9 @@ def search_pypi(bot):
             show_result = ", ".join(packagenames[:10]) + " ..."
         bot.msg(channel, str(num_packages) + " packages found: " + show_result)
 
+    @defer.inlineCallbacks
     def _handle_info_results(results, channel):
-        data = json.loads(results)
+        data = yield results.json()
         name = data["info"]["name"].encode("utf-8")
         author = data["info"]["author"].encode("utf-8")
         description = data["info"]["description"].encode("utf-8")
@@ -336,8 +339,8 @@ def search_pypi(bot):
                 d.addCallback(_handle_search_results, channel)
         elif args[0] == "info":
             for package in args[1:]:
-                url = _baseurl % package
-                d = getPage(url)
+                url = _baseurl.format(package)
+                d = get(url)
                 d.addCallback(_handle_info_results, channel)
                 d.addErrback(_handle_error, package, channel)
 

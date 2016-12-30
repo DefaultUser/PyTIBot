@@ -24,7 +24,7 @@ from twisted.internet import ssl
 from twisted.web.server import Site
 import os
 
-from configmanager import ConfigManager
+from yamlcfg import YamlConfig
 
 from pytibotfactory import PyTIBotFactory
 from twisted.conch import manhole_tap
@@ -33,12 +33,11 @@ from util import filesystem as fs
 from util import log
 
 
-mandatory_settings = [("Connection", "server"), ("Connection", "port"),
-                      ("Connection", "nickname"), ("Connection", "admins")]
+mandatory_settings = ["server", "port", "nickname", "admins"]
 
 
 class Options(usage.Options):
-    optParameters = [["config", "c", "pytibot.ini", "The config file to use"]]
+    optParameters = [["config", "c", "pytibot.yaml", "The config file to use"]]
 
 
 @implementer(IServiceMaker, IPlugin)
@@ -51,35 +50,32 @@ class PyTIBotServiceMaker(object):
         """
         Create an instance of PyTIBot
         """
-        cm = ConfigManager(fs.config_file(options["config"]), delimiters=("="))
-        if not all([cm.option_set(sec, opt) for sec, opt in
-                    mandatory_settings]):
+        config = YamlConfig(path=fs.config_file(options["config"]))
+        if not (config["Connection"] and all([config["Connection"].get(option,
+                                                                       False)
+                                              for option in
+                                              mandatory_settings])):
             raise EnvironmentError("Reading config file failed, mandatory"
                                    " fields not set!\nPlease reconfigure")
 
         mService = MultiService()
 
         # irc client
-        ircserver = cm.get("Connection", "server")
-        ircport = cm.getint("Connection", "port")
-        ircbotfactory = PyTIBotFactory(cm)
+        ircserver = config["Connection"]["server"]
+        ircport = config["Connection"]["port"]
+        ircbotfactory = PyTIBotFactory(config)
         irc_cl = internet.TCPClient(ircserver, ircport, ircbotfactory)
         irc_cl.setServiceParent(mService)
 
         # manhole for debugging
-        open_manhole = False
-        if cm.option_set("Connection", "open_manhole"):
-            open_manhole = cm.getboolean("Connection", "open_manhole")
-
-        if open_manhole:
-            if cm.option_set("Manhole", "telnetPort"):
-                telnetPort = cm.get("Manhole", "telnetPort")
-            else:
-                telnetPort = None
-            if cm.option_set("Manhole", "sshPort"):
-                sshPort = cm.get("Manhole", "sshPort")
-            else:
-                sshPort = None
+        if config["Manhole"]:
+            telnetPort = config.Manhole.get("telnetport", None)
+            if telnetPort:
+                telnetPort = str(telnetPort)
+            sshPort = config.Manhole.get("sshport", None)
+            if sshPort:
+                sshPort = str(sshPort)
+            print(telnetPort, sshPort)
             options = {'namespace': {'get_bot': ircbotfactory.get_bot},
                        'passwd': os.path.join(fs.adirs.user_config_dir,
                                               'manhole_cred'),
@@ -88,31 +84,31 @@ class PyTIBotServiceMaker(object):
             tn_sv = manhole_tap.makeService(options)
             tn_sv.setServiceParent(mService)
 
-        if (cm.option_set("HTTPLogServer", "port") or
-                cm.option_set("HTTPLogServer", "sslport")):
-            channels = cm.getlist("HTTPLogServer", "channels")
+        if (config["HTTPLogServer"] and ("port" in config["HTTPLogServer"] or
+                                         "sshport" in config["HTTPLogServer"])):
+            channels = config["HTTPLogServer"]["channels"]
+            if not isinstance(channels, list):
+                channels = [channels]
             if len(channels) == 1:
-                if cm.option_set("HTTPLogServer", "title"):
-                    title = cm.get("HTTPLogServer", "title")
-                else:
-                    title = "PyTIBot Log Server"
-                root = LogPage(channels[0], log.get_log_dir(cm), title,
+                title = config["HTTPLogServer"].get("title",
+                                                    "PyTIBot Log Server")
+                root = LogPage(channels[0], log.get_log_dir(config), title,
                                singlechannel=True)
             else:
-                root = BasePage(cm)
+                root = BasePage(config)
             httpfactory = Site(root)
-            if cm.option_set("HTTPLogServer", "port"):
-                http_sv = internet.TCPServer(cm.getint("HTTPLogServer",
-                                                       "port"),
-                                             httpfactory)
+            port = config["HTTPLogServer"].get("port", None)
+            if port:
+                http_sv = internet.TCPServer(port, httpfactory)
                 http_sv.setServiceParent(mService)
 
-            if cm.option_set("HTTPLogServer", "sslport"):
+            sslport = config["HTTPLogServer"].get("sslport", None)
+            privkey = config["HTTPLogServer"].get("privkey", None)
+            cert = config["HTTPLogServer"].get("certificate", None)
+            if sslport and privkey and cert:
                 sslContext = ssl.DefaultOpenSSLContextFactory(
-                    cm.get("HTTPLogServer", "privkey"),
-                    cm.get("HTTPLogServer", "certificate"))
-                https_sv = internet.SSLServer(cm.getint("HTTPLogServer",
-                                                        "sslport"),
+                    privkey, cert)
+                https_sv = internet.SSLServer(sslport,
                                               httpfactory,
                                               sslContext)
                 https_sv.setServiceParent(mService)

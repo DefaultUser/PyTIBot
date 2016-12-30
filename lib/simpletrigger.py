@@ -27,8 +27,7 @@ def simple_trigger(bot):
     rainbow = re.compile(r"\$RAINBOW\(([^)]+)\)")
     while True:
         command, sender, senderhost, channel = yield
-        msg = bot.cm.get("Simple Triggers", command).replace("$USER",
-                                                             sender)
+        msg = command["answer"].replace("$USER", sender)
         msg = msg.replace("$CHANNEL", channel)
 
         # Replace colors

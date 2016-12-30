@@ -46,12 +46,10 @@ class PyTIBot(irc.IRCClient, object):
                          }
     _default_triggers = ["enable_command"]
 
-    def __init__(self, config_manager):
-        self.cm = config_manager
-        if (self.cm.option_set("Connection", "username") and
-                self.cm.option_set("Connection", "serverpassword")):
-            self.username = self.cm.get("Connection", "username")
-            self.password = self.cm.get("Connection", "serverpassword")
+    def __init__(self, config):
+        self.config = config
+        self.username = self.config["Connection"].get("username", None)
+        self.password = self.config["Connection"].get("serverpassword", None)
         self._usercallback = {}
         self._authcallback = {}
         self.log_channels = []
@@ -65,16 +63,16 @@ class PyTIBot(irc.IRCClient, object):
 
     def load_settings(self):
         """Load settings with config manager"""
-        self.cm.read()
-        self.nickname = self.cm.get("Connection", "nickname")
+        self.config.open(path=self.config._path)
+        self.nickname = self.config["Connection"]["nickname"]
 
         # clear the commands
         del self.commands
         self.commands = {}
 
         # load the commands
-        if self.cm.has_section("Commands"):
-            cmds = {key: value for key, value in self.cm.items("Commands")}
+        if self.config["Commands"]:
+            cmds = self.config["Commands"]
         else:
             cmds = {}
         cmds.update(self._default_commands)
@@ -87,9 +85,12 @@ class PyTIBot(irc.IRCClient, object):
 
         # load the triggers
         trgs = self._default_triggers
-        if self.cm.has_section("Triggers"):
-            enabled = self.cm.getlist("Triggers", "enabled")
-            trgs.extend(enabled)
+        if self.config["Triggers"]:
+            enabled = self.config["Triggers"].get("enabled", [])
+            if isinstance(enabled, list):
+                trgs.extend(enabled)
+            else:
+                trgs.append(enabled)
         for trigger in trgs:
             self.enable_trigger(trigger)
 
@@ -97,27 +98,23 @@ class PyTIBot(irc.IRCClient, object):
         self.setup_logging()
 
     def setup_logging(self):
-        if self.cm.has_section("Logging"):
-            if self.cm.has_option("Logging", "channels"):
-                self.log_channels = self.cm.getlist("Logging", "channels")
-            else:
-                self.log_channels = []
+        if self.config["Logging"]:
+            self.log_channels = self.config["Logging"].get("channels", [])
+            if not isinstance(self.log_channels, list):
+                self.log_channels = [self.log_channels]
+            if not self.log_channels:
                 return
-            if (self.cm.has_option("Logging", "log_minor") and
-                    self.cm.getboolean("Logging", "log_minor")):
+            if self.config["Logging"].get("log_minor", False):
                 log_level = log.TOPIC
             else:
                 log_level = log.NOTICE
-            if self.cm.option_set("Logging", "yaml"):
-                yaml = self.cm.getboolean("Logging", "yaml")
-            else:
-                yaml = False
+            yaml = self.config["Logging"].get("yaml", False)
             for n, channel in enumerate(self.log_channels):
                 if not channel.startswith("#"):
                     channel = "#" + channel
                 # make all channels lowercase
                 self.log_channels[n] = channel.lower()
-                log.setup_logger(channel.lower(), self.cm,
+                log.setup_logger(channel.lower(), self.config,
                                  log_level=log_level, yaml=yaml)
         else:
             self.log_channels = []
@@ -139,7 +136,8 @@ class PyTIBot(irc.IRCClient, object):
         next(self.commands[name])
         # add to config
         if add_to_config:
-            self.cm.set("Commands", name, cmd)
+            self.config["Commands"][name] = cmd
+            self.config.write()
             logging.info("Added %s=%s to config" % (name, cmd))
         return True
 
@@ -166,28 +164,28 @@ class PyTIBot(irc.IRCClient, object):
         next(self.triggers[regex])
         # add to config
         if add_to_config:
-            self.cm.add_to_list("Triggers", "enabled", trigger)
+            enabled = self.config["Triggers"].get("enabled", [])
+            if not isinstance(enabled, list):
+                enabled = [enabled]
+            enabled.append(trigger)
+            self.config["Triggers"]["enabled"] = enabled
             logging.info("Added %s to config" % trigger)
         return True
 
     def auth(self):
         """Authenticate to the server (NickServ, Q, etc)"""
-        options_set = True
-        for option in ["service", "command", "username", "password"]:
-            options_set = options_set and self.cm.option_set("Auth", option)
-        if not options_set:
+        service = self.config["Auth"].get("service", None)
+        command = self.config["Auth"].get("command", None)
+        name = self.config["Auth"].get("username", None)
+        pw = self.config["Auth"].get("password", None)
+        if not (service and command and name and pw):
             logging.warning("Can't auth, not all options are set")
             return
-
-        service = self.cm.get("Auth", "service")
-        command = self.cm.get("Auth", "command")
-        name = self.cm.get("Auth", "username")
-        pw = self.cm.get("Auth", "password")
         self.msg(service, "%s %s %s" % (command, name, pw))
 
     def set_own_modes(self):
         """Set user modes of the bot itself"""
-        modes = self.cm.get("Auth", "modes")
+        modes = self.config["Auth"].get("modes", "")
         pat = re.compile(r"(\+(?P<add>(\w+))|-(?P<rem>(\w+)))+")
         match = pat.search(modes)
         if match:
@@ -198,16 +196,13 @@ class PyTIBot(irc.IRCClient, object):
 
     def signedOn(self):
         """Initial functions when signed on to server"""
-        if self.cm.has_section("Auth"):
+        if self.config["Auth"]:
             self.auth()
-
-        if self.cm.option_set("Auth", "modes"):
             self.set_own_modes()
 
-        if self.cm.has_option("Connection", "channels"):
-            channels = self.cm.getlist("Connection", "channels")
-        else:
-            channels = []
+        channels = self.config["Connection"].get("channels", [])
+        if not isinstance(channels, list):
+            channels = [channels]
         for channel in channels:
             self.join(channel)
 
@@ -300,13 +295,13 @@ class PyTIBot(irc.IRCClient, object):
         for gen in matches:
             gen.send((msg, user, userhost, channel))
 
-        if self.cm.has_section("Simple Triggers"):
-            triggers = self.cm.options("Simple Triggers")
+        if self.config["Simple Triggers"]:
+            triggers = self.config["Simple Triggers"]
             # options in ini are automatically converted to lower case
             # adjust $NICKNAME
             matches = [trigger for trigger in triggers if
-                       re.search(re.compile(trigger.replace("$nickname",
-                                                            self.nickname),
+                       re.search(re.compile(trigger["trigger"].replace(
+                           "$nickname", self.nickname),
                                  re.IGNORECASE),
                                  msg)]
             for trigger in matches:
@@ -317,18 +312,39 @@ class PyTIBot(irc.IRCClient, object):
         self.nickname = nick
         logging.info("Changed own nick to " + nick)
 
+    def get_ignorelist(self):
+        ignorelist = self.config["Connection"].get("ignore", [])
+        if not isinstance(ignorelist, list):
+            ignorelist = [ignorelist]
+        return ignorelist
+
+    def add_to_ignorelist(self, user):
+        if self.ignore_user(user):
+            return
+        ignorelist = self.get_ignorelist()
+        ignorelist.append(user)
+        self.config["Connection"]["ignore"] = ignorelist
+        self.config.write()
+
+    def remove_from_ignorelist(self, user):
+        if not self.ignore_user(user):
+            return
+        ignorelist = self.get_ignorelist()
+        ignorelist.remove(user)
+        self.config["Connection"]["ignore"] = ignorelist
+        self.config.write()
+
     def ignore_user(self, user):
         """Test whether to ignore the user"""
-        if self.cm.option_set("Connection", "ignore"):
-            for iu in self.cm.getlist("Connection", "ignore"):
-                try:
-                    if re.search(re.compile(iu, re.IGNORECASE), user):
-                        logging.info("ignoring %s" % user)
-                        return True
-                except re.error:
-                    if iu in user:
-                        logging.info("ignoring %s" % user)
-                        return True
+        for iu in self.get_ignorelist():
+            try:
+                if re.search(re.compile(iu, re.IGNORECASE), user):
+                    logging.info("ignoring %s" % user)
+                    return True
+            except:
+                if iu in user:
+                    logging.info("ignoring %s" % user)
+                    return True
         return False
 
     def topicUpdated(self, user, channel, newTopic):
@@ -362,7 +378,7 @@ class PyTIBot(irc.IRCClient, object):
                     logger.nick(oldname, newname)
         # expand the ignore list
         if self.ignore_user(oldname):
-            self.cm.add_to_list("Connection", "ignore", newname)
+            self.add_to_ignorelist(newname)
 
         self.remove_user_from_cache(oldname)
 
@@ -387,9 +403,9 @@ class PyTIBot(irc.IRCClient, object):
     def userKicked(self, kickee, channel, kicker, message):
         """Triggered when a user gets kicked"""
         # kick message
-        if self.cm.has_option("Actions", "userKicked"):
-            msg = self.cm.get("Actions", "userKicked").replace("$KICKER",
-                                                               kicker)
+        if self.config["Actions"]:
+            msg = self.config["Actions"].get("userKicked", "").replace(
+                "$KICKER", kicker)
             msg = msg.replace("$KICKEE", kickee).replace("$CHANNEL",
                                                          channel)
             if msg:
@@ -431,10 +447,10 @@ class PyTIBot(irc.IRCClient, object):
         channel = channel.lower()
         logging.warning("Kicked from {} by {} ({})".format(channel, kicker,
                                                            message))
-        if self.cm.getboolean("Connection", "rejoinKicked"):
+        if self.config["Connection"].get("rejoinKicked", False):
             self.join(channel)
-            if self.cm.has_option("Actions", "kickedFrom"):
-                msg = self.cm.get("Actions", "kickedFrom").replace(
+            if self.config["Actions"]:
+                msg = self.config["Actions"].get("kickedFrom", "").replace(
                     "$KICKER", kicker)
                 msg = msg.replace("$CHANNEL", channel).replace("$MESSAGE",
                                                                message)
@@ -445,6 +461,12 @@ class PyTIBot(irc.IRCClient, object):
         if channel in self.log_channels:
             logger = logging.getLogger(channel)
             logger.kick(kicker, message)
+
+    def get_adminlist(self):
+        admins = self.config["Connection"]["admins"]
+        if not isinstance(admins, list):
+            admins = [admins]
+        return admins
 
     @decorators.memoize_deferred
     def user_info(self, user):
@@ -516,7 +538,7 @@ class PyTIBot(irc.IRCClient, object):
             if not userinfo:
                 d.callback(False)
             else:
-                if userinfo[2] in self.cm.getlist("Connection", "admins"):
+                if userinfo[2] in self.get_adminlist():
                     d.callback(True)
                 else:
                     d.callback(False)
@@ -525,16 +547,12 @@ class PyTIBot(irc.IRCClient, object):
             if not authinfo:
                 d.callback(False)
             else:
-                if authinfo[1] in self.cm.getlist("Connection", "admins"):
+                if authinfo[1] in self.get_adminlist():
                     d.callback(True)
                 else:
                     d.callback(False)
 
-        if self.cm.has_option("Connection", "adminbyhost"):
-            adminbyhost = self.cm.getboolean("Connection", "adminbyhost")
-        else:
-            adminbyhost = False
-        if adminbyhost:
+        if self.config["Connection"].get("adminbyhost", False):
             maybe_def = defer.maybeDeferred(self.user_info, user)
             maybe_def.addCallback(_cb_userinfo)
         else:

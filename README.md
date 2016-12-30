@@ -10,9 +10,9 @@ Dependencies
 ```
 python2 (as twisted does not support python3 yet)
 twisted
-configmanager (https://github.com/DefaultUser/configmanager)
 treq
 python-yaml
+yamlcfg
 xmlrpclib
 appdirs
 whoosh
@@ -21,8 +21,6 @@ apiclient (python module for google api) (optional)
 Unix fortune (optional)
 ```
 
-Either adjust your PYTHONPATH to include configmanager or copy/link
-configmanager.py to the base directory of this bot.
 
 Starting the bot
 ----------------
@@ -35,10 +33,10 @@ or if you don't want to run it as a daemon
 ```
 twistd -n PyTIBot
 ```
-By default pytibot.ini is used, but you can specify another configuration
+By default pytibot.yaml is used, but you can specify another configuration
 file like this
 ```
-twistd PyTIBot -c otherconfig.ini
+twistd PyTIBot -c otherconfig.yaml
 ```
 
 
@@ -58,7 +56,7 @@ On Windows:
 C:\Users\<username>\AppData\Local\PyTIBot
 ```
 
-Look at pytibot.ini.example for all keys.
+Look at pytibot.yaml.example for all keys.
 
 [Connection]<br/>
 *server*, *port*, *nickname* and *admins* are the mandatory fields<br/>
@@ -67,7 +65,7 @@ By default, admins are determined by the **nonstandard** irc reply 330. This
 returns the auth name and therefor is safe. This reply is for example sent on
 Quakenet. If the server does not support this reply, you can alternatively set
 ```
-adminbyhost = True
+adminbyhost: True
 ```
 which let's you specify admins by their IRC host name.<br/>
 **!!ATTENTION!!**
@@ -76,22 +74,22 @@ periodically changed. If you are using a bouncer, every user of that bouncer
 will have the same host and therefor will be admin unless you are using a
 cloaked host. Use this option with care.
 
-[Auth]<br/>
+Auth:<br/>
 *service* - Auth Service(eg: NickServ, Q@CServe.quakenet.org)<br/>
 *command* - Auth command(eg: IDENTIFY, AUTH)<br/>
 Set *username*, *password* according to your account.<br/>
 *modes* - User modes for the bot (eg: +ix-d)
 
-[Commands]<br/>
+Commands:<br/>
 You can specify which commands should be enabled here.
 The key is the command you have to type in IRC, the value is the name of the
 python function that should be executed.
 
-[Triggers]<br/>
-*enabled* - comma separated list of all triggers<br/>
+Triggers:<br/>
+*enabled* - list of all triggers<br/>
 specific options for the triggers
 
-[Simple Triggers]<br/>
+Simple Triggers:<br/>
 User defineable lines that the bot should send when a certain word or pattern
 is used in a message. See below.
 
@@ -150,15 +148,15 @@ where $NICKNAME is the nick of the bot enables the trigger `trigger`.
 youtube url -> bot returns the title of the video<br/>
 *ATTENTION* This trigger needs a google API key from https://code.google.com/apis/console
 ```
-[Triggers]
-enabled = youtube
-youtube_api_key = REPLACE_ME
+Triggers:
+  enabled: [youtube]
+  youtube_api_key: REPLACE_ME
 ```
 
 Simple Trigger that can be specified by the user in the ini file:<br/>
 These can be specified under the [Simple Trigger] section<br/>
-The key will be used as trigger and the value is send to irc<br/>
-The key can be a regex
+*trigger* will be used as trigger and the *answer* is send to irc<br/>
+*answer* can be a regex
 
 "$USER" and "$CHANNEL" will be expanded to the user and channel, which triggered
 the line. Also you can specify colors with "$COLOR(1,2)", where the first number
@@ -170,14 +168,10 @@ range is from 0 to 15.
 Manhole access
 -------------
 Additionally to IRC commands this bot can also be controlled via telnet.
-To turn this feature on, you need to set
+To turn this feature on, you need to set the port in the configuration file:
 ```
-open_manhole = True
-```
-under the **Connection** section. You need to also set the port in the configuration file:
-```
-[Manhole]
-telnetPort = 9999
+Manhole:
+  telnetPort = 9999
 ```
 You also need to specify login credentials in the file *manhole_cred* in the form of *user:password*.
 
@@ -205,11 +199,11 @@ Logging
 -------
 This bot can also be used to log channel activity.
 ```
-[Logging]
-channels = #mysuperchannel, #myweirdchannel
-directory = /tmp/log/
-log_minor = True
-yaml = True
+Logging:
+  channels: ["#mysuperchannel", "#myweirdchannel"]
+  directory = /tmp/log/
+  log_minor = True
+  yaml = True
 ```
 Every channel is logged to a different file<br/>
 If **log_minor** is **False**, join and part messages are not logged to file<br/>
@@ -233,13 +227,13 @@ C:\Users\<username>\AppData\Local\PyTIBot\Logs\
 You can also use the builtin http server to create a webpage that shows the channel logs
 (only works if you use yaml logs)
 ```
-[HTTPLogServer]
-channels = #mysuperchannel
-port = 8080
-sslport = 8081
-certificate = /path/to/cert.pem
-privkey = /path/to/privkey.pem
-title = Awesome Log Server
+HTTPLogServer:
+  channels: ["#mysuperchannel"]
+  port: 8080
+  sslport: 8081
+  certificate: /path/to/cert.pem
+  privkey: /path/to/privkey.pem
+  title: Awesome Log Server
 ```
 The style of the website can be customized by adding apropriate files to the "resources" folder
 of your user data directory. You can also add a "favicon.ico". All files in that folder that do

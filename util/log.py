@@ -59,11 +59,8 @@ msg_templates = {TOPIC: "%(user)s changed the topic to: %(topic)s",
 
 
 @decorators.memoize
-def get_log_dir(cm):
-    if cm.has_option("Logging", "directory"):
-        log_dir = cm.get("Logging", "directory")
-    else:
-        log_dir = fs.adirs.user_log_dir
+def get_log_dir(config):
+    log_dir = config["Logging"].get("directory", fs.adirs.user_log_dir)
     return log_dir
 
 
@@ -241,7 +238,7 @@ def yaml_namer(name):
     return name[:index] + name[index:].replace(".yaml", "") + ".yaml"
 
 
-def setup_logger(channel, cm, log_level=NOTICE, yaml=False):
+def setup_logger(channel, config, log_level=NOTICE, yaml=False):
     name = channel.lstrip("#")
     if yaml:
         name += ".yaml"
@@ -256,11 +253,10 @@ def setup_logger(channel, cm, log_level=NOTICE, yaml=False):
     # don't add multiple handlers for the same logger
     if not logger.handlers:
         # log to file
-        if not os.path.isdir(get_log_dir(cm)):
-            os.makedirs(get_log_dir(cm))
-        log_handler = TimedRotatingFileHandler(os.path.join(get_log_dir(cm),
-                                                            name),
-                                               when="midnight")
+        if not os.path.isdir(get_log_dir(config)):
+            os.makedirs(get_log_dir(config))
+        log_handler = TimedRotatingFileHandler(os.path.join(
+            get_log_dir(config), name), when="midnight")
         if yaml:
             log_handler.setFormatter(yaml_formatter)
             log_handler.namer = yaml_namer

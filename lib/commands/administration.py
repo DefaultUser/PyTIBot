@@ -46,7 +46,7 @@ to remove from the list"""
                         # don't add to short nicks
                         # may ignore everything otherwise(regex)
                         if len(nick) > 3:
-                            bot.cm.add_to_list("Connection", "ignore", nick)
+                            bot.add_to_ignorelist(nick)
                             bot.notice(sender, "Added %s to the ignore list"
                                        % nick)
                         else:
@@ -54,9 +54,8 @@ to remove from the list"""
                                        "have at least 3 chars" % nick)
                 elif task.lower() in ("-", "remove"):
                     for nick in nicks:
-                        if nick in bot.cm.getlist("Connection", "ignore"):
-                            bot.cm.remove_from_list("Connection", "ignore",
-                                                    nick)
+                        if bot.ignore_user(nick):
+                            bot.remove_from_ignorelist(nick)
                             bot.notice(sender, "Removed %s from the ignore "
                                        "ignore list" % nick)
                         else:

@@ -35,12 +35,12 @@ def youtube(bot):
     duration_pattern = re.compile(r"PT(?P<hours>[0-9]{1,2}H)?(?P<minutes>"
                                   "[0-9]{1,2}M)?(?P<seconds>[0-9]{1,2}S)")
     yt_service = None
-    if bot.cm.option_set("Triggers", "youtube_api_key"):
+    YOUTUBE_API_KEY = bot.config["Triggers"].get("youtube_api_key", None)
+    if YOUTUBE_API_KEY:
         from apiclient.discovery import build
 
         YOUTUBE_API_SERVICE_NAME = "youtube"
         YOUTUBE_API_VERSION = "v3"
-        YOUTUBE_API_KEY = bot.cm.get("Triggers", "youtube_api_key")
         yt_service = build(YOUTUBE_API_SERVICE_NAME, YOUTUBE_API_VERSION,
                            developerKey=YOUTUBE_API_KEY)
         yt_videos = yt_service.videos()

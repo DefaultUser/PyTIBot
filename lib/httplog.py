@@ -120,17 +120,17 @@ class BaseResource(Resource, object):
 
 
 class BasePage(BaseResource):
-    def __init__(self, cm):
+    def __init__(self, config):
         super(BasePage, self).__init__()
-        if cm.option_set("HTTPLogServer", "title"):
-            self.title = cm.get("HTTPLogServer", "title")
-        else:
-            self.title = "PyTIBot Log Server"
+        self.title = config["HTTPLogServer"].get("title", "PyTIBot Log Server")
         # add channel logs
-        self.channels = cm.getlist("HTTPLogServer", "channels")
+        self.channels = config["HTTPLogServer"].get("channels", [])
+        if not isinstance(self.channels, list):
+            self.channels = [self.channels]
         for channel in self.channels:
             name = channel.lstrip("#")
-            self.putChild(_as_bytes(name), LogPage(name, log.get_log_dir(cm),
+            self.putChild(_as_bytes(name), LogPage(name,
+                                                   log.get_log_dir(config),
                                                    "#{} - {}".format(
                                                        name, self.title)))
         # add resources

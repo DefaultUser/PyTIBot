@@ -28,13 +28,13 @@ class PyTIBotFactory(protocol.ClientFactory):
     MAX_ATTEMPTS = 5
     RECONNECT_DELAY = 60
 
-    def __init__(self, config_manager):
-        self.cm = config_manager
+    def __init__(self, config):
+        self.config = config
         self.bot = None
         self.connection_attempts = 0
 
     def buildProtocol(self, addr):
-        bot = PyTIBot(self.cm)
+        bot = PyTIBot(self.config)
         bot.factory = self
         self.bot = bot
         self.connection_attempts = 0

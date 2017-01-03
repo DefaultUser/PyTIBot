@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2016>  <Sebastian Schmidt>
+# Copyright (C) <2015-2017>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -52,7 +52,6 @@ class PyTIBot(irc.IRCClient, object):
         self.password = self.config["Connection"].get("serverpassword", None)
         self._usercallback = {}
         self._authcallback = {}
-        self.log_channels = []
         self.commands = {}
         self.triggers = {}
         self.userlist = {}
@@ -65,6 +64,7 @@ class PyTIBot(irc.IRCClient, object):
         """Load settings with config manager"""
         self.config.open(path=self.config._path)
         self.nickname = self.config["Connection"]["nickname"]
+        self.channelwatchers = {}
 
         # clear the commands
         del self.commands
@@ -99,25 +99,33 @@ class PyTIBot(irc.IRCClient, object):
 
     def setup_logging(self):
         if self.config["Logging"]:
-            self.log_channels = self.config["Logging"].get("channels", [])
-            if not isinstance(self.log_channels, list):
-                self.log_channels = [self.log_channels]
-            if not self.log_channels:
+            log_channels = self.config["Logging"].get("channels", [])
+            if not isinstance(log_channels, list):
+                log_channels = [log_channels]
+            if not log_channels:
                 return
             if self.config["Logging"].get("log_minor", False):
                 log_level = log.TOPIC
             else:
                 log_level = log.NOTICE
             yaml = self.config["Logging"].get("yaml", False)
-            for n, channel in enumerate(self.log_channels):
+            for channel in log_channels:
                 if not channel.startswith("#"):
                     channel = "#" + channel
                 # make all channels lowercase
-                self.log_channels[n] = channel.lower()
-                log.setup_logger(channel.lower(), self.config,
-                                 log_level=log_level, yaml=yaml)
+                logger = log.setup_logger(channel.lower(), self.config,
+                                          log_level=log_level, yaml=yaml)
+                self.install_channelwatcher(channel, logger)
+
+    def install_channelwatcher(self, channel, watcher):
+        if not channel.startswith("#"):
+            channel = "#" + channel
+        # make all channels lowercase
+        channel = channel.lower()
+        if channel in self.channelwatchers:
+            self.channelwatchers[channel].append(watcher)
         else:
-            self.log_channels = []
+            self.channelwatchers[channel] = [watcher]
 
     def enable_command(self, cmd, name, add_to_config=False):
         """Enable a command - returns True at success"""
@@ -213,26 +221,27 @@ class PyTIBot(irc.IRCClient, object):
         super(PyTIBot, self).msg(user, message, length)
         # user can also be a channel
         user = user.lower()
-        if user in self.log_channels:
-            logger = logging.getLogger(user)
-            logger.msg(self.nickname, message)
+        if user in self.channelwatchers:
+            for watcher in self.channelwatchers[user]:
+                watcher.msg(self.nickname, message)
 
     def joined(self, channel):
         """Triggered when joining a channel"""
         logging.info("Joined channel: %s" % channel)
         channel = channel.lower()
-        if channel in self.log_channels:
-            logger = logging.getLogger(channel)
-            logger.join(self.nickname)
+        if channel in self.channelwatchers:
+            for watcher in self.channelwatchers[channel]:
+                watcher.join(self.nickname)
 
     def left(self, channel):
         """Triggered when leaving a channel"""
         channel = channel.lower()
         self.userlist.pop(channel)
         logging.info("Left channel: %s" % channel)
-        if channel in self.log_channels:
-            logger = logging.getLogger(channel)
-            logger.part(self.nickname)
+        channel = channel.lower()
+        if channel in self.channelwatchers:
+            for watcher in self.channelwatchers[channel]:
+                watcher.part(self.nickname)
 
     def privmsg(self, user, channel, msg):
         """Triggered by messages"""
@@ -241,9 +250,9 @@ class PyTIBot(irc.IRCClient, object):
         userhost = temp.split("@")[-1]
 
         channel = channel.lower()
-        if channel in self.log_channels:
-            logger = logging.getLogger(channel)
-            logger.msg(user, msg)
+        if channel in self.channelwatchers:
+            for watcher in self.channelwatchers[channel]:
+                watcher.msg(user, msg)
 
         # try if the user should be ignored
         if self.ignore_user(user):
@@ -352,18 +361,18 @@ class PyTIBot(irc.IRCClient, object):
         logging.info("{} changed the topic of {} to {}".format(nick, channel,
                                                                newTopic))
         channel = channel.lower()
-        if channel in self.log_channels:
-            logger = logging.getLogger(channel)
-            logger.topic(nick, newTopic)
+        if channel in self.channelwatchers:
+            for watcher in self.channelwatchers[channel]:
+                watcher.topic(nick, newTopic)
 
     def userJoined(self, user, channel):
         """Triggered when a user changes nick"""
         channel = channel.lower()
         self.userlist[channel].append(user)
         logging.info("{} joined {}".format(user, channel))
-        if channel in self.log_channels:
-            logger = logging.getLogger(channel)
-            logger.join(user)
+        if channel in self.channelwatchers:
+            for watcher in self.channelwatchers[channel]:
+                watcher.join(user)
 
     def userRenamed(self, oldname, newname):
         """Triggered when a user changes nick"""
@@ -373,9 +382,9 @@ class PyTIBot(irc.IRCClient, object):
             if oldname in self.userlist[channel]:
                 self.userlist[channel].remove(oldname)
                 self.userlist[channel].append(newname)
-                if channel in self.log_channels:
-                    logger = logging.getLogger(channel)
-                    logger.nick(oldname, newname)
+                if channel in self.channelwatchers:
+                    for watcher in self.channelwatchers[channel]:
+                        watcher.nick(oldname, newname)
         # expand the ignore list
         if self.ignore_user(oldname):
             self.add_to_ignorelist(newname)
@@ -387,18 +396,18 @@ class PyTIBot(irc.IRCClient, object):
         nick = user.split("!")[0]
         logging.info("{} | {} {}".format(channel, nick, data))
         channel = channel.lower()
-        if channel in self.log_channels:
-            logger = logging.getLogger(channel)
-            logger.action(nick, data)
+        if channel in self.channelwatchers:
+            for watcher in self.channelwatchers[channel]:
+                watcher.action(nick, data)
 
     def noticed(self, user, channel, message):
         """Triggered by notice"""
         nick = user.split("!")[0]
         logging.info("{} | {} {}".format(channel, nick, message))
         channel = channel.lower()
-        if channel in self.log_channels:
-            logger = logging.getLogger(channel)
-            logger.notice(nick, message)
+        if channel in self.channelwatchers:
+            for watcher in self.channelwatchers[channel]:
+                watcher.notice(nick, message)
 
     def userKicked(self, kickee, channel, kicker, message):
         """Triggered when a user gets kicked"""
@@ -418,18 +427,18 @@ class PyTIBot(irc.IRCClient, object):
         self.remove_user_from_cache(kickee)
         self.userlist[channel].remove(kickee)
 
-        if channel in self.log_channels:
-            logger = logging.getLogger(channel)
-            logger.kick(kickee, kicker, message)
+        if channel in self.channelwatchers:
+            for watcher in self.channelwatchers[channel]:
+                watcher.kick(kickee, kicker, message)
 
     def userLeft(self, user, channel):
         channel = channel.lower()
         self.remove_user_from_cache(user)
         self.userlist[channel].remove(user)
 
-        if channel in self.log_channels:
-            logger = logging.getLogger(channel)
-            logger.part(user)
+        if channel in self.channelwatchers:
+            for watcher in self.channelwatchers[channel]:
+                watcher.part(user)
 
     def userQuit(self, user, quitMessage):
         self.remove_user_from_cache(user)
@@ -438,9 +447,9 @@ class PyTIBot(irc.IRCClient, object):
             channel = channel.lower()
             if user in self.userlist[channel]:
                 self.userlist[channel].remove(user)
-                if channel in self.log_channels:
-                    logger = logging.getLogger(channel)
-                    logger.quit(user, quitMessage)
+                if channel in self.channelwatchers:
+                    for watcher in self.channelwatchers[channel]:
+                        watcher.quit(user, quitMessage)
 
     def kickedFrom(self, channel, kicker, message):
         """Triggered when bot gets kicked"""
@@ -458,9 +467,9 @@ class PyTIBot(irc.IRCClient, object):
                     self.msg(channel, msg)
 
         self.userlist.pop(channel)
-        if channel in self.log_channels:
-            logger = logging.getLogger(channel)
-            logger.kick(kicker, message)
+        if channel in self.channelwatchers:
+            for watcher in self.channelwatchers[channel]:
+                watcher.kick(self.nickname, kicker, message)
 
     def get_adminlist(self):
         admins = self.config["Connection"]["admins"]
@@ -577,4 +586,7 @@ class PyTIBot(irc.IRCClient, object):
     def quit(self, message=''):
         self.factory.autoreconnect = False
         logging.info("Shutting down")
+        for channel in self.channelwatchers:
+            for watcher in self.channelwatchers[channel]:
+                watcher.quit(self.nickname, message)
         super(PyTIBot, self).quit(message)

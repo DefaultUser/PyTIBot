@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2016>  <Sebastian Schmidt>
+# Copyright (C) <2015-2017>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -47,9 +47,9 @@ class PyTIBotFactory(protocol.ClientFactory):
         """Triggered on"""
         logging.error("connection lost (%s)" % reason)
         if self.bot:
-            for channel in self.bot.log_channels:
-                logger = logging.getLogger(channel.lower())
-                logger.error("Connection lost")
+            for channel in self.bot.channelwatchers:
+                for watcher in self.bot.channelwatchers[channel]:
+                    watcher.error("Connection lost")
         if self.autoreconnect:
             connector.connect()
         else:
@@ -58,9 +58,9 @@ class PyTIBotFactory(protocol.ClientFactory):
     def clientConnectionFailed(self, connector, reason):
         logging.error("connection failed (%s)" % reason)
         if self.bot:
-            for channel in self.bot.log_channels:
-                logger = logging.getLogger(channel.lower())
-                logger.error("Connection failed")
+            for channel in self.bot.channelwatchers:
+                for watcher in self.bot.channelwatchers[channel]:
+                    watcher.error("Connection failed")
         if self.connection_attempts < PyTIBotFactory.MAX_ATTEMPTS:
             reactor.callLater(PyTIBotFactory.RECONNECT_DELAY,
                               connector.connect)

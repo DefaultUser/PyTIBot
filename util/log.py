@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2016>  <Sebastian Schmidt>
+# Copyright (C) <2017>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,6 +23,7 @@ import yaml
 import time
 import sys
 
+from lib import channelwatcher
 from util import decorators
 from util import filesystem as fs
 
@@ -64,7 +65,7 @@ def get_log_dir(config):
     return log_dir
 
 
-class ChannelLogger(logging.Logger):
+class ChannelLogger(logging.Logger, channelwatcher.ChannelWatcher):
     def topic(self, user, topic):
         self.log(TOPIC, msg_templates[TOPIC], {"user": user, "topic": topic})
 
@@ -264,3 +265,4 @@ def setup_logger(channel, config, log_level=NOTICE, yaml=False):
             log_handler.setFormatter(txt_formatter)
             log_handler.namer = txt_namer
         logger.addHandler(log_handler)
+    return logger

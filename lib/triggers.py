@@ -52,15 +52,16 @@ def youtube(bot):
         gd = time_match.groupdict()
         duration = ""
         if gd["hours"]:
-            duration = "%d:%02d:%02d" % (int(gd["hours"][:-1]),
-                                         int(gd["minutes"][:-1]),
-                                         int(gd["seconds"][:-1]))
+            duration = "{:d}:{:02d}:{:02d}".format(int(gd["hours"][:-1]),
+                                                   int(gd["minutes"][:-1]),
+                                                   int(gd["seconds"][:-1]))
         elif gd["minutes"]:
-            duration = "%d:%02d" % (int(gd["minutes"][:-1]),
-                                    int(gd["seconds"][:-1]))
+            duration = "{:d}:{:02d}".format(int(gd["minutes"][:-1]),
+                                            int(gd["seconds"][:-1]))
         else:
-            duration = "0:%02d" % (int(gd["seconds"][:-1]))
-        bot.msg(channel, "Youtube Video title: %s (%s)" % (title, duration),
+            duration = "0:{:02d}".format(int(gd["seconds"][:-1]))
+        bot.msg(channel, "Youtube Video title: {} ({})".format(title,
+                                                               duration),
                 length=510)
 
     while True:
@@ -103,13 +104,13 @@ def enable_command(bot):
             raise RuntimeError("Something went horribly wrong")
 
         if not success:
-            bot.msg(channel, "ImportError: No module named %s" % cmd)
+            bot.msg(channel, "ImportError: No module named {}".format(cmd))
 
     while True:
         message, sender, senderhost, channel = yield
-        pat = re.compile(r"^from %s\.(?P<type>commands|triggers) import"
-                         " (?P<cmd>\w+)( as (?P<name>\w+))?$"
-                         % bot.nickname)
+        pat = re.compile(r"^from {}\.(?P<type>commands|triggers) import"
+                         " (?P<cmd>\w+)( as (?P<name>\w+))?$".format(
+                             bot.nickname))
 
         match = pat.search(message)
         _type = match.groupdict()["type"]

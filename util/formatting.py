@@ -67,10 +67,10 @@ def colored(text, fgcolor, bgcolor=None, endtoken=False):
     \returns A string with IRC colors if color is valid
     """
     if fgcolor not in color_code:
-        print("Color %s not valid, no color added" % fgcolor)
+        print("Color {} not valid, no color added".format(fgcolor))
         return text
     if bgcolor and bgcolor in color_code:
-        colorinfo = "%s,%s" % (color_code[fgcolor], color_code[bgcolor])
+        colorinfo = "{},{}".format(color_code[fgcolor], color_code[bgcolor])
     else:
         colorinfo = color_code[fgcolor]
     if endtoken:

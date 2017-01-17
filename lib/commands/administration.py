@@ -47,20 +47,20 @@ to remove from the list"""
                         # may ignore everything otherwise(regex)
                         if len(nick) > 3:
                             bot.add_to_ignorelist(nick)
-                            bot.notice(sender, "Added %s to the ignore list"
-                                       % nick)
+                            bot.notice(sender, "Added {} to the ignore "
+                                       "list".format(nick))
                         else:
-                            bot.notice(sender, "Pattern %s too short, must "
-                                       "have at least 3 chars" % nick)
+                            bot.notice(sender, "Pattern {} too short, must "
+                                       "have at least 3 chars".format(nick))
                 elif task.lower() in ("-", "remove"):
                     for nick in nicks:
                         if bot.ignore_user(nick):
                             bot.remove_from_ignorelist(nick)
-                            bot.notice(sender, "Removed %s from the ignore "
-                                       "ignore list" % nick)
+                            bot.notice(sender, "Removed {} from the ignore "
+                                       "ignore list".format(nick))
                         else:
-                            bot.notice(sender, "%s was not found in the "
-                                       "ignore list" % nick)
+                            bot.notice(sender, "{} was not found in the "
+                                       "ignore list".format(nick))
                 else:
                     bot.notice(sender,
                                formatting.colored("Invalid call - check the help",

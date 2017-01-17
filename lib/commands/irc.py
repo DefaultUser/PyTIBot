@@ -31,7 +31,7 @@ def hello(bot):
     """Just a hello function"""
     while True:
         args, sender, senderhost, channel = yield
-        bot.msg(channel, "hello %s" % sender)
+        bot.msg(channel, "hello {}".format(sender))
 
 
 def tell(bot):
@@ -51,7 +51,7 @@ def say(bot):
         message = " ".join(args)
         if message.lower() == "something":
             message = "To be or not to be - that's the question."
-        elif ("%s: say" % bot.nickname) in message:
+        elif ("{}: say".format(bot.nickname)) in message:
             message = "Don't chain this command with another bot!"
         if message:
             bot.msg(channel, message, length=510)

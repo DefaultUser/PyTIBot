@@ -70,13 +70,13 @@ def search_pypi(bot):
         description = description.replace("\n", " ")
         if len(description) > _maxlen:
             description = description[:_maxlen] + "..."
-        bot.msg(channel, "%s by %s: %s" % (formatting.bold(name, True),
-                                           formatting.bold(author, True),
-                                           description), length=510)
+        bot.msg(channel, "{} by {}: {}".format(formatting.bold(name, True),
+                                               formatting.bold(author, True),
+                                               description), length=510)
         bot.msg(channel, data["info"]["package_url"].encode("utf-8"))
 
     def _handle_error(error, arg, channel):
-        bot.msg(channel, "No such package: %s" % arg)
+        bot.msg(channel, "No such package: {}".format(arg))
 
     while True:
         args, sender, senderhost, channel = yield

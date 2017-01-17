@@ -131,12 +131,12 @@ class PyTIBot(irc.IRCClient, object):
         """Enable a command - returns True at success"""
         # no such command
         if not hasattr(commands, cmd):
-            logging.warning("No such command: %s" % cmd)
+            logging.warning("No such command: {}".format(cmd))
             return False
 
         # allready present
         if cmd in self.commands:
-            logging.warning("Command %s allready enabled" % cmd)
+            logging.warning("Command {} allready enabled".format(cmd))
             return True
 
         name = name if name else cmd
@@ -146,7 +146,7 @@ class PyTIBot(irc.IRCClient, object):
         if add_to_config:
             self.config["Commands"][name] = cmd
             self.config.write()
-            logging.info("Added %s=%s to config" % (name, cmd))
+            logging.info("Added {}={} to config".format(name, cmd))
         return True
 
     def enable_trigger(self, trigger, add_to_config=False):
@@ -154,7 +154,7 @@ class PyTIBot(irc.IRCClient, object):
         __trigs_inv = dict([[v, k] for k, v in triggers.__trigs__.items()])
         # no such trigger
         if not hasattr(triggers, trigger):
-            logging.warning("No such trigger: %s" % trigger)
+            logging.warning("No such trigger: {}".format(trigger))
             return False
 
         # allready present
@@ -163,7 +163,7 @@ class PyTIBot(irc.IRCClient, object):
         for gen in self.triggers.values():
             enabled.append(gen.__name__)
         if trigger in enabled:
-            logging.warning("Trigger %s allready enabled" % trigger)
+            logging.warning("Trigger {} allready enabled".format(trigger))
             return True
 
         # add trigger
@@ -177,7 +177,7 @@ class PyTIBot(irc.IRCClient, object):
                 enabled = [enabled]
             enabled.append(trigger)
             self.config["Triggers"]["enabled"] = enabled
-            logging.info("Added %s to config" % trigger)
+            logging.info("Added {} to config".format(trigger))
         return True
 
     def auth(self):
@@ -189,7 +189,7 @@ class PyTIBot(irc.IRCClient, object):
         if not (service and command and name and pw):
             logging.warning("Can't auth, not all options are set")
             return
-        self.msg(service, "%s %s %s" % (command, name, pw))
+        self.msg(service, "{} {} {}".format(command, name, pw))
 
     def set_own_modes(self):
         """Set user modes of the bot itself"""
@@ -227,7 +227,7 @@ class PyTIBot(irc.IRCClient, object):
 
     def joined(self, channel):
         """Triggered when joining a channel"""
-        logging.info("Joined channel: %s" % channel)
+        logging.info("Joined channel: {}".format(channel))
         channel = channel.lower()
         if channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:
@@ -237,7 +237,7 @@ class PyTIBot(irc.IRCClient, object):
         """Triggered when leaving a channel"""
         channel = channel.lower()
         self.userlist.pop(channel)
-        logging.info("Left channel: %s" % channel)
+        logging.info("Left channel: {}".format(channel))
         channel = channel.lower()
         if channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:
@@ -265,7 +265,7 @@ class PyTIBot(irc.IRCClient, object):
             # twisted < 13.1
             pass
         msg = msg.strip()
-        logging.info("%s - %s : %s" % (user, channel, msg))
+        logging.info("{} - {} : {}".format(user, channel, msg))
 
         cmdmode = False
         # Commands
@@ -290,7 +290,7 @@ class PyTIBot(irc.IRCClient, object):
             if command in self.commands:
                 self.commands[command].send((args, user, userhost, channel))
             else:
-                logging.debug("No such command: %s" % command)
+                logging.debug("No such command: {}".format(command))
 
         # Triggers
         matches = [(re.search(re.compile(regex.replace("$NICKNAME",
@@ -348,11 +348,11 @@ class PyTIBot(irc.IRCClient, object):
         for iu in self.get_ignorelist():
             try:
                 if re.search(re.compile(iu, re.IGNORECASE), user):
-                    logging.info("ignoring %s" % user)
+                    logging.info("ignoring {}".format(user))
                     return True
             except:
                 if iu in user:
-                    logging.info("ignoring %s" % user)
+                    logging.info("ignoring {}".format(user))
                     return True
         return False
 
@@ -501,7 +501,7 @@ class PyTIBot(irc.IRCClient, object):
 
     def remove_user_from_cache(self, user):
         """Remove the info about user from get_auth and user_info cache"""
-        key = "(%s, %s)|{}" % (str(self), str(user))
+        key = "({}, {})|{}".format(str(self), str(user))
         if key in self.user_info.cache:
             del self.user_info.cache[key]
         if key in self.get_auth.cache:

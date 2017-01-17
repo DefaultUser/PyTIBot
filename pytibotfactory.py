@@ -44,7 +44,7 @@ class PyTIBotFactory(protocol.ClientFactory):
 
     def clientConnectionLost(self, connector, reason):
         """Triggered on"""
-        logging.error("connection lost (%s)" % reason)
+        logging.error("connection lost ({})".format(reason))
         if self.bot:
             for channel in self.bot.channelwatchers:
                 for watcher in self.bot.channelwatchers[channel]:
@@ -55,7 +55,7 @@ class PyTIBotFactory(protocol.ClientFactory):
             reactor.stop()
 
     def clientConnectionFailed(self, connector, reason):
-        logging.error("connection failed (%s)" % reason)
+        logging.error("connection failed ({})".format(reason))
         if self.bot:
             for channel in self.bot.channelwatchers:
                 for watcher in self.bot.channelwatchers[channel]:

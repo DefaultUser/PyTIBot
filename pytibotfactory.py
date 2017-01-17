@@ -23,13 +23,12 @@ from pytibot import PyTIBot
 
 class PyTIBotFactory(protocol.ClientFactory):
     """A factory for PyTIBot"""
-    autoreconnect = True
-    bot = None
     MAX_ATTEMPTS = 5
     RECONNECT_DELAY = 60
 
     def __init__(self, config):
         self.config = config
+        self.autoreconnect = True
         self.bot = None
         self.connection_attempts = 0
 

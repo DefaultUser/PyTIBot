@@ -58,7 +58,7 @@ hex_colors = ["#FFFFFF", "#000000", "#00007F", "#009300", "#FF0000",
               "#D2D2D2"]
 
 
-def colored(text, fgcolor, bgcolor=None, endtoken=False):
+def colored(text, fgcolor, bgcolor=None, endtoken=True):
     """
     \brief Colorize a string
     \param fgcolor Color name to be used as text color
@@ -108,7 +108,7 @@ def rainbow(text, colors=["red", "dark_yellow", "green", "cyan", "blue",
     return ret + _COLOR
 
 
-def underlined(text, endtoken=False):
+def underlined(text, endtoken=True):
     """
     \brief Return a underlined string
     \param endtoken end the underlined text
@@ -119,7 +119,7 @@ def underlined(text, endtoken=False):
     return _UNDERLINE + text
 
 
-def italic(text, endtoken=False):
+def italic(text, endtoken=True):
     """
     \brief Return a italic string
     \param endtoken end the italic text
@@ -130,7 +130,7 @@ def italic(text, endtoken=False):
     return _ITALIC + text
 
 
-def bold(text, endtoken=False):
+def bold(text, endtoken=True):
     """
     \brief Return a bold string
     \param endtoken end the bold text

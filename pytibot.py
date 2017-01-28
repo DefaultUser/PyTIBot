@@ -18,13 +18,16 @@
 
 import re
 from twisted.words.protocols import irc
-from twisted.internet import defer
+from twisted.internet import defer, reactor
+from twisted.internet import ssl
+from twisted.web.server import Site
 import logging
 import sys
 
 from lib import commands
 from lib.simpletrigger import simple_trigger
 from lib import triggers
+from lib.git_webhook import GitWebhookServer
 from util import decorators, log
 
 # WHOIS reply for AUTH name (NONSTANDARD REPLY!)
@@ -97,6 +100,9 @@ class PyTIBot(irc.IRCClient, object):
         # logging
         self.setup_logging()
 
+        # github webhook
+        self.setup_webhook()
+
     def setup_logging(self):
         if self.config["Logging"]:
             log_channels = self.config["Logging"].get("channels", [])
@@ -126,6 +132,26 @@ class PyTIBot(irc.IRCClient, object):
             self.channelwatchers[channel].append(watcher)
         else:
             self.channelwatchers[channel] = [watcher]
+
+    def setup_webhook(self):
+        # HTTP(s) server for github/gitlab webhooks
+        if (self.config["GitWebhook"] and
+                ("port" in self.config["GitWebhook"] or
+                 "sshport" in self.config["GitWebhook"])):
+            webhook_server = GitWebhookServer(self, self.config)
+            factory = Site(webhook_server)
+            # http
+            port = self.config["GitWebhook"].get("port", None)
+            if port:
+                reactor.listenTCP(port, factory)
+            # https
+            sslport = self.config["GitWebhook"].get("sslport", None)
+            privkey = self.config["GitWebhook"].get("privkey", None)
+            cert = self.config["GitWebhook"].get("certificate", None)
+            if sslport and privkey and cert:
+                sslContext = ssl.DefaultOpenSSLContextFactory(
+                    privkey, cert)
+                reactor.listenSSL(sslport, factory, sslContext)
 
     def enable_command(self, cmd, name, add_to_config=False):
         """Enable a command - returns True at success"""

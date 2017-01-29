@@ -106,6 +106,35 @@ class GitWebhookServer(Resource):
         self.bot.msg(self.channel, msg)
         self.commits_to_irc(data["commits"])
 
+    def on_github_issues(self, data):
+        action = data["action"]
+        payload = None
+        if action == "assigned" or action == "unassigned":
+            payload = data["issue"]["assignee"]["login"]
+        if action == "labeled" or action == "unlabeled":
+            payload = data["issue"]["label"]
+        if action == "milestoned":
+            payload = data["issue"]["milestone"]["title"]
+        if action == "opened":
+            action = colored(action, "red")
+        if action == "reopened":
+            action = colored(action, "red")
+        if action == "closed":
+            action = colored(action, "dark_green")
+        if not payload:
+            payload = data["issue"]["url"]
+        msg = ("[{repo_name}] {user} {action} Issue #{number} {title}: "
+               "{payload}".format(repo_name=colored(data["repository"]
+                                                    ["name"], "blue"),
+                                  user=colored(data["issue"]["sender"]
+                                               ["login"],
+                                               "cyan"),
+                                  action=action,
+                                  number=data["issue"]["number"],
+                                  title=data["issue"]["title"],
+                                  payload=payload))
+        self.bot.msg(self.channel, msg)
+
     def on_gitlab_push(self, data):
         msg = ("[{repo_name}] {pusher} pushed {num_commits} to "
                "{branch}".format(repo_name=colored(data["repository"]
@@ -117,3 +146,25 @@ class GitWebhookServer(Resource):
                                                 "green")))
         self.bot.msg(self.channel, msg)
         self.commits_to_irc(data["commits"])
+
+    def on_gitlab_issue(self, data):
+        attribs = data["object_attributes"]
+        action = attribs["action"]
+        if action == "open":
+            action = colored("opened", "red")
+        if action == "reopen":
+            action = colored("reopened", "red")
+        if action == "close":
+            action = colored("closed", "dark_green")
+        if action == "update":
+            action = "updated"
+        msg = ("[{repo_name}] {user} {action} Issue #{number} {title}"
+               "{url}".format(repo_name=colored(data["repository"]
+                                                    ["name"], "blue"),
+                              user=colored(data["user"]["name"],
+                                           "cyan"),
+                              action=action,
+                              number=attribs["iid"],
+                              title=attribs["title"],
+                              url=attribs["url"]))
+        self.bot.msg(self.channel, msg)

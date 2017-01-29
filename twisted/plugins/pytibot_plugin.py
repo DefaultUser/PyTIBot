@@ -75,7 +75,6 @@ class PyTIBotServiceMaker(object):
             sshPort = config.Manhole.get("sshport", None)
             if sshPort:
                 sshPort = str(sshPort)
-            print(telnetPort, sshPort)
             options = {'namespace': {'get_bot': ircbotfactory.get_bot},
                        'passwd': os.path.join(fs.adirs.user_config_dir,
                                               'manhole_cred'),

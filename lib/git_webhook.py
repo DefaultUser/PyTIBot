@@ -160,6 +160,13 @@ class GitWebhookServer(Resource):
             ref_type=data["ref_type"], ref=data["ref"])
         self.bot.msg(self.channel, msg)
 
+    def on_github_fork(self, data):
+        msg = "[{repo_name}] {user} created fork {url}".format(
+            repo_name=colored(data["repository"]["name"], "blue"),
+            user=colored(data["forkee"]["owner"]["login"], "cyan"),
+            url=data["forkee"]["html_url"])
+        self.bot.msg(self.channel, msg)
+
     def on_gitlab_push(self, data):
         msg = ("[{repo_name}] {pusher} pushed {num_commits} to "
                "{branch}".format(repo_name=colored(data["repository"]

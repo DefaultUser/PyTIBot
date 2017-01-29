@@ -39,6 +39,7 @@ class GitWebhookServer(Resource):
 
     def render_POST(self, request):
         body = request.content.read()
+        data = json.loads(body)
         service = None
         # GitHub
         if request.getHeader(b"X-GitHub-Event"):
@@ -49,7 +50,7 @@ class GitWebhookServer(Resource):
             service = "github"
         # Gitlab
         elif request.getHeader(b"X-Gitlab-Event"):
-            eventtype = body["object_kind"]
+            eventtype = data["object_kind"]
             sig = request.getHeader(b"X-Gitlab-Token")
             service = "gitlab"
         if sys.version_info.major == 3:
@@ -67,7 +68,6 @@ class GitWebhookServer(Resource):
                              "the given secret - ignoring request")
                 request.setResponseCode(200)
                 return b""
-        data = json.loads(body)
         if hasattr(self, "on_{}_{}".format(service, eventtype)):
             getattr(self, "on_{}_{}".format(service, eventtype))(data)
         else:
@@ -77,11 +77,21 @@ class GitWebhookServer(Resource):
         request.setResponseCode(200)
         return b""
 
-    def on_push(self, data):
+    def commits_to_irc(self, commits):
+        for i, commit in enumerate(commits):
+            if i == 3:
+                self.bot.msg(self.channel,
+                             "+{} more commits".format(len(commits-3)))
+                break
+            self.bot.msg(self.channel, "{author}: {message} ({url})".format(
+                author=colored(commit["author"]["name"], "cyan"),
+                message=commit["message"], url=commit["url"]))
+
+    def on_github_push(self, data):
         action = "pushed"
-        if data.get("deleted", False):
+        if data["deleted"]:
             action = colored("deleted", "red")
-        if data.get("forced", False):
+        if data["forced"]:
             action = colored("force pushed", "red")
         msg = ("[{repo_name}] {pusher} {action} {num_commits} to {branch}:"
                " {compare}".format(repo_name=colored(data["repository"]
@@ -94,17 +104,16 @@ class GitWebhookServer(Resource):
                                                   "green"),
                                    compare=data["compare"]))
         self.bot.msg(self.channel, msg)
-        for i, commit in enumerate(data["commits"]):
-            if i == 3:
-                self.bot.msg(self.channel,
-                             "+{} more commits".format(len(data["commits"]-3)))
-                break
-            self.bot.msg(self.channel, "{author}: {message} ({url})".format(
-                author=colored(commit["author"]["name"], "cyan"),
-                message=commit["message"], url=commit["url"]))
-
-    def on_github_push(self, data):
-        self.on_push(data)
+        self.commits_to_irc(data["commits"])
 
     def on_gitlab_push(self, data):
-        self.on_push(data)
+        msg = ("[{repo_name}] {pusher} pushed {num_commits} to "
+               "{branch}".format(repo_name=colored(data["repository"]
+                                                   ["name"], "blue"),
+                                 pusher=colored(data["user_name"],
+                                                "cyan"),
+                                 num_commits=len(data["commits"]),
+                                 branch=colored(data["ref"].split("/")[-1],
+                                                "green")))
+        self.bot.msg(self.channel, msg)
+        self.commits_to_irc(data["commits"])

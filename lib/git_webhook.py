@@ -146,6 +146,13 @@ class GitWebhookServer(Resource):
                                  title=data["issue"]["title"]))
         self.bot.msg(self.channel, msg)
 
+    def on_github_create(self, data):
+        msg = "[{repo_name}] {user} created {ref_type} {ref}".format(
+            repo_name=colored(data["repository"]["name"], "blue"),
+            user=colored(data["sender"]["login"], "cyan"),
+            ref_type=data["ref_type"], ref=data["ref"])
+        self.bot.msg(self.channel, msg)
+
     def on_gitlab_push(self, data):
         msg = ("[{repo_name}] {pusher} pushed {num_commits} to "
                "{branch}".format(repo_name=colored(data["repository"]

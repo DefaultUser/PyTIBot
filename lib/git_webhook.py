@@ -153,6 +153,13 @@ class GitWebhookServer(Resource):
             ref_type=data["ref_type"], ref=data["ref"])
         self.bot.msg(self.channel, msg)
 
+    def on_github_delete(self, data):
+        msg = "[{repo_name}] {user} deleted {ref_type} {ref}".format(
+            repo_name=colored(data["repository"]["name"], "blue"),
+            user=colored(data["sender"]["login"], "cyan"),
+            ref_type=data["ref_type"], ref=data["ref"])
+        self.bot.msg(self.channel, msg)
+
     def on_gitlab_push(self, data):
         msg = ("[{repo_name}] {pusher} pushed {num_commits} to "
                "{branch}".format(repo_name=colored(data["repository"]

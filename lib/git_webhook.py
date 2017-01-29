@@ -135,6 +135,17 @@ class GitWebhookServer(Resource):
                                   payload=payload))
         self.bot.msg(self.channel, msg)
 
+    def on_github_issue_comment(self, data):
+        msg = ("[{repo_name}] {user} {action} comment on Issue #{number}"
+               " {title}".format(repo_name=colored(data["repository"]["name"],
+                                                   "blue"),
+                                 user=colored(data["comment"]["user"]["login"],
+                                              "cyan"),
+                                 action=data["action"],
+                                 number=data["issue"]["number"],
+                                 title=data["issue"]["title"]))
+        self.bot.msg(self.channel, msg)
+
     def on_gitlab_push(self, data):
         msg = ("[{repo_name}] {pusher} pushed {num_commits} to "
                "{branch}".format(repo_name=colored(data["repository"]

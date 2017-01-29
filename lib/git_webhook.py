@@ -122,7 +122,7 @@ class GitWebhookServer(Resource):
         if action == "closed":
             action = colored(action, "dark_green")
         if not payload:
-            payload = data["issue"]["url"]
+            payload = data["issue"]["html_url"]
         msg = ("[{repo_name}] {user} {action} Issue #{number} {title}: "
                "{payload}".format(repo_name=colored(data["repository"]
                                                     ["name"], "blue"),

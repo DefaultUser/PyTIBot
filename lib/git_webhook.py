@@ -85,7 +85,8 @@ class GitWebhookServer(Resource):
                 break
             self.bot.msg(self.channel, "{author}: {message} ({url})".format(
                 author=colored(commit["author"]["name"], "cyan"),
-                message=commit["message"], url=commit["url"]))
+                message=commit["message"].split("\n")[0][:100],
+                url=commit["url"]))
 
     def on_github_push(self, data):
         action = "pushed"

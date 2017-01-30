@@ -168,6 +168,13 @@ class GitWebhookServer(Resource):
             url=data["forkee"]["html_url"])
         self.bot.msg(self.channel, msg)
 
+    def on_github_commit_comment(self, data):
+        msg = "[{repo_name}] {user} commented on commit {url}".format(
+            repo_name=colored(data["repository"]["name"], "blue"),
+            user=colored(data["comment"]["user"]["login"], "cyan"),
+            url=data["comment"]["html_url"])
+        self.bot.msg(self.channel, msg)
+
     def on_gitlab_push(self, data):
         msg = ("[{repo_name}] {pusher} pushed {num_commits} to "
                "{branch}".format(repo_name=colored(data["repository"]

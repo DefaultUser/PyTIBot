@@ -178,6 +178,12 @@ class GitWebhookServer(Resource):
             url=data["comment"]["html_url"])
         self.bot.msg(self.channel, msg)
 
+    def on_github_release(self, data):
+        msg = "[{repo_name}] New release {url}".format(
+            repo_name=colored(data["repository"]["name"], "blue"),
+            url=data["release"]["html_url"])
+        self.bot.msg(self.channel, msg)
+
     def on_gitlab_push(self, data):
         msg = ("[{repo_name}] {pusher} pushed {num_commits} to "
                "{branch}".format(repo_name=colored(data["repository"]

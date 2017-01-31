@@ -184,6 +184,71 @@ class GitWebhookServer(Resource):
             url=data["release"]["html_url"])
         self.bot.msg(self.channel, msg)
 
+    def on_github_pull_request(self, data):
+        action = data["action"]
+        payload = None
+        if action == "assigned" or action == "unassigned":
+            payload = data["pull_request"]["assignee"]["login"]
+        if action == "labeled" or action == "unlabeled":
+            payload = data["pull_request"]["label"]
+        if action == "milestoned":
+            payload = data["pull_request"]["milestone"]["title"]
+        if action == "review_requested":
+            action = "requested review for"
+            payload = data["requested_reviewer"]["login"]
+        if action == "review_request_removeded":
+            action = "removed review request for"
+            payload = data["requested_reviewer"]["login"]
+        if action == "opened":
+            action = colored(action, "dark_green")
+        if action == "reopened":
+            action = colored(action, "dark_green")
+        if action == "closed":
+            if data["pull_request"]["merged"]:
+                action = colored("merged", "green")
+            else:
+                action = colored(action, "red")
+        if not payload:
+            payload = data["pull_request"]["html_url"]
+        msg = ("[{repo_name}] {user} {action} Pull Request #{number} {title}"
+               " ({head} -> {base}): {payload}".format(
+                   repo_name=colored(data["repository"]["name"], "blue"),
+                   user=colored(data["pull_request"]["sender"]["login"],
+                                "cyan"),
+                   action=action,
+                   number=data["pull_request"]["number"],
+                   title=data["pull_request"]["title"],
+                   head=data["pull_request"]["head"]["ref"],
+                   base=data["pull_request"]["base"]["ref"],
+                   payload=payload))
+        self.bot.msg(self.channel, msg)
+
+    def on_github_pull_request_review(self, data):
+        msg = ("[{repo_name}] {user} reviewed Pull Request #{number} {title}"
+               " ({head} -> {base}): {url}".format(
+                   repo_name=colored(data["repository"]["name"], "blue"),
+                   user=colored(data["review"]["user"]["login"],
+                                "cyan"),
+                   number=data["pull_request"]["number"],
+                   title=data["pull_request"]["title"],
+                   head=data["pull_request"]["head"]["ref"],
+                   base=data["pull_request"]["base"]["ref"],
+                   url=data["review"]["html_url"]))
+        self.bot.msg(self.channel, msg)
+
+    def on_github_pull_request_review_comment(self, data):
+        msg = ("[{repo_name}] {user} commented on Pull Request #{number} "
+               "{title} ({head} -> {base}): {url}".format(
+                   repo_name=colored(data["repository"]["name"], "blue"),
+                   user=colored(data["comment"]["user"]["login"],
+                                "cyan"),
+                   number=data["pull_request"]["number"],
+                   title=data["pull_request"]["title"],
+                   head=data["pull_request"]["head"]["ref"],
+                   base=data["pull_request"]["base"]["ref"],
+                   url=data["comment"]["html_url"]))
+        self.bot.msg(self.channel, msg)
+
     def on_gitlab_push(self, data):
         msg = ("[{repo_name}] {pusher} pushed {num_commits} to "
                "{branch}".format(repo_name=colored(data["repository"]

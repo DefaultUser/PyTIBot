@@ -58,6 +58,7 @@ class PyTIBot(irc.IRCClient, object):
         self.commands = {}
         self.triggers = {}
         self.userlist = {}
+        self.webhook_port = None
         self.load_settings()
 
         self.simple_trigger = simple_trigger(self)
@@ -135,15 +136,13 @@ class PyTIBot(irc.IRCClient, object):
 
     def setup_webhook(self):
         # HTTP(s) server for github/gitlab webhooks
+        if self.webhook_port:
+            return
         if (self.config["GitWebhook"] and
                 ("port" in self.config["GitWebhook"] or
                  "sshport" in self.config["GitWebhook"])):
             webhook_server = GitWebhookServer(self, self.config)
             factory = Site(webhook_server)
-            # http
-            port = self.config["GitWebhook"].get("port", None)
-            if port:
-                reactor.listenTCP(port, factory)
             # https
             sslport = self.config["GitWebhook"].get("sslport", None)
             privkey = self.config["GitWebhook"].get("privkey", None)
@@ -151,7 +150,18 @@ class PyTIBot(irc.IRCClient, object):
             if sslport and privkey and cert:
                 sslContext = ssl.DefaultOpenSSLContextFactory(
                     privkey, cert)
-                reactor.listenSSL(sslport, factory, sslContext)
+                self.webhook_port = reactor.listenSSL(sslport, factory,
+                                                      sslContext)
+                return
+            # http
+            port = self.config["GitWebhook"].get("port", None)
+            if port:
+                self.webhook_port = reactor.listenTCP(port, factory)
+
+    def stop_webhook_server(self):
+        if self.webhook_port:
+            self.webhook_port.stopListening()
+            self.webhook_port = None
 
     def enable_command(self, cmd, name, add_to_config=False):
         """Enable a command - returns True at success"""
@@ -611,6 +621,7 @@ class PyTIBot(irc.IRCClient, object):
 
     def quit(self, message=''):
         self.factory.autoreconnect = False
+        self.stop_webhook_server()
         logging.info("Shutting down")
         for channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:

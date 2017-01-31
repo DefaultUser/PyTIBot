@@ -27,7 +27,6 @@ HTTPLogServer:
 
 GitWebhook:
   channel: "#mysuperchannel"
-  port: 4040
   sslport: 4041
   certificate: /path/to/cert.pem
   privkey: /path/to/privkey.pem

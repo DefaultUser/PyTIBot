@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from twisted.web.resource import Resource
+from twisted.internet import reactor
 import codecs
 import json
 import hmac
@@ -69,7 +70,9 @@ class GitWebhookServer(Resource):
                 request.setResponseCode(200)
                 return b""
         if hasattr(self, "on_{}_{}".format(service, eventtype)):
-            getattr(self, "on_{}_{}".format(service, eventtype))(data)
+            reactor.callLater(0, getattr(self, "on_{}_{}".format(service,
+                                                                 eventtype)),
+                              data)
         else:
             logging.warn("Event {} not implemented for service {}".format(
                 eventtype, service))

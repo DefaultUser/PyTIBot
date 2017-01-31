@@ -282,3 +282,31 @@ class GitWebhookServer(Resource):
                               title=attribs["title"],
                               url=attribs["url"]))
         self.bot.msg(self.channel, msg)
+
+    def on_gitlab_note(self, data):
+        attribs = data["object_attributes"]
+        noteable_type = attribs["noteable_type"]
+        if noteable_type == "Commit":
+            id = attribs["commit_id"]
+            title = data["commit"]["message"].split("\n")[0][:100]
+        elif noteable_type == "MergeRequest":
+            id = data["merge_request"]["iid"]
+            title = data["merge_request"]["title"]
+            noteable_type = "Merge Request"
+        elif noteable_type == "Issue":
+            id = data["issue"]["iid"]
+            title = data["issue"]["title"]
+        elif noteable_type == "Snippet":
+            id = data["snippet"]["id"]
+            title = data["snippet"]["title"]
+        else:
+            return
+        msg = ("[{repo_name}] {user} commented on {noteable_type} {number} "
+               "{title} {url}".format(
+                   repo_name=colored(data["repository"]["name"], "blue"),
+                   user=colored(data["user"]["name"], "cyan"),
+                   noteable_type=noteable_type,
+                   number=id,
+                   title=title,
+                   url=attribs["url"]))
+        self.bot.msg(self.channel, msg)

@@ -95,18 +95,18 @@ class GitWebhookServer(Resource):
         action = "pushed"
         if data["deleted"]:
             action = colored("deleted", "red")
-        if data["forced"]:
+        elif data["forced"]:
             action = colored("force pushed", "red")
-        msg = ("[{repo_name}] {pusher} {action} {num_commits} to {branch}:"
-               " {compare}".format(repo_name=colored(data["repository"]
-                                                     ["name"], "blue"),
-                                   pusher=colored(data["pusher"]["name"],
-                                                  "cyan"),
-                                   action=action,
-                                   num_commits=len(data["commits"]),
-                                   branch=colored(data["ref"].split("/")[-1],
-                                                  "green"),
-                                   compare=data["compare"]))
+        msg = ("[{repo_name}] {pusher} {action} {num_commits} to {branch}: "
+               "{compare}".format(repo_name=colored(data["repository"]
+                                                    ["name"], "blue"),
+                                  pusher=colored(data["pusher"]["name"],
+                                                 "cyan"),
+                                  action=action,
+                                  num_commits=len(data["commits"]),
+                                  branch=colored(data["ref"].split("/")[-1],
+                                                 "green"),
+                                  compare=data["compare"]))
         self.bot.msg(self.channel, msg)
         self.commits_to_irc(data["commits"])
 
@@ -115,15 +115,15 @@ class GitWebhookServer(Resource):
         payload = None
         if action == "assigned" or action == "unassigned":
             payload = data["issue"]["assignee"]["login"]
-        if action == "labeled" or action == "unlabeled":
+        elif action == "labeled" or action == "unlabeled":
             payload = data["issue"]["label"]
-        if action == "milestoned":
+        elif action == "milestoned":
             payload = data["issue"]["milestone"]["title"]
-        if action == "opened":
+        elif action == "opened":
             action = colored(action, "red")
-        if action == "reopened":
+        elif action == "reopened":
             action = colored(action, "red")
-        if action == "closed":
+        elif action == "closed":
             action = colored(action, "dark_green")
         if not payload:
             payload = data["issue"]["html_url"]
@@ -131,8 +131,7 @@ class GitWebhookServer(Resource):
                "{payload}".format(repo_name=colored(data["repository"]
                                                     ["name"], "blue"),
                                   user=colored(data["issue"]["sender"]
-                                               ["login"],
-                                               "cyan"),
+                                               ["login"], "cyan"),
                                   action=action,
                                   number=data["issue"]["number"],
                                   title=data["issue"]["title"],
@@ -140,14 +139,14 @@ class GitWebhookServer(Resource):
         self.bot.msg(self.channel, msg)
 
     def on_github_issue_comment(self, data):
-        msg = ("[{repo_name}] {user} {action} comment on Issue #{number}"
-               " {title}".format(repo_name=colored(data["repository"]["name"],
-                                                   "blue"),
-                                 user=colored(data["comment"]["user"]["login"],
-                                              "cyan"),
-                                 action=data["action"],
-                                 number=data["issue"]["number"],
-                                 title=data["issue"]["title"]))
+        msg = ("[{repo_name}] {user} {action} comment on Issue #{number} "
+               "{title}".format(repo_name=colored(data["repository"]["name"],
+                                                  "blue"),
+                                user=colored(data["comment"]["user"]["login"],
+                                             "cyan"),
+                                action=data["action"],
+                                number=data["issue"]["number"],
+                                title=data["issue"]["title"]))
         self.bot.msg(self.channel, msg)
 
     def on_github_create(self, data):
@@ -189,29 +188,29 @@ class GitWebhookServer(Resource):
         payload = None
         if action == "assigned" or action == "unassigned":
             payload = data["pull_request"]["assignee"]["login"]
-        if action == "labeled" or action == "unlabeled":
+        elif action == "labeled" or action == "unlabeled":
             payload = data["pull_request"]["label"]
-        if action == "milestoned":
+        elif action == "milestoned":
             payload = data["pull_request"]["milestone"]["title"]
-        if action == "review_requested":
+        elif action == "review_requested":
             action = "requested review for"
             payload = data["requested_reviewer"]["login"]
-        if action == "review_request_removeded":
+        elif action == "review_request_removeded":
             action = "removed review request for"
             payload = data["requested_reviewer"]["login"]
-        if action == "opened":
+        elif action == "opened":
             action = colored(action, "dark_green")
-        if action == "reopened":
+        elif action == "reopened":
             action = colored(action, "dark_green")
-        if action == "closed":
+        elif action == "closed":
             if data["pull_request"]["merged"]:
                 action = colored("merged", "green")
             else:
                 action = colored(action, "red")
         if not payload:
             payload = data["pull_request"]["html_url"]
-        msg = ("[{repo_name}] {user} {action} Pull Request #{number} {title}"
-               " ({head} -> {base}): {payload}".format(
+        msg = ("[{repo_name}] {user} {action} Pull Request #{number} {title} "
+               "({head} -> {base}): {payload}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
                    user=colored(data["pull_request"]["sender"]["login"],
                                 "cyan"),
@@ -224,11 +223,10 @@ class GitWebhookServer(Resource):
         self.bot.msg(self.channel, msg)
 
     def on_github_pull_request_review(self, data):
-        msg = ("[{repo_name}] {user} reviewed Pull Request #{number} {title}"
-               " ({head} -> {base}): {url}".format(
+        msg = ("[{repo_name}] {user} reviewed Pull Request #{number} {title} "
+               "({head} -> {base}): {url}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
-                   user=colored(data["review"]["user"]["login"],
-                                "cyan"),
+                   user=colored(data["review"]["user"]["login"], "cyan"),
                    number=data["pull_request"]["number"],
                    title=data["pull_request"]["title"],
                    head=data["pull_request"]["head"]["ref"],
@@ -240,8 +238,7 @@ class GitWebhookServer(Resource):
         msg = ("[{repo_name}] {user} commented on Pull Request #{number} "
                "{title} ({head} -> {base}): {url}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
-                   user=colored(data["comment"]["user"]["login"],
-                                "cyan"),
+                   user=colored(data["comment"]["user"]["login"], "cyan"),
                    number=data["pull_request"]["number"],
                    title=data["pull_request"]["title"],
                    head=data["pull_request"]["head"]["ref"],
@@ -253,8 +250,7 @@ class GitWebhookServer(Resource):
         msg = ("[{repo_name}] {pusher} pushed {num_commits} to "
                "{branch}".format(repo_name=colored(data["repository"]
                                                    ["name"], "blue"),
-                                 pusher=colored(data["user_name"],
-                                                "cyan"),
+                                 pusher=colored(data["user_name"], "cyan"),
                                  num_commits=len(data["commits"]),
                                  branch=colored(data["ref"].split("/")[-1],
                                                 "green")))
@@ -266,17 +262,16 @@ class GitWebhookServer(Resource):
         action = attribs["action"]
         if action == "open":
             action = colored("opened", "red")
-        if action == "reopen":
+        elif action == "reopen":
             action = colored("reopened", "red")
-        if action == "close":
+        elif action == "close":
             action = colored("closed", "dark_green")
-        if action == "update":
+        elif action == "update":
             action = "updated"
-        msg = ("[{repo_name}] {user} {action} Issue #{number} {title}"
+        msg = ("[{repo_name}] {user} {action} Issue #{number} {title} "
                "{url}".format(repo_name=colored(data["repository"]
                                                     ["name"], "blue"),
-                              user=colored(data["user"]["name"],
-                                           "cyan"),
+                              user=colored(data["user"]["name"], "cyan"),
                               action=action,
                               number=attribs["iid"],
                               title=attribs["title"],

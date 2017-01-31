@@ -305,3 +305,26 @@ class GitWebhookServer(Resource):
                    title=title,
                    url=attribs["url"]))
         self.bot.msg(self.channel, msg)
+
+    def on_gitlab_merge_request(self, data):
+        attribs = data["object_attributes"]
+        action = attribs["action"]
+        if action == "open":
+            action = colored("opened", "dark_green")
+        elif action == "reopen":
+            action = colored("reopened", "dark_green")
+        elif action == "close":
+            action = colored("closed", "red")
+        elif action == "update":
+            action = "updated"
+        msg = ("[{repo_name}] {user} {action} Merge Request #{number} "
+               "{title} ({source} -> {target}): {url}".format(
+                   repo_name=colored(data["repository"]["name"], "blue"),
+                   user=colored(data["user"]["name"], "cyan"),
+                   action=action,
+                   number=attribs["iid"],
+                   title=attribs["title"],
+                   source=attribs["source_branch"],
+                   target=attribs["target_branch"],
+                   url=attribs["url"]))
+        self.bot.msg(self.channel, msg)

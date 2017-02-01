@@ -141,14 +141,13 @@ class GitWebhookServer(Resource):
 
     def on_github_issue_comment(self, data):
         msg = ("[{repo_name}] {user} {action} comment on Issue #{number} "
-               "{title}".format(repo_name=colored(data["repository"]["name"],
-                                                  "blue"),
-                                user=colored(data["comment"]["user"]["login"],
-                                             "cyan"),
-                                action=data["action"],
-                                number=colored(str(data["issue"]["number"]),
-                                               "dark_yellow"),
-                                title=data["issue"]["title"]))
+               "{title} {url}".format(
+                   repo_name=colored(data["repository"]["name"], "blue"),
+                   user=colored(data["comment"]["user"]["login"], "cyan"),
+                   action=data["action"],
+                   number=colored(str(data["issue"]["number"]), "dark_yellow"),
+                   title=data["issue"]["title"],
+                   url=data["issue"]["html_url"]))
         self.bot.msg(self.channel, msg)
 
     def on_github_create(self, data):

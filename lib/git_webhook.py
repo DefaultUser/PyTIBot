@@ -133,7 +133,7 @@ class GitWebhookServer(Resource):
                                   user=colored(data["sender"]["login"],
                                                "cyan"),
                                   action=action,
-                                  number=colored(data["issue"]["number"],
+                                  number=colored(str(data["issue"]["number"]),
                                                  "dark_yellow"),
                                   title=data["issue"]["title"],
                                   payload=payload))

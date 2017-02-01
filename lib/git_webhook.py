@@ -146,7 +146,7 @@ class GitWebhookServer(Resource):
                                 user=colored(data["comment"]["user"]["login"],
                                              "cyan"),
                                 action=data["action"],
-                                number=colored(data["issue"]["number"],
+                                number=colored(str(data["issue"]["number"]),
                                                "dark_yellow"),
                                 title=data["issue"]["title"]))
         self.bot.msg(self.channel, msg)
@@ -219,7 +219,7 @@ class GitWebhookServer(Resource):
                    user=colored(data["pull_request"]["sender"]["login"],
                                 "cyan"),
                    action=action,
-                   number=colored(data["pull_request"]["number"],
+                   number=colored(str(data["pull_request"]["number"]),
                                   "dark_yellow"),
                    title=data["pull_request"]["title"],
                    head=colored(data["pull_request"]["head"]["ref"],
@@ -234,7 +234,7 @@ class GitWebhookServer(Resource):
                "({head} -> {base}): {url}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
                    user=colored(data["review"]["user"]["login"], "cyan"),
-                   number=colored(data["pull_request"]["number"],
+                   number=colored(str(data["pull_request"]["number"]),
                                   "dark_yellow"),
                    title=data["pull_request"]["title"],
                    head=colored(data["pull_request"]["head"]["ref"],
@@ -249,7 +249,7 @@ class GitWebhookServer(Resource):
                "{title} ({head} -> {base}): {url}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
                    user=colored(data["comment"]["user"]["login"], "cyan"),
-                   number=colored(data["pull_request"]["number"],
+                   number=colored(str(data["pull_request"]["number"]),
                                   "dark_yellow"),
                    title=data["pull_request"]["title"],
                    head=colored(data["pull_request"]["head"]["ref"],
@@ -286,7 +286,8 @@ class GitWebhookServer(Resource):
                                                     ["name"], "blue"),
                               user=colored(data["user"]["name"], "cyan"),
                               action=action,
-                              number=colored(attribs["iid"], "dark_yellow"),
+                              number=colored(str(attribs["iid"]),
+                                             "dark_yellow"),
                               title=attribs["title"],
                               url=attribs["url"]))
         self.bot.msg(self.channel, msg)
@@ -314,7 +315,7 @@ class GitWebhookServer(Resource):
                    repo_name=colored(data["repository"]["name"], "blue"),
                    user=colored(data["user"]["name"], "cyan"),
                    noteable_type=noteable_type,
-                   number=colored(id, "dark_yellow"),
+                   number=colored(str(id), "dark_yellow"),
                    title=title,
                    url=attribs["url"]))
         self.bot.msg(self.channel, msg)
@@ -335,7 +336,7 @@ class GitWebhookServer(Resource):
                    repo_name=colored(data["repository"]["name"], "blue"),
                    user=colored(data["user"]["name"], "cyan"),
                    action=action,
-                   number=colored(attribs["iid"], "dark_yellow"),
+                   number=colored(str(attribs["iid"]), "dark_yellow"),
                    title=attribs["title"],
                    source=colored(attribs["source_branch"], "dark_blue"),
                    target=colored(attribs["target_branch"], "dark_red"),

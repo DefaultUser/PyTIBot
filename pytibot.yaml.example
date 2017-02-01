@@ -30,6 +30,8 @@ GitWebhook:
   sslport: 4041
   certificate: /path/to/cert.pem
   privkey: /path/to/privkey.pem
+  github_secret: SECRETKEY
+  gitlab_secret: SECRETKEY
 
 Manhole:
   telnetPort: 9999

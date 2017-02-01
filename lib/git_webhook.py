@@ -216,7 +216,7 @@ class GitWebhookServer(Resource):
         msg = ("[{repo_name}] {user} {action} Pull Request #{number} {title} "
                "({head} -> {base}): {payload}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
-                   user=colored(data["pull_request"]["sender"]["login"],
+                   user=colored(data["pull_request"]["user"]["login"],
                                 "cyan"),
                    action=action,
                    number=colored(str(data["pull_request"]["number"]),

@@ -104,7 +104,7 @@ class GitWebhookServer(Resource):
                                                  "cyan"),
                                   action=action,
                                   num_commits=len(data["commits"]),
-                                  branch=colored(data["ref"].split("/")[-1],
+                                  branch=colored(data["ref"].split("/", 2)[-1],
                                                  "green"),
                                   compare=data["compare"]))
         self.bot.msg(self.channel, msg)
@@ -264,7 +264,7 @@ class GitWebhookServer(Resource):
                                                    ["name"], "blue"),
                                  pusher=colored(data["user_name"], "cyan"),
                                  num_commits=len(data["commits"]),
-                                 branch=colored(data["ref"].split("/")[-1],
+                                 branch=colored(data["ref"].split("/", 2)[-1],
                                                 "green")))
         self.bot.msg(self.channel, msg)
         self.commits_to_irc(data["commits"])

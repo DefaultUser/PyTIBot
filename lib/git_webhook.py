@@ -97,16 +97,14 @@ class GitWebhookServer(Resource):
             action = colored("deleted", "red")
         elif data["forced"]:
             action = colored("force pushed", "red")
-        msg = ("[{repo_name}] {pusher} {action} {num_commits} to {branch}: "
-               "{compare}".format(repo_name=colored(data["repository"]
-                                                    ["name"], "blue"),
-                                  pusher=colored(data["pusher"]["name"],
-                                                 "cyan"),
-                                  action=action,
-                                  num_commits=len(data["commits"]),
-                                  branch=colored(data["ref"].split("/", 2)[-1],
-                                                 "green"),
-                                  compare=data["compare"]))
+        msg = ("[{repo_name}] {pusher} {action} {num_commits} commit(s) to "
+               "{branch}: {compare}".format(
+                   repo_name=colored(data["repository"]["name"], "blue"),
+                   pusher=colored(data["pusher"]["name"], "cyan"),
+                   action=action,
+                   num_commits=len(data["commits"]),
+                   branch=colored(data["ref"].split("/", 2)[-1], "green"),
+                   compare=data["compare"]))
         self.bot.msg(self.channel, msg)
         self.commits_to_irc(data["commits"])
 
@@ -259,7 +257,7 @@ class GitWebhookServer(Resource):
         self.bot.msg(self.channel, msg)
 
     def on_gitlab_push(self, data):
-        msg = ("[{repo_name}] {pusher} pushed {num_commits} to "
+        msg = ("[{repo_name}] {pusher} pushed {num_commits} commit(s) to "
                "{branch}".format(repo_name=colored(data["repository"]
                                                    ["name"], "blue"),
                                  pusher=colored(data["user_name"], "cyan"),

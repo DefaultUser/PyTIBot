@@ -537,7 +537,7 @@ class PyTIBot(irc.IRCClient, object):
 
     def remove_user_from_cache(self, user):
         """Remove the info about user from get_auth and user_info cache"""
-        key = "({}, {})|{}".format(str(self), str(user))
+        key = "({}, {})|{}".format(str(self), str(user), {})
         if key in self.user_info.cache:
             del self.user_info.cache[key]
         if key in self.get_auth.cache:

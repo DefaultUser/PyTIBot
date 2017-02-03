@@ -87,7 +87,7 @@ class GitWebhookServer(Resource):
                              "+{} more commits".format(len(commits-3)))
                 break
             self.bot.msg(self.channel, "{author}: {message} ({url})".format(
-                author=colored(commit["author"]["name"], "cyan"),
+                author=colored(commit["author"]["name"], "dark_cyan"),
                 message=commit["message"].split("\n")[0][:100],
                 url=commit["url"]))
 
@@ -100,10 +100,10 @@ class GitWebhookServer(Resource):
         msg = ("[{repo_name}] {pusher} {action} {num_commits} commit(s) to "
                "{branch}: {compare}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
-                   pusher=colored(data["pusher"]["name"], "cyan"),
+                   pusher=colored(data["pusher"]["name"], "dark_cyan"),
                    action=action,
                    num_commits=len(data["commits"]),
-                   branch=colored(data["ref"].split("/", 2)[-1], "green"),
+                   branch=colored(data["ref"].split("/", 2)[-1], "dark_green"),
                    compare=data["compare"]))
         self.bot.msg(self.channel, msg)
         self.commits_to_irc(data["commits"])
@@ -129,7 +129,7 @@ class GitWebhookServer(Resource):
                "{payload}".format(repo_name=colored(data["repository"]
                                                     ["name"], "blue"),
                                   user=colored(data["sender"]["login"],
-                                               "cyan"),
+                                               "dark_cyan"),
                                   action=action,
                                   number=colored(str(data["issue"]["number"]),
                                                  "dark_yellow"),
@@ -141,7 +141,7 @@ class GitWebhookServer(Resource):
         msg = ("[{repo_name}] {user} {action} comment on Issue #{number} "
                "{title} {url}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
-                   user=colored(data["comment"]["user"]["login"], "cyan"),
+                   user=colored(data["comment"]["user"]["login"], "dark_cyan"),
                    action=data["action"],
                    number=colored(str(data["issue"]["number"]), "dark_yellow"),
                    title=data["issue"]["title"],
@@ -151,7 +151,7 @@ class GitWebhookServer(Resource):
     def on_github_create(self, data):
         msg = "[{repo_name}] {user} created {ref_type} {ref}".format(
             repo_name=colored(data["repository"]["name"], "blue"),
-            user=colored(data["sender"]["login"], "cyan"),
+            user=colored(data["sender"]["login"], "dark_cyan"),
             ref_type=data["ref_type"],
             ref=colored(data["ref"], "dark_magenta"))
         self.bot.msg(self.channel, msg)
@@ -159,7 +159,7 @@ class GitWebhookServer(Resource):
     def on_github_delete(self, data):
         msg = "[{repo_name}] {user} deleted {ref_type} {ref}".format(
             repo_name=colored(data["repository"]["name"], "blue"),
-            user=colored(data["sender"]["login"], "cyan"),
+            user=colored(data["sender"]["login"], "dark_cyan"),
             ref_type=data["ref_type"],
             ref=colored(data["ref"], "dark_magenta"))
         self.bot.msg(self.channel, msg)
@@ -167,14 +167,14 @@ class GitWebhookServer(Resource):
     def on_github_fork(self, data):
         msg = "[{repo_name}] {user} created fork {url}".format(
             repo_name=colored(data["repository"]["name"], "blue"),
-            user=colored(data["forkee"]["owner"]["login"], "cyan"),
+            user=colored(data["forkee"]["owner"]["login"], "dark_cyan"),
             url=data["forkee"]["html_url"])
         self.bot.msg(self.channel, msg)
 
     def on_github_commit_comment(self, data):
         msg = "[{repo_name}] {user} commented on commit {url}".format(
             repo_name=colored(data["repository"]["name"], "blue"),
-            user=colored(data["comment"]["user"]["login"], "cyan"),
+            user=colored(data["comment"]["user"]["login"], "dark_cyan"),
             url=data["comment"]["html_url"])
         self.bot.msg(self.channel, msg)
 
@@ -205,7 +205,7 @@ class GitWebhookServer(Resource):
             action = colored(action, "dark_green")
         elif action == "closed":
             if data["pull_request"]["merged"]:
-                action = colored("merged", "green")
+                action = colored("merged", "dark_green")
             else:
                 action = colored(action, "red")
         if not payload:
@@ -214,7 +214,7 @@ class GitWebhookServer(Resource):
                "({head} -> {base}): {payload}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
                    user=colored(data["pull_request"]["user"]["login"],
-                                "cyan"),
+                                "dark_cyan"),
                    action=action,
                    number=colored(str(data["pull_request"]["number"]),
                                   "dark_yellow"),
@@ -230,7 +230,7 @@ class GitWebhookServer(Resource):
         msg = ("[{repo_name}] {user} reviewed Pull Request #{number} {title} "
                "({head} -> {base}): {url}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
-                   user=colored(data["review"]["user"]["login"], "cyan"),
+                   user=colored(data["review"]["user"]["login"], "dark_cyan"),
                    number=colored(str(data["pull_request"]["number"]),
                                   "dark_yellow"),
                    title=data["pull_request"]["title"],
@@ -245,7 +245,7 @@ class GitWebhookServer(Resource):
         msg = ("[{repo_name}] {user} commented on Pull Request #{number} "
                "{title} ({head} -> {base}): {url}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
-                   user=colored(data["comment"]["user"]["login"], "cyan"),
+                   user=colored(data["comment"]["user"]["login"], "dark_cyan"),
                    number=colored(str(data["pull_request"]["number"]),
                                   "dark_yellow"),
                    title=data["pull_request"]["title"],
@@ -260,10 +260,11 @@ class GitWebhookServer(Resource):
         msg = ("[{repo_name}] {pusher} pushed {num_commits} commit(s) to "
                "{branch}".format(repo_name=colored(data["repository"]
                                                    ["name"], "blue"),
-                                 pusher=colored(data["user_name"], "cyan"),
+                                 pusher=colored(data["user_name"],
+                                                "dark_cyan"),
                                  num_commits=len(data["commits"]),
                                  branch=colored(data["ref"].split("/", 2)[-1],
-                                                "green")))
+                                                "dark_green")))
         self.bot.msg(self.channel, msg)
         self.commits_to_irc(data["commits"])
 
@@ -281,7 +282,7 @@ class GitWebhookServer(Resource):
         msg = ("[{repo_name}] {user} {action} Issue #{number} {title} "
                "{url}".format(repo_name=colored(data["repository"]
                                                     ["name"], "blue"),
-                              user=colored(data["user"]["name"], "cyan"),
+                              user=colored(data["user"]["name"], "dark_cyan"),
                               action=action,
                               number=colored(str(attribs["iid"]),
                                              "dark_yellow"),
@@ -310,7 +311,7 @@ class GitWebhookServer(Resource):
         msg = ("[{repo_name}] {user} commented on {noteable_type} {number} "
                "{title} {url}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
-                   user=colored(data["user"]["name"], "cyan"),
+                   user=colored(data["user"]["name"], "dark_cyan"),
                    noteable_type=noteable_type,
                    number=colored(str(id), "dark_yellow"),
                    title=title,
@@ -331,7 +332,7 @@ class GitWebhookServer(Resource):
         msg = ("[{repo_name}] {user} {action} Merge Request #{number} "
                "{title} ({source} -> {target}): {url}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
-                   user=colored(data["user"]["name"], "cyan"),
+                   user=colored(data["user"]["name"], "dark_cyan"),
                    action=action,
                    number=colored(str(attribs["iid"]), "dark_yellow"),
                    title=attribs["title"],

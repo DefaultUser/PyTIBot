@@ -15,7 +15,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from twisted.web.resource import Resource
-from twisted.internet import reactor
+from twisted.internet import reactor, defer
+import treq
 import codecs
 import json
 import hmac
@@ -24,6 +25,20 @@ import logging
 import sys
 
 from util.formatting import colored
+
+
+@defer.inlineCallbacks
+def shorten_github_url(url):
+    """
+    Shorten a github url using git.io - if it fails, return the original url
+    """
+    try:
+        response = yield treq.post("https://git.io", data={"url": url},
+                                   timeout=5)
+    except Exception as e:
+        logging.warn(e)
+        defer.returnValue(url)
+    defer.returnValue(response.headers.getRawHeaders("Location", [url])[0])
 
 
 class GitWebhookServer(Resource):
@@ -80,23 +95,30 @@ class GitWebhookServer(Resource):
         request.setResponseCode(200)
         return b""
 
-    def commits_to_irc(self, commits):
+    @defer.inlineCallbacks
+    def commits_to_irc(self, commits, github=False):
         for i, commit in enumerate(commits):
             if i == 3:
                 self.bot.msg(self.channel,
                              "+{} more commits".format(len(commits-3)))
                 break
+            if github:
+                url = yield shorten_github_url(commit["url"])
+            else:
+                url = commit["url"]
             self.bot.msg(self.channel, "{author}: {message} ({url})".format(
                 author=colored(commit["author"]["name"], "dark_cyan"),
                 message=commit["message"].split("\n")[0][:100],
-                url=commit["url"]))
+                url=url))
 
+    @defer.inlineCallbacks
     def on_github_push(self, data):
         action = "pushed"
         if data["deleted"]:
             action = colored("deleted", "red")
         elif data["forced"]:
             action = colored("force pushed", "red")
+        url = yield shorten_github_url(data["compare"])
         msg = ("[{repo_name}] {pusher} {action} {num_commits} commit(s) to "
                "{branch}: {compare}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
@@ -104,10 +126,11 @@ class GitWebhookServer(Resource):
                    action=action,
                    num_commits=len(data["commits"]),
                    branch=colored(data["ref"].split("/", 2)[-1], "dark_green"),
-                   compare=data["compare"]))
+                   compare=url))
         self.bot.msg(self.channel, msg)
-        self.commits_to_irc(data["commits"])
+        self.commits_to_irc(data["commits"], github=True)
 
+    @defer.inlineCallbacks
     def on_github_issues(self, data):
         action = data["action"]
         payload = None
@@ -124,7 +147,7 @@ class GitWebhookServer(Resource):
         elif action == "closed":
             action = colored(action, "dark_green")
         if not payload:
-            payload = data["issue"]["html_url"]
+            payload = yield shorten_github_url(data["issue"]["html_url"])
         msg = ("[{repo_name}] {user} {action} Issue #{number} {title}: "
                "{payload}".format(repo_name=colored(data["repository"]
                                                     ["name"], "blue"),
@@ -137,7 +160,9 @@ class GitWebhookServer(Resource):
                                   payload=payload))
         self.bot.msg(self.channel, msg)
 
+    @defer.inlineCallbacks
     def on_github_issue_comment(self, data):
+        url = yield shorten_github_url(data["issue"]["html_url"])
         msg = ("[{repo_name}] {user} {action} comment on Issue #{number} "
                "{title} {url}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
@@ -145,7 +170,7 @@ class GitWebhookServer(Resource):
                    action=data["action"],
                    number=colored(str(data["issue"]["number"]), "dark_yellow"),
                    title=data["issue"]["title"],
-                   url=data["issue"]["html_url"]))
+                   url=url))
         self.bot.msg(self.channel, msg)
 
     def on_github_create(self, data):
@@ -164,26 +189,33 @@ class GitWebhookServer(Resource):
             ref=colored(data["ref"], "dark_magenta"))
         self.bot.msg(self.channel, msg)
 
+    @defer.inlineCallbacks
     def on_github_fork(self, data):
+        url = yield shorten_github_url(data["forkee"]["html_url"])
         msg = "[{repo_name}] {user} created fork {url}".format(
             repo_name=colored(data["repository"]["name"], "blue"),
             user=colored(data["forkee"]["owner"]["login"], "dark_cyan"),
-            url=data["forkee"]["html_url"])
+            url=url)
         self.bot.msg(self.channel, msg)
 
+    @defer.inlineCallbacks
     def on_github_commit_comment(self, data):
+        url = yield shorten_github_url(data["comment"]["html_url"])
         msg = "[{repo_name}] {user} commented on commit {url}".format(
             repo_name=colored(data["repository"]["name"], "blue"),
             user=colored(data["comment"]["user"]["login"], "dark_cyan"),
-            url=data["comment"]["html_url"])
+            url=url)
         self.bot.msg(self.channel, msg)
 
+    @defer.inlineCallbacks
     def on_github_release(self, data):
+        url = yield shorten_github_url(data["release"]["html_url"])
         msg = "[{repo_name}] New release {url}".format(
             repo_name=colored(data["repository"]["name"], "blue"),
-            url=data["release"]["html_url"])
+            url=url)
         self.bot.msg(self.channel, msg)
 
+    @defer.inlineCallbacks
     def on_github_pull_request(self, data):
         action = data["action"]
         payload = None
@@ -209,7 +241,8 @@ class GitWebhookServer(Resource):
             else:
                 action = colored(action, "red")
         if not payload:
-            payload = data["pull_request"]["html_url"]
+            payload = yield shorten_github_url(
+                data["pull_request"]["html_url"])
         msg = ("[{repo_name}] {user} {action} Pull Request #{number} {title} "
                "({head} -> {base}): {payload}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
@@ -226,7 +259,9 @@ class GitWebhookServer(Resource):
                    payload=payload))
         self.bot.msg(self.channel, msg)
 
+    @defer.inlineCallbacks
     def on_github_pull_request_review(self, data):
+        url = yield shorten_github_url(data["review"]["html_url"])
         msg = ("[{repo_name}] {user} reviewed Pull Request #{number} {title} "
                "({head} -> {base}): {url}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
@@ -238,10 +273,12 @@ class GitWebhookServer(Resource):
                                 "dark_blue"),
                    base=colored(data["pull_request"]["base"]["ref"],
                                 "dark_red"),
-                   url=data["review"]["html_url"]))
+                   url=url))
         self.bot.msg(self.channel, msg)
 
+    @defer.inlineCallbacks
     def on_github_pull_request_review_comment(self, data):
+        url = yield shorten_github_url(data["comment"]["html_url"])
         msg = ("[{repo_name}] {user} commented on Pull Request #{number} "
                "{title} ({head} -> {base}): {url}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
@@ -253,7 +290,7 @@ class GitWebhookServer(Resource):
                                 "dark_blue"),
                    base=colored(data["pull_request"]["base"]["ref"],
                                 "dark_red"),
-                   url=data["comment"]["html_url"]))
+                   url=url))
         self.bot.msg(self.channel, msg)
 
     def on_gitlab_push(self, data):

@@ -162,7 +162,7 @@ class GitWebhookServer(Resource):
 
     @defer.inlineCallbacks
     def on_github_issue_comment(self, data):
-        url = yield shorten_github_url(data["issue"]["html_url"])
+        url = yield shorten_github_url(data["comment"]["html_url"])
         msg = ("[{repo_name}] {user} {action} comment on Issue #{number} "
                "{title} {url}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),

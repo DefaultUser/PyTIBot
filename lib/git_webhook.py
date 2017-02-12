@@ -100,7 +100,7 @@ class GitWebhookServer(Resource):
         for i, commit in enumerate(commits):
             if i == 3:
                 self.bot.msg(self.channel,
-                             "+{} more commits".format(len(commits-3)))
+                             "+{} more commits".format(len(commits)-3))
                 break
             if github:
                 url = yield shorten_github_url(commit["url"])

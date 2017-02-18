@@ -219,6 +219,7 @@ class GitWebhookServer(Resource):
     def on_github_pull_request(self, data):
         action = data["action"]
         payload = None
+        user = data["pull_request"]["user"]["login"]
         if action == "assigned" or action == "unassigned":
             payload = data["pull_request"]["assignee"]["login"]
         elif action == "labeled" or action == "unlabeled":
@@ -238,6 +239,7 @@ class GitWebhookServer(Resource):
         elif action == "closed":
             if data["pull_request"]["merged"]:
                 action = colored("merged", "dark_green")
+                user = data["pull_request"]["merged_by"]["login"]
             else:
                 action = colored(action, "red")
         if not payload:
@@ -246,8 +248,7 @@ class GitWebhookServer(Resource):
         msg = ("[{repo_name}] {user} {action} Pull Request #{number} {title} "
                "({head} -> {base}): {payload}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
-                   user=colored(data["pull_request"]["user"]["login"],
-                                "dark_cyan"),
+                   user=colored(user, "dark_cyan"),
                    action=action,
                    number=colored(str(data["pull_request"]["number"]),
                                   "dark_yellow"),

@@ -242,6 +242,7 @@ class GitWebhookServer(Resource):
                 user = data["pull_request"]["merged_by"]["login"]
             else:
                 action = colored(action, "red")
+                user = data["sender"]["login"]
         if not payload:
             payload = yield shorten_github_url(
                 data["pull_request"]["html_url"])

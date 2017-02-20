@@ -243,6 +243,8 @@ class GitWebhookServer(Resource):
             else:
                 action = colored(action, "red")
                 user = data["sender"]["login"]
+        elif action == "synchronize":
+            action = "synchronized"
         if not payload:
             payload = yield shorten_github_url(
                 data["pull_request"]["html_url"])

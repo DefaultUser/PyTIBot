@@ -106,9 +106,12 @@ class GitWebhookServer(Resource):
                 url = yield shorten_github_url(commit["url"])
             else:
                 url = commit["url"]
+            message = commit["message"].split("\n")[0]
+            if len(message) > 100:
+                message = message[:100] + "..."
             self.bot.msg(self.channel, "{author}: {message} ({url})".format(
                 author=colored(commit["author"]["name"], "dark_cyan"),
-                message=commit["message"].split("\n")[0][:100],
+                message=message,
                 url=url))
 
     @defer.inlineCallbacks
@@ -336,7 +339,9 @@ class GitWebhookServer(Resource):
         noteable_type = attribs["noteable_type"]
         if noteable_type == "Commit":
             id = attribs["commit_id"]
-            title = data["commit"]["message"].split("\n")[0][:100]
+            title = data["commit"]["message"].split("\n")[0]
+            if len(title) > 100:
+                title = title[:100] + "..."
         elif noteable_type == "MergeRequest":
             id = data["merge_request"]["iid"]
             title = data["merge_request"]["title"]

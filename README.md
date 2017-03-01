@@ -17,6 +17,7 @@ xmlrpclib
 appdirs
 whoosh
 bidict
+unidecode
 apiclient (python module for google api) (optional)
 Unix fortune (optional)
 ```

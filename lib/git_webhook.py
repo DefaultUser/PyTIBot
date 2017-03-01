@@ -23,6 +23,7 @@ import hmac
 from hashlib import sha1
 import logging
 import sys
+from unidecode import unidecode
 
 from util.formatting import colored
 
@@ -106,11 +107,12 @@ class GitWebhookServer(Resource):
                 url = yield shorten_github_url(commit["url"])
             else:
                 url = commit["url"]
-            message = commit["message"].split("\n")[0]
+            message = unidecode(commit["message"].split("\n")[0])
             if len(message) > 100:
                 message = message[:100] + "..."
             self.bot.msg(self.channel, "{author}: {message} ({url})".format(
-                author=colored(commit["author"]["name"], "dark_cyan"),
+                author=colored(unidecode(commit["author"]["name"]),
+                               "dark_cyan"),
                 message=message,
                 url=url))
 
@@ -125,7 +127,8 @@ class GitWebhookServer(Resource):
         msg = ("[{repo_name}] {pusher} {action} {num_commits} commit(s) to "
                "{branch}: {compare}".format(
                    repo_name=colored(data["repository"]["name"], "blue"),
-                   pusher=colored(data["pusher"]["name"], "dark_cyan"),
+                   pusher=colored(unidecode(data["pusher"]["name"]),
+                                  "dark_cyan"),
                    action=action,
                    num_commits=len(data["commits"]),
                    branch=colored(data["ref"].split("/", 2)[-1], "dark_green"),
@@ -159,7 +162,7 @@ class GitWebhookServer(Resource):
                                   action=action,
                                   number=colored(str(data["issue"]["number"]),
                                                  "dark_yellow"),
-                                  title=data["issue"]["title"],
+                                  title=unidecode(data["issue"]["title"]),
                                   payload=payload))
         self.bot.msg(self.channel, msg)
 
@@ -172,7 +175,7 @@ class GitWebhookServer(Resource):
                    user=colored(data["comment"]["user"]["login"], "dark_cyan"),
                    action=data["action"],
                    number=colored(str(data["issue"]["number"]), "dark_yellow"),
-                   title=data["issue"]["title"],
+                   title=unidecode(data["issue"]["title"]),
                    url=url))
         self.bot.msg(self.channel, msg)
 
@@ -258,7 +261,7 @@ class GitWebhookServer(Resource):
                    action=action,
                    number=colored(str(data["pull_request"]["number"]),
                                   "dark_yellow"),
-                   title=data["pull_request"]["title"],
+                   title=unidecode(data["pull_request"]["title"]),
                    head=colored(data["pull_request"]["head"]["ref"],
                                 "dark_blue"),
                    base=colored(data["pull_request"]["base"]["ref"],
@@ -292,7 +295,7 @@ class GitWebhookServer(Resource):
                    user=colored(data["comment"]["user"]["login"], "dark_cyan"),
                    number=colored(str(data["pull_request"]["number"]),
                                   "dark_yellow"),
-                   title=data["pull_request"]["title"],
+                   title=unidecode(data["pull_request"]["title"]),
                    head=colored(data["pull_request"]["head"]["ref"],
                                 "dark_blue"),
                    base=colored(data["pull_request"]["base"]["ref"],
@@ -330,7 +333,7 @@ class GitWebhookServer(Resource):
                               action=action,
                               number=colored(str(attribs["iid"]),
                                              "dark_yellow"),
-                              title=attribs["title"],
+                              title=unidecode(attribs["title"]),
                               url=attribs["url"]))
         self.bot.msg(self.channel, msg)
 
@@ -360,7 +363,7 @@ class GitWebhookServer(Resource):
                    user=colored(data["user"]["name"], "dark_cyan"),
                    noteable_type=noteable_type,
                    number=colored(str(id), "dark_yellow"),
-                   title=title,
+                   title=unidecode(title),
                    url=attribs["url"]))
         self.bot.msg(self.channel, msg)
 
@@ -381,7 +384,7 @@ class GitWebhookServer(Resource):
                    user=colored(data["user"]["name"], "dark_cyan"),
                    action=action,
                    number=colored(str(attribs["iid"]), "dark_yellow"),
-                   title=attribs["title"],
+                   title=unidecode(attribs["title"]),
                    source=colored(attribs["source_branch"], "dark_blue"),
                    target=colored(attribs["target_branch"], "dark_red"),
                    url=attribs["url"]))

@@ -18,8 +18,8 @@ from twisted.web.server import Site, NOT_DONE_YET
 from twisted.web.resource import Resource
 from twisted.web.static import File
 from twisted.words.protocols import irc
-from twisted.internet import threads
-from twisted.internet.task import LoopingCall
+from twisted.internet import threads, reactor
+from twisted.internet.task import LoopingCall, deferLater
 
 from whoosh.index import create_in
 from whoosh import fields
@@ -206,7 +206,7 @@ class LogPage(BaseResource):
     def render_GET(self, request):
         if not request.args:
             request.args[b"date"] = [b"current"]
-        d = threads.deferToThread(self._show_log, request)
+        d = deferLater(reactor, 0, self._show_log, request)
         d.addErrback(_onError, request)
         return NOT_DONE_YET
 
@@ -221,7 +221,7 @@ class SearchPage(BaseResource):
         self.title = title
         self.last_index_update = 0
         self.singlechannel = singlechannel
-        d = threads.deferToThread(self._setup_index)
+        self._setup_index()
 
     def _fields_from_yaml(self, name):
         path = os.path.join(self.log_dir, name)
@@ -234,7 +234,7 @@ class SearchPage(BaseResource):
                         content.append(msg)
                     else:
                         content.append(msg.decode("utf-8"))
-            datestr = name.lstrip(self.channel+".").rstrip(".yaml")
+            datestr = name.lstrip(self.channel + ".").rstrip(".yaml")
             try:
                 date = datetime.strptime(datestr, "%Y-%m-%d")
             except ValueError:
@@ -255,7 +255,7 @@ class SearchPage(BaseResource):
         self.ix = create_in(indexpath, schema)
         writer = self.ix.writer()
         for name in os.listdir(self.log_dir):
-            if name.startswith(self.channel+".") and name.endswith(".yaml"):
+            if name.startswith(self.channel + ".") and name.endswith(".yaml"):
                 c, date = self._fields_from_yaml(name)
                 writer.add_document(path=unicode(name), content=c, date=date)
         writer.commit()
@@ -263,14 +263,14 @@ class SearchPage(BaseResource):
         lc = LoopingCall(self.update_index)
         lc.start(300, now=False)
 
-    def _update_index(self):
+    def update_index(self):
         with self.ix.searcher() as searcher:
             writer = self.ix.writer()
             indexed_paths = set()
             for field in searcher.all_stored_fields():
                 indexed_paths.add(field["path"])
         for name in os.listdir(self.log_dir):
-            if name.startswith(self.channel+".") and name.endswith(".yaml"):
+            if name.startswith(self.channel + ".") and name.endswith(".yaml"):
                 if name not in indexed_paths:
                     c, date = self._fields_from_yaml(name)
                     writer.add_document(path=unicode(name), content=c,
@@ -287,9 +287,6 @@ class SearchPage(BaseResource):
                 writer.update_document(path=name, content=c, date=date)
         writer.commit()
         self.last_index_update = time.time()
-
-    def update_index(self):
-        return threads.deferToThread(self._update_index)
 
     def channel_link(self):
         if self.singlechannel:
@@ -328,7 +325,7 @@ class SearchPage(BaseResource):
             else:
                 if not results.is_last_page():
                     log_data += "<a href='?q={}&page={}'>Next</a>".format(
-                        querystr, page+1)
+                        querystr, page + 1)
             if not results:
                 log_data = "No Logs found containg: {}".format(
                     htmlescape(querystr))
@@ -344,6 +341,6 @@ class SearchPage(BaseResource):
             return _as_bytes(search_page_template.format(
                 log_data="", title=self.title, header=header,
                 footer=footer, channel=self.channel_link()))
-        d = threads.deferToThread(self._search_logs, request)
+        d = deferLater(reactor, 0, self._search_logs, request)
         d.addErrback(_onError, request)
         return NOT_DONE_YET

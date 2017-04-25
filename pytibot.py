@@ -18,12 +18,13 @@
 
 import re
 from twisted.words.protocols import irc
-from twisted.internet import defer, reactor
+from twisted.internet import defer, reactor, stdio
 from twisted.internet import ssl
 from twisted.web.server import Site
 import logging
 import sys
 
+from stdiointerface import STDIOInterface
 from lib import commands
 from lib.simpletrigger import simple_trigger
 from lib import triggers
@@ -63,6 +64,8 @@ class PyTIBot(irc.IRCClient, object):
 
         self.simple_trigger = simple_trigger(self)
         next(self.simple_trigger)
+
+        stdio.StandardIO(STDIOInterface(self))
 
     def load_settings(self):
         """Load settings with config manager"""

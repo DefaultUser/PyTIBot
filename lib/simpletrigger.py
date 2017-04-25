@@ -23,16 +23,11 @@ from util import formatting
 def simple_trigger(bot):
     """Send a user defined reply to IRC when the corresponding trigger is mentioned
     """
-    pat = re.compile(r"\$COLOR\((\d{1,2}(,\d{1,2})?)\)")
-    rainbow = re.compile(r"\$RAINBOW\(([^)]+)\)")
     while True:
         command, sender, senderhost, channel = yield
         msg = command["answer"].replace("$USER", sender)
         msg = msg.replace("$CHANNEL", channel)
 
         # Replace colors
-        msg = pat.sub(formatting._COLOR + r"\1", msg)
-        msg = rainbow.sub(lambda match: formatting.rainbow(match.group(1)),
-                          msg)
-
+        msg = formatting.from_human_readable(msg)
         bot.msg(channel, msg)

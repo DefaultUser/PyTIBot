@@ -207,3 +207,17 @@ def to_html(text):
                          "bg": None, "italic": False}
         html += _info_dict_to_style(info_dict).format(text=substrings[i+7])
     return html
+
+
+def from_human_readable(text):
+    """
+    \brief Convert human readable formatting information to IRC formatting
+    """
+    colorpat = re.compile(r"\$COLOR(\((\d{1,2}(,\d{1,2})?)\))?")
+    rainbowpat = re.compile(r"\$RAINBOW\(([^)]+)\)")
+    # Replace colors
+    text = colorpat.sub(lambda match: _COLOR + match.group(1)[1:-1]
+                        if match.group(1) else _COLOR, text)
+    text = rainbowpat.sub(lambda match: rainbow(match.group(1)),
+                          text)
+    return text

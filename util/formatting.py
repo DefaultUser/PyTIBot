@@ -57,6 +57,12 @@ hex_colors = ["#FFFFFF", "#000000", "#00007F", "#009300", "#FF0000",
               "#009393", "#00FFFF", "#0000FC", "#FF00FF", "#7F7F7F",
               "#D2D2D2"]
 
+ANSI_CSI = "\x1b["
+ANSI_FG_START = 30
+ANSI_BG_START = 40
+ansi_colors = {"black": 0, "red": 1, "green": 2, "yellow": 3,
+               "blue": 4, "magenta": 5, "cyan": 6, "white": 7}
+
 
 def colored(text, fgcolor, bgcolor=None, endtoken=True):
     """
@@ -221,3 +227,18 @@ def from_human_readable(text):
     text = rainbowpat.sub(lambda match: rainbow(match.group(1)),
                           text)
     return text
+
+
+def ansi_colored(text, fg=None, bg=None):
+    infocodes = []
+    if fg is not None:
+        if fg not in ansi_colors:
+            raise ValueError("Invalid foreground color")
+        else:
+            infocodes.append(str(ansi_colors[fg] + ANSI_FG_START))
+    if bg is not None:
+        if bg not in ansi_colors:
+            raise ValueError("Invalid background color")
+        else:
+            infocodes.append(str(ansi_colors[bg] + ANSI_BG_START))
+    return ANSI_CSI + ";".join(infocodes) + "m" + text + ANSI_CSI + "0m"

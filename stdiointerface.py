@@ -43,9 +43,12 @@ class STDIOInterface(LineOnlyReceiver, object):
             try:
                 method(data)
             except Exception as e:
-                self.sendLine("Error: " + str(e))
+                self.sendLine(formatting.ansi_colored("Error: {}".format(e),
+                                                      fg="red"))
         else:
-            self.sendLine("Error: no such command {}.".format(command))
+            self.sendLine(formatting.ansi_colored("Error: no such command "
+                                                  "{}.".format(command),
+                                                  fg="red"))
 
     def irc_help(self, command=None):
         """Show help
@@ -53,13 +56,16 @@ class STDIOInterface(LineOnlyReceiver, object):
         if command:
             method = getattr(self, "irc_{}".format(command), None)
             if method:
-                self.sendLine(method.__doc__)
+                self.sendLine(formatting.ansi_colored(method.__doc__,
+                              fg="cyan"))
             else:
-                self.sendLine("No such command {}".format(command))
+                self.sendLine(formatting.ansi_colored(
+                    "No such command {}".format(command), fg="yellow"))
         else:
-            self.sendLine("Available commands: " + ", ".join(
-                [member[4:] for member in dir(self)
-                 if member.startswith("irc_")]))
+            self.sendLine(formatting.ansi_colored("Available commands: ",
+                                                  fg="blue") +
+                          ", ".join([member[4:] for member in dir(self)
+                                     if member.startswith("irc_")]))
 
     def irc_action(self, data):
         """Send an action to an IRC channel

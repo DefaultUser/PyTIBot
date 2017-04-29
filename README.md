@@ -196,16 +196,27 @@ For the full list of class methods, check the source and the twisted api
 (http://twistedmatrix.com/documents/current/api/twisted.words.protocols.irc.IRCClient.html)
 
 
+Channelmodules
+--------------
+This section is used for channel specific modules.
+```
+Channelmodules:
+  "#mysuperchannel":
+    - ChannelLogger
+```
+*ChannelLogger* also needs some configuration that is shared by all ChannelLoggers (see section *Logging*).
+
+
 Logging
 -------
 This bot can also be used to log channel activity.
 ```
 Logging:
-  channels: ["#mysuperchannel", "#myweirdchannel"]
   directory = /tmp/log/
   log_minor = True
   yaml = True
 ```
+For every channel that should be logged, you need to add the *ChannelLogger* to the Channelmodules section (see above).<br/>
 Every channel is logged to a different file<br/>
 If **log_minor** is **False**, join and part messages are not logged to file<br/>
 If **yaml** is **True**, channel logs are saved as yaml documents<br/>

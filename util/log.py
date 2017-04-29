@@ -203,30 +203,3 @@ def yaml_namer(name):
     """
     index = name.rfind(".yaml")
     return name[:index] + name[index:].replace(".yaml", "") + ".yaml"
-
-
-def setup_logger(channel, config, log_level=NOTICE, yaml=False):
-    name = channel.lstrip("#")
-    if yaml:
-        name += ".yaml"
-    else:
-        name += ".txt"
-    logger = logging.getLogger(channel.lower())
-    logger.setLevel(log_level)
-    # don't propagate to parent loggers
-    logger.propagate = False
-    # don't add multiple handlers for the same logger
-    if not logger.handlers:
-        # log to file
-        if not os.path.isdir(get_log_dir(config)):
-            os.makedirs(get_log_dir(config))
-        log_handler = TimedRotatingFileHandler(os.path.join(
-            get_log_dir(config), name), when="midnight")
-        if yaml:
-            log_handler.setFormatter(yaml_formatter)
-            log_handler.namer = yaml_namer
-        else:
-            log_handler.setFormatter(txt_formatter)
-            log_handler.namer = txt_namer
-        logger.addHandler(log_handler)
-    return logger

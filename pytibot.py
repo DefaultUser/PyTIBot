@@ -114,13 +114,16 @@ class PyTIBot(irc.IRCClient, object):
                 for watcher in watchers:
                     if isinstance(watcher, dict):
                         name = list(watcher.keys())[0]
+                        config = watcher[name]
                     else:
                         name = watcher
+                        config = None
                     if not hasattr(channelwatcher, name):
                         logging.warn("No channelwatcher called {}, "
                                      "ignoring".format(name))
                         continue
-                    instance = getattr(channelwatcher, name)(self, channel)
+                    instance = getattr(channelwatcher, name)(self, channel,
+                                                             config)
                     self.install_channelwatcher(channel, instance)
 
     def install_channelwatcher(self, channel, watcher):

@@ -24,8 +24,8 @@ from . import abstract
 
 
 class ChannelLogger(abstract.ChannelWatcher):
-    def __init__(self, bot, channel):
-        super(ChannelLogger, self).__init__(bot, channel)
+    def __init__(self, bot, channel, config):
+        super(ChannelLogger, self).__init__(bot, channel, config)
         name = channel.lstrip("#")
         use_yaml = bot.config["Logging"].get("yaml", True)
         if use_yaml:

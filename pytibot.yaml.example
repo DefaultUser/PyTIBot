@@ -62,9 +62,18 @@ Simple Triggers:
 # Modules that are specific to a channel
 Channelmodules:
   "#mysuperchannel":
-    - ChannelLogger
+  -
+    ChannelLogger
+  -
+    Autokick:
+      user_blacklist:
+      - bad_user
+      - evil_user
+      msg_blacklist:
+      - "evil word"
   "#myweirdchannel":
-    - ChannelLogger
+  -
+    ChannelLogger
 
 Actions:
   userkicked: Nice work $KICKER, noone liked $KICKEE anyways!

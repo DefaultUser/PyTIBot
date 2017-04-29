@@ -202,9 +202,18 @@ This section is used for channel specific modules.
 ```
 Channelmodules:
   "#mysuperchannel":
-    - ChannelLogger
+  -
+    ChannelLogger
+  -
+    Autokick:
+      user_blacklist:
+      - bad_user
+      - evil_user
+      msg_blacklist:
+      - "evil word"
 ```
-*ChannelLogger* also needs some configuration that is shared by all ChannelLoggers (see section *Logging*).
+*ChannelLogger* also needs some configuration that is shared by all ChannelLoggers (see section *Logging*).<br/>
+All fields in *Autokick* accept regular expressions.
 
 
 Logging

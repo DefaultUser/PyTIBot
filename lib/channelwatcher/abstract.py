@@ -25,7 +25,7 @@ class ChannelWatcher(object):
     """
     __metaclass__ = ABCMeta
 
-    def __init__(self, bot, channel):
+    def __init__(self, bot, channel, config):
         self.bot = bot
         self.channel = channel
 

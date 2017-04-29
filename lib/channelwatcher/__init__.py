@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from .channellogger import ChannelLogger
+from .autokick import Autokick
 
 
-__all__ = [ChannelLogger]
+__all__ = [ChannelLogger, Autokick]

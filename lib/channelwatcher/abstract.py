@@ -25,6 +25,10 @@ class ChannelWatcher(object):
     """
     __metaclass__ = ABCMeta
 
+    def __init__(self, bot, channel):
+        self.bot = bot
+        self.channel = channel
+
     @abstractmethod
     def topic(self, user, topic):
         pass

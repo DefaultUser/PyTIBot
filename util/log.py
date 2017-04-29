@@ -23,7 +23,6 @@ import yaml
 import time
 import sys
 
-from lib import channelwatcher
 from util import decorators
 from util import filesystem as fs
 
@@ -63,40 +62,6 @@ msg_templates = {TOPIC: "%(user)s changed the topic to: %(topic)s",
 def get_log_dir(config):
     log_dir = config["Logging"].get("directory", fs.adirs.user_log_dir)
     return log_dir
-
-
-class ChannelLogger(logging.Logger, channelwatcher.ChannelWatcher):
-    def topic(self, user, topic):
-        self.log(TOPIC, msg_templates[TOPIC], {"user": user, "topic": topic})
-
-    def nick(self, oldnick, newnick):
-        self.log(NICK, msg_templates[NICK], {"oldnick": oldnick,
-                                             "newnick": newnick})
-
-    def join(self, user):
-        self.log(JOIN, msg_templates[JOIN], {"user": user})
-
-    def part(self, user):
-        self.log(PART, msg_templates[PART], {"user": user})
-
-    def quit(self, user, quitMessage):
-        self.log(QUIT, msg_templates[QUIT], {"user": user,
-                                             "quitMessage": quitMessage})
-
-    def kick(self, kickee, kicker, message):
-        self.log(KICK, msg_templates[KICK], {"kickee": kickee,
-                                             "kicker": kicker,
-                                             "message": message})
-
-    def notice(self, user, message):
-        self.log(NOTICE, msg_templates[NOTICE], {"user": user,
-                                                 "message": message})
-
-    def action(self, user, data):
-        self.log(ACTION, msg_templates[ACTION], {"user": user, "data": data})
-
-    def msg(self, user, message):
-        self.log(MSG, msg_templates[MSG], {"user": user, "message": message})
 
 
 class YAMLFormatter(object):
@@ -218,8 +183,9 @@ else:
 
 
 txt_formatter = logging.Formatter('%(asctime)s %(message)s')
+# dateformat for the formatter
+txt_formatter.datefmt = '%H:%M:%S'
 yaml_formatter = YAMLFormatter()
-logging.setLoggerClass(ChannelLogger)
 logging.basicConfig(level=logging.INFO)
 
 
@@ -249,8 +215,6 @@ def setup_logger(channel, config, log_level=NOTICE, yaml=False):
     logger.setLevel(log_level)
     # don't propagate to parent loggers
     logger.propagate = False
-    # dateformat for the formatter
-    txt_formatter.datefmt = '%H:%M:%S'
     # don't add multiple handlers for the same logger
     if not logger.handlers:
         # log to file

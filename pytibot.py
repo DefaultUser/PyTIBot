@@ -29,6 +29,7 @@ from lib import commands
 from lib.simpletrigger import simple_trigger
 from lib import triggers
 from lib.git_webhook import GitWebhookServer
+from lib import channelwatcher
 from util import decorators, log
 
 # WHOIS reply for AUTH name (NONSTANDARD REPLY!)
@@ -101,31 +102,26 @@ class PyTIBot(irc.IRCClient, object):
         for trigger in trgs:
             self.enable_trigger(trigger)
 
-        # logging
-        self.setup_logging()
+        # channel specific modules
+        self.setup_channelwatchers()
 
         # github webhook
         self.setup_webhook()
 
-    def setup_logging(self):
-        if self.config["Logging"]:
-            log_channels = self.config["Logging"].get("channels", [])
-            if not isinstance(log_channels, list):
-                log_channels = [log_channels]
-            if not log_channels:
-                return
-            if self.config["Logging"].get("log_minor", False):
-                log_level = log.TOPIC
-            else:
-                log_level = log.NOTICE
-            yaml = self.config["Logging"].get("yaml", False)
-            for channel in log_channels:
-                if not channel.startswith("#"):
-                    channel = "#" + channel
-                # make all channels lowercase
-                logger = log.setup_logger(channel.lower(), self.config,
-                                          log_level=log_level, yaml=yaml)
-                self.install_channelwatcher(channel, logger)
+    def setup_channelwatchers(self):
+        if self.config["Channelmodules"]:
+            for channel, watchers in self.config["Channelmodules"].items():
+                for watcher in watchers:
+                    if isinstance(watcher, dict):
+                        name = list(watcher.keys())[0]
+                    else:
+                        name = watcher
+                    if not hasattr(channelwatcher, name):
+                        logging.warn("No channelwatcher called {}, "
+                                     "ignoring".format(name))
+                        continue
+                    instance = getattr(channelwatcher, name)(self, channel)
+                    self.install_channelwatcher(channel, instance)
 
     def install_channelwatcher(self, channel, watcher):
         if not channel.startswith("#"):

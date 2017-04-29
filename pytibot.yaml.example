@@ -12,7 +12,6 @@ Connection:
   rejoinkicked: True
 
 Logging:
-  channels: ["#mysuperchannel", "#myweirdchannel"]
   directory: /tmp/log/
   log_minor: True
   yaml: True
@@ -59,6 +58,13 @@ Simple Triggers:
   -
     trigger: can contain regex (\d+)
     answer: "be sure to escape : or #"
+
+# Modules that are specific to a channel
+Channelmodules:
+  "#mysuperchannel":
+    - ChannelLogger
+  "#myweirdchannel":
+    - ChannelLogger
 
 Actions:
   userkicked: Nice work $KICKER, noone liked $KICKEE anyways!

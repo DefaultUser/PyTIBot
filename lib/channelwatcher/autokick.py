@@ -18,6 +18,7 @@
 
 import re
 import logging
+from twisted.words.protocols import irc
 
 from . import abstract
 
@@ -59,6 +60,7 @@ class Autokick(abstract.ChannelWatcher):
         pass
 
     def check_msg(self, message):
+        message = irc.stripFormatting(message)
         for bl_msg in self.msg_blacklist:
             try:
                 if re.search(re.compile(bl_msg, re.IGNORECASE), message):

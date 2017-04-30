@@ -388,7 +388,7 @@ class PyTIBot(irc.IRCClient, object):
                 if re.search(re.compile(iu, re.IGNORECASE), user):
                     logging.info("ignoring {}".format(user))
                     return True
-            except:
+            except re.error:
                 if iu in user:
                     logging.info("ignoring {}".format(user))
                     return True

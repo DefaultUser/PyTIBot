@@ -1,6 +1,7 @@
 # this is a comment
 Connection:
   server: localhost
+  sslport: 6697
   port: 6667
   nickname: PyTIBot
   username:

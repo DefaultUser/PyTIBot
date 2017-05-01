@@ -33,7 +33,7 @@ from util import filesystem as fs
 from util import log
 
 
-mandatory_settings = ["server", "port", "nickname", "admins"]
+mandatory_settings = ["server", "nickname", "admins"]
 
 
 class Options(usage.Options):
@@ -62,9 +62,17 @@ class PyTIBotServiceMaker(object):
 
         # irc client
         ircserver = config["Connection"]["server"]
-        ircport = config["Connection"]["port"]
+        ircsslport = config["Connection"].get("sslport", None)
+        ircport = config["Connection"].get("port", None)
         ircbotfactory = PyTIBotFactory(config)
-        irc_cl = internet.TCPClient(ircserver, ircport, ircbotfactory)
+        if ircsslport:
+            irc_cl = internet.SSLClient(ircserver, ircsslport, ircbotfactory,
+                                        ssl.ClientContextFactory())
+        elif ircport:
+            irc_cl = internet.TCPClient(ircserver, ircport, ircbotfactory)
+        else:
+            raise EnvironmentError("Neither sslport nor port are given for "
+                                   "the irc connection!\nPlease reconfigure")
         irc_cl.setServiceParent(mService)
 
         # manhole for debugging

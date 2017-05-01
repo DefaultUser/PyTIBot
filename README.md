@@ -60,7 +60,8 @@ C:\Users\<username>\AppData\Local\PyTIBot
 Look at pytibot.yaml.example for all keys.
 
 [Connection]<br/>
-*server*, *port*, *nickname* and *admins* are the mandatory fields<br/>
+*server*, *nickname* and *admins* are the mandatory fields.<br/>
+Additionally either *port* or *sslport* have to be specified.<br/>
 *admins*, *channels* and *ignore* can be comma separated lists<br/>
 By default, admins are determined by the **nonstandard** irc reply 330. This
 returns the auth name and therefor is safe. This reply is for example sent on

@@ -305,13 +305,21 @@ class GitWebhookServer(Resource):
 
     def on_gitlab_push(self, data):
         msg = ("[{repo_name}] {pusher} pushed {num_commits} commit(s) to "
-               "{branch}".format(repo_name=colored(data["repository"]
-                                                   ["name"], "blue"),
+               "{branch}".format(repo_name=colored(data["project"]["name"],
+                                                   "blue"),
                                  pusher=colored(data["user_name"],
                                                 "dark_cyan"),
                                  num_commits=len(data["commits"]),
                                  branch=colored(data["ref"].split("/", 2)[-1],
                                                 "dark_green")))
+        self.bot.msg(self.channel, msg)
+        self.commits_to_irc(data["commits"])
+
+    def on_gitlab_tag_push(self, data):
+        msg = ("[{repo_name}] {pusher} added tag {tag}".format(
+            repo_name=colored(data["project"]["name"], "blue"),
+            pusher=colored(data["user_name"], "dark_cyan"),
+            tag=colored(data["ref"].split("/", 2)[-1], "dark_green")))
         self.bot.msg(self.channel, msg)
         self.commits_to_irc(data["commits"])
 
@@ -327,8 +335,8 @@ class GitWebhookServer(Resource):
         elif action == "update":
             action = "updated"
         msg = ("[{repo_name}] {user} {action} Issue #{number} {title} "
-               "{url}".format(repo_name=colored(data["repository"]
-                                                    ["name"], "blue"),
+               "{url}".format(repo_name=colored(data["project"]["name"],
+                                                "blue"),
                               user=colored(data["user"]["name"], "dark_cyan"),
                               action=action,
                               number=colored(str(attribs["iid"]),
@@ -359,7 +367,7 @@ class GitWebhookServer(Resource):
             return
         msg = ("[{repo_name}] {user} commented on {noteable_type} {number} "
                "{title} {url}".format(
-                   repo_name=colored(data["repository"]["name"], "blue"),
+                   repo_name=colored(data["project"]["name"], "blue"),
                    user=colored(data["user"]["name"], "dark_cyan"),
                    noteable_type=noteable_type,
                    number=colored(str(id), "dark_yellow"),
@@ -380,7 +388,7 @@ class GitWebhookServer(Resource):
             action = "updated"
         msg = ("[{repo_name}] {user} {action} Merge Request #{number} "
                "{title} ({source} -> {target}): {url}".format(
-                   repo_name=colored(data["repository"]["name"], "blue"),
+                   repo_name=colored(attribs["target"]["name"], "blue"),
                    user=colored(data["user"]["name"], "dark_cyan"),
                    action=action,
                    number=colored(str(attribs["iid"]), "dark_yellow"),

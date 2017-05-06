@@ -69,4 +69,3 @@ class PyTIBotFactory(protocol.ClientFactory):
         else:
             logging.critical("Connection can't be established - Shutting down")
             reactor.stop()
-

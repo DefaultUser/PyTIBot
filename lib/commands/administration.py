@@ -63,8 +63,8 @@ to remove from the list"""
                                        "ignore list".format(nick))
                 else:
                     bot.notice(sender,
-                               formatting.colored("Invalid call - check the help",
-                                                  "red"))
+                               formatting.colored("Invalid call - check the"
+                                                  " help", "red"))
 
     while True:
         args, sender, senderhost, channel = yield

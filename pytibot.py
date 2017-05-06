@@ -24,7 +24,7 @@ from twisted.web.server import Site
 import logging
 import sys
 
-from stdiointerface import STDIOInterface
+from lib.stdiointerface import STDIOInterface
 from lib import commands
 from lib.simpletrigger import simple_trigger
 from lib import triggers
@@ -348,9 +348,7 @@ class PyTIBot(irc.IRCClient, object):
             # adjust $NICKNAME
             matches = [trigger for trigger in triggers if
                        re.search(re.compile(trigger["trigger"].replace(
-                           "$nickname", self.nickname),
-                                 re.IGNORECASE),
-                                 msg)]
+                           "$nickname", self.nickname), re.IGNORECASE), msg)]
             for trigger in matches:
                 self.simple_trigger.send((trigger, user, userhost, channel))
 

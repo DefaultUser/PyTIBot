@@ -233,7 +233,12 @@ class SearchPage(BaseResource):
                     if sys.version_info.major == 3:
                         content.append(msg)
                     else:
-                        content.append(msg.decode("utf-8"))
+                        try:
+                            content.append(msg.decode("utf-8"))
+                        except UnicodeDecodeError:
+                            logging.warn("Encountered non-unicode character"
+                                         " in channel logs - ignoring message"
+                                         " for search page")
             datestr = name.lstrip(self.channel + ".").rstrip(".yaml")
             try:
                 date = datetime.strptime(datestr, "%Y-%m-%d")

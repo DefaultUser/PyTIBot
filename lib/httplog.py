@@ -233,7 +233,7 @@ class SearchPage(BaseResource):
                     if sys.version_info.major == 3:
                         content.append(msg)
                     else:
-                        content.append(msg.decode("utf-8"), 'replace')
+                        content.append(msg.decode("utf-8", 'replace'))
             datestr = name.lstrip(self.channel + ".").rstrip(".yaml")
             try:
                 date = datetime.strptime(datestr, "%Y-%m-%d")

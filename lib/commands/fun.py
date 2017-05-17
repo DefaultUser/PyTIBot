@@ -21,6 +21,7 @@ import os
 from twisted.internet import defer
 from treq import get
 from bidict import bidict
+import argparse
 
 from util import filesystem as fs
 
@@ -81,14 +82,27 @@ def joke(bot):
 
 
 def fortune(bot):
-    """Unix fortune: fortune list for available fortunes, fortune -l to \
-allow long fortunes"""
+    """Unix fortune: fortune --list for available fortunes, -l to \
+allow long fortunes, -o to allow offensive fortunes"""
     paths = [r"/usr/share/fortune/", r"/usr/share/games/fortune/",
              r"/usr/share/fortunes/", r"/usr/share/games/fortunes/",
              fs.get_abs_path("fortunes")]
     num_lines_short = 3
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-l", action='store_true')
+    parser.add_argument("-o", action='store_true')
+    parser.add_argument("--list", action='store_true')
+    parser.add_argument("files", nargs='*')
 
-    def _find_files():
+    def _display_filename(filename):
+        """
+        Strip the fortune base path
+        """
+        for path in paths:
+            if filename.startswith(path):
+                return filename.replace(path, "", 1).lstrip("/")
+
+    def _find_files(offensive=False):
         """
         Find all fortune files in the system
         """
@@ -101,16 +115,9 @@ allow long fortunes"""
                 for f in files:
                     if "." in f:
                         continue
-                    fortune_files.append(os.path.join(root, f))
+                    if offensive or not _display_filename(root) == 'off':
+                        fortune_files.append(os.path.join(root, f))
         return fortune_files
-
-    def _display_filename(filename):
-        """
-        Strip the fortune base path
-        """
-        for path in paths:
-            if filename.startswith(path):
-                return filename.replace(path, "", 1).lstrip("/")
 
     def _get_random_fortune(filename, onlyshort=True):
         """
@@ -136,26 +143,22 @@ allow long fortunes"""
 
     while True:
         args, sender, senderhost, channel = yield
-        fortune_files = _find_files()
-        if args == ["list"]:
-            options = []
-            for f in fortune_files:
-                options.append(_display_filename(f))
+        options = parser.parse_args(args)
+        if options.list:
+            fortunes = []
+            for f in _find_files(offensive=options.o):
+                fortunes.append(_display_filename(f))
             bot.msg(channel, "Available fortunes: {}".format(
-                ", ".join(options)))
+                ", ".join(fortunes)))
         else:
             considered_files = []
-            only_short = True
-            if args and args[0] == "-l":
-                only_short = False
-                args.pop(0)
-            if not args:
+            only_short = not options.l
+            if not options.files:
                 # Don't use offensive fortunes by default
-                considered_files = [f for f in fortune_files if not
-                                    f.startswith("/off")]
+                considered_files = _find_files(offensive=options.o)
             else:
-                for arg in args:
-                    for f in fortune_files:
+                for arg in options.files:
+                    for f in _find_files(offensive=True):
                         if arg == _display_filename(f):
                             considered_files.append(f)
                             break

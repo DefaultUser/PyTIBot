@@ -22,8 +22,10 @@ from twisted.internet import defer
 from treq import get
 from bidict import bidict
 import argparse
+import logging
 
 from util import filesystem as fs
+from util import formatting
 
 
 morse_dict = bidict({'A': '.-', 'B': '-...', 'C': '-.-.',
@@ -143,7 +145,12 @@ allow long fortunes, -o to allow offensive fortunes"""
 
     while True:
         args, sender, senderhost, channel = yield
-        options = parser.parse_args(args)
+        options, unknown_options = parser.parse_known_args(args)
+        if unknown_options:
+            logging.warn("Fortune: Unknown options: {}".format(unknown_options))
+            bot.msg(channel, formatting.colored("Invalid input for fortune",
+                                                "red"))
+            continue
         if options.list:
             fortunes = []
             for f in _find_files(offensive=options.o):

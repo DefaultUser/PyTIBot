@@ -66,7 +66,7 @@ class PyTIBot(irc.IRCClient, object):
         self.simple_trigger = simple_trigger(self)
         next(self.simple_trigger)
 
-        stdio.StandardIO(STDIOInterface(self))
+        self.stdiointerface = stdio.StandardIO(STDIOInterface(self))
 
     def load_settings(self):
         """Load settings with config manager"""
@@ -627,3 +627,7 @@ class PyTIBot(irc.IRCClient, object):
             for watcher in self.channelwatchers[channel]:
                 watcher.quit(self.nickname, message)
         super(PyTIBot, self).quit(message)
+
+    def connectionLost(self, reason):
+        self.stdiointerface.loseConnection()
+        super(PyTIBot, self).connectionLost(reason)

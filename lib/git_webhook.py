@@ -386,6 +386,8 @@ class GitWebhookServer(Resource):
             action = colored("closed", "red")
         elif action == "update":
             action = "updated"
+        elif action == "approved":
+            action = colored("approved", "dark_green")
         msg = ("[{repo_name}] {user} {action} Merge Request #{number} "
                "{title} ({source} -> {target}): {url}".format(
                    repo_name=colored(attribs["target"]["name"], "blue"),

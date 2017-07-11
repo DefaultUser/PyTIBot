@@ -384,6 +384,8 @@ class GitWebhookServer(Resource):
             action = colored("reopened", "dark_green")
         elif action == "close":
             action = colored("closed", "red")
+        elif action == "merge":
+            action = colored("merged", "dark_green")
         elif action == "update":
             action = "updated"
         elif action == "approved":

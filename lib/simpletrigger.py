@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import re
+import random
 from util import formatting
 
 
@@ -25,8 +25,10 @@ def simple_trigger(bot):
     """
     while True:
         command, sender, senderhost, channel = yield
-        msg = command["answer"].replace("$USER", sender)
-        msg = msg.replace("$CHANNEL", channel)
+        answer = command["answer"]
+        if isinstance(answer, list):
+            answer = random.choice(answer)
+        msg = answer.replace("$USER", sender).replace("$CHANNEL", channel)
 
         # Replace colors
         msg = formatting.from_human_readable(msg)

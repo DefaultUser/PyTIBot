@@ -157,8 +157,8 @@ Triggers:
 
 Simple Trigger that can be specified by the user in the ini file:<br/>
 These can be specified under the [Simple Trigger] section<br/>
-*trigger* will be used as trigger and the *answer* is send to irc<br/>
-*answer* can be a regex
+*trigger* will be used as trigger and the *answer* is send to irc.<br/>
+If *answer* is a list, a random element of that list is chosen.
 
 "$USER" and "$CHANNEL" will be expanded to the user and channel, which triggered
 the line. Also you can specify colors with "$COLOR(1,2)", where the first number

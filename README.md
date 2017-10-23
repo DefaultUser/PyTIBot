@@ -265,12 +265,19 @@ not end with ".html" or ".inc" will be publicly available.
 GitHub/Gitlab webhook integration
 ---------------------------------
 This bot can also listen for GitHub/Gitlab webhooks.<br/>
+The webhook server can send messages to multiple IRC channels as defined in the **channels** section.
+The keys are the names of your repo (**CASE SENSITIVE**) or **default**. The values need to be a list of channels.<br/>
 **WARNING: Gitlab integration is currently untested and might contain bugs**<br/>
 For GitHub the supported events currently are: push, issues, issue_comment, create, delete, fork, commit_comment, release, pull_request, pull_request_review and pull_request_review_comment<br/>
 For Gitlab the supported events are: push, issue, note, merge_request<br/>
 ```
 GitWebhook:
-  channel: "#mysuperchannel"
+  channels:
+    my_project:
+    - "#mysuperchannel"
+    - "#myotherchannel"
+    default:
+    - "#mydefaultchannel"
   sslport: 4041
   certificate: /path/to/cert.pem
   privkey: /path/to/privkey.pem

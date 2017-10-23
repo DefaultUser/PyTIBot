@@ -52,7 +52,7 @@ class GitWebhookServer(Resource):
         self.bot = bot
         self.github_secret = config["GitWebhook"].get("github_secret", None)
         self.gitlab_secret = config["GitWebhook"].get("gitlab_secret", None)
-        self.channel = config["GitWebhook"]["channel"]
+        self.channels = config["GitWebhook"]["channels"]
 
     def render_POST(self, request):
         body = request.content.read()
@@ -96,12 +96,28 @@ class GitWebhookServer(Resource):
         request.setResponseCode(200)
         return b""
 
+    def report_to_irc(self, repo_name, message):
+        channels = []
+        if repo_name in self.channels:
+            channels = self.channels[repo_name]
+        elif "default" in self.channels:
+            channels = self.channels["default"]
+        if not isinstance(channels, list):
+            # don't error out if the config has a string instead of a list
+            channels = [channels]
+        if not channels:
+            logging.warn("Recieved webhook for repo [{repo}], but no IRC "
+                         "channel is configured for it, ignoring...")
+            return
+        for channel in channels:
+            self.bot.msg(channel, message)
+
     @defer.inlineCallbacks
-    def commits_to_irc(self, commits, github=False):
+    def commits_to_irc(self, repo_name, commits, github=False):
         for i, commit in enumerate(commits):
             if i == 3:
-                self.bot.msg(self.channel,
-                             "+{} more commits".format(len(commits) - 3))
+                self.report_to_irc(repo_name, "+{} more commits".format(
+                    len(commits) - 3))
                 break
             if github:
                 url = yield shorten_github_url(commit["url"])
@@ -110,7 +126,7 @@ class GitWebhookServer(Resource):
             message = unidecode(commit["message"].split("\n")[0])
             if len(message) > 100:
                 message = message[:100] + "..."
-            self.bot.msg(self.channel, "{author}: {message} ({url})".format(
+            self.report_to_irc(repo_name, "{author}: {message} ({url})".format(
                 author=colored(unidecode(commit["author"]["name"]),
                                "dark_cyan"),
                 message=message,
@@ -124,22 +140,24 @@ class GitWebhookServer(Resource):
         elif data["forced"]:
             action = colored("force pushed", "red")
         url = yield shorten_github_url(data["compare"])
+        repo_name = data["repository"]["name"]
         msg = ("[{repo_name}] {pusher} {action} {num_commits} commit(s) to "
                "{branch}: {compare}".format(
-                   repo_name=colored(data["repository"]["name"], "blue"),
+                   repo_name=colored(repo_name, "blue"),
                    pusher=colored(unidecode(data["pusher"]["name"]),
                                   "dark_cyan"),
                    action=action,
                    num_commits=len(data["commits"]),
                    branch=colored(data["ref"].split("/", 2)[-1], "dark_green"),
                    compare=url))
-        self.bot.msg(self.channel, msg)
-        self.commits_to_irc(data["commits"], github=True)
+        self.report_to_irc(repo_name, msg)
+        self.commits_to_irc(repo_name, data["commits"], github=True)
 
     @defer.inlineCallbacks
     def on_github_issues(self, data):
         action = data["action"]
         payload = None
+        repo_name = data["repository"]["name"]
         if action == "assigned" or action == "unassigned":
             payload = data["issue"]["assignee"]["login"]
         elif action == "labeled" or action == "unlabeled":
@@ -155,8 +173,7 @@ class GitWebhookServer(Resource):
         if not payload:
             payload = yield shorten_github_url(data["issue"]["html_url"])
         msg = ("[{repo_name}] {user} {action} Issue #{number} {title}: "
-               "{payload}".format(repo_name=colored(data["repository"]
-                                                    ["name"], "blue"),
+               "{payload}".format(repo_name=colored(repo_name, "blue"),
                                   user=colored(data["sender"]["login"],
                                                "dark_cyan"),
                                   action=action,
@@ -164,67 +181,74 @@ class GitWebhookServer(Resource):
                                                  "dark_yellow"),
                                   title=unidecode(data["issue"]["title"]),
                                   payload=payload))
-        self.bot.msg(self.channel, msg)
+        self.report_to_irc(repo_name, msg)
 
     @defer.inlineCallbacks
     def on_github_issue_comment(self, data):
         url = yield shorten_github_url(data["comment"]["html_url"])
+        repo_name = data["repository"]["name"]
         msg = ("[{repo_name}] {user} {action} comment on Issue #{number} "
                "{title} {url}".format(
-                   repo_name=colored(data["repository"]["name"], "blue"),
+                   repo_name=colored(repo_name, "blue"),
                    user=colored(data["comment"]["user"]["login"], "dark_cyan"),
                    action=data["action"],
                    number=colored(str(data["issue"]["number"]), "dark_yellow"),
                    title=unidecode(data["issue"]["title"]),
                    url=url))
-        self.bot.msg(self.channel, msg)
+        self.report_to_irc(repo_name, msg)
 
     def on_github_create(self, data):
+        repo_name = data["repository"]["name"]
         msg = "[{repo_name}] {user} created {ref_type} {ref}".format(
-            repo_name=colored(data["repository"]["name"], "blue"),
+            repo_name=colored(repo_name, "blue"),
             user=colored(data["sender"]["login"], "dark_cyan"),
             ref_type=data["ref_type"],
             ref=colored(data["ref"], "dark_magenta"))
-        self.bot.msg(self.channel, msg)
+        self.report_to_irc(repo_name, msg)
 
     def on_github_delete(self, data):
+        repo_name = data["repository"]["name"]
         msg = "[{repo_name}] {user} deleted {ref_type} {ref}".format(
-            repo_name=colored(data["repository"]["name"], "blue"),
+            repo_name=colored(repo_name, "blue"),
             user=colored(data["sender"]["login"], "dark_cyan"),
             ref_type=data["ref_type"],
             ref=colored(data["ref"], "dark_magenta"))
-        self.bot.msg(self.channel, msg)
+        self.report_to_irc(repo_name, msg)
 
     @defer.inlineCallbacks
     def on_github_fork(self, data):
+        repo_name = data["repository"]["name"]
         url = yield shorten_github_url(data["forkee"]["html_url"])
         msg = "[{repo_name}] {user} created fork {url}".format(
-            repo_name=colored(data["repository"]["name"], "blue"),
+            repo_name=colored(repo_name, "blue"),
             user=colored(data["forkee"]["owner"]["login"], "dark_cyan"),
             url=url)
-        self.bot.msg(self.channel, msg)
+        self.report_to_irc(repo_name, msg)
 
     @defer.inlineCallbacks
     def on_github_commit_comment(self, data):
+        repo_name = data["repository"]["name"]
         url = yield shorten_github_url(data["comment"]["html_url"])
         msg = "[{repo_name}] {user} commented on commit {url}".format(
-            repo_name=colored(data["repository"]["name"], "blue"),
+            repo_name=colored(repo_name, "blue"),
             user=colored(data["comment"]["user"]["login"], "dark_cyan"),
             url=url)
-        self.bot.msg(self.channel, msg)
+        self.report_to_irc(repo_name, msg)
 
     @defer.inlineCallbacks
     def on_github_release(self, data):
+        repo_name = data["repository"]["name"]
         url = yield shorten_github_url(data["release"]["html_url"])
         msg = "[{repo_name}] New release {url}".format(
             repo_name=colored(data["repository"]["name"], "blue"),
             url=url)
-        self.bot.msg(self.channel, msg)
+        self.report_to_irc(repo_name, msg)
 
     @defer.inlineCallbacks
     def on_github_pull_request(self, data):
         action = data["action"]
         payload = None
+        repo_name = data["repository"]["name"]
         user = data["pull_request"]["user"]["login"]
         if action == "assigned" or action == "unassigned":
             payload = data["pull_request"]["assignee"]["login"]
@@ -256,7 +280,7 @@ class GitWebhookServer(Resource):
                 data["pull_request"]["html_url"])
         msg = ("[{repo_name}] {user} {action} Pull Request #{number} {title} "
                "({head} -> {base}): {payload}".format(
-                   repo_name=colored(data["repository"]["name"], "blue"),
+                   repo_name=colored(repo_name, "blue"),
                    user=colored(user, "dark_cyan"),
                    action=action,
                    number=colored(str(data["pull_request"]["number"]),
@@ -267,14 +291,15 @@ class GitWebhookServer(Resource):
                    base=colored(data["pull_request"]["base"]["ref"],
                                 "dark_red"),
                    payload=payload))
-        self.bot.msg(self.channel, msg)
+        self.report_to_irc(repo_name, msg)
 
     @defer.inlineCallbacks
     def on_github_pull_request_review(self, data):
+        repo_name = data["repository"]["name"]
         url = yield shorten_github_url(data["review"]["html_url"])
         msg = ("[{repo_name}] {user} reviewed Pull Request #{number} {title} "
                "({head} -> {base}): {url}".format(
-                   repo_name=colored(data["repository"]["name"], "blue"),
+                   repo_name=colored(repo_name, "blue"),
                    user=colored(data["review"]["user"]["login"], "dark_cyan"),
                    number=colored(str(data["pull_request"]["number"]),
                                   "dark_yellow"),
@@ -284,14 +309,15 @@ class GitWebhookServer(Resource):
                    base=colored(data["pull_request"]["base"]["ref"],
                                 "dark_red"),
                    url=url))
-        self.bot.msg(self.channel, msg)
+        self.report_to_irc(repo_name, msg)
 
     @defer.inlineCallbacks
     def on_github_pull_request_review_comment(self, data):
+        repo_name = data["repository"]["name"]
         url = yield shorten_github_url(data["comment"]["html_url"])
         msg = ("[{repo_name}] {user} commented on Pull Request #{number} "
                "{title} ({head} -> {base}): {url}".format(
-                   repo_name=colored(data["repository"]["name"], "blue"),
+                   repo_name=colored(repo_name, "blue"),
                    user=colored(data["comment"]["user"]["login"], "dark_cyan"),
                    number=colored(str(data["pull_request"]["number"]),
                                   "dark_yellow"),
@@ -301,29 +327,31 @@ class GitWebhookServer(Resource):
                    base=colored(data["pull_request"]["base"]["ref"],
                                 "dark_red"),
                    url=url))
-        self.bot.msg(self.channel, msg)
+        self.report_to_irc(repo_name, msg)
 
     def on_gitlab_push(self, data):
+        repo_name = data["project"]["name"]
         msg = ("[{repo_name}] {pusher} pushed {num_commits} commit(s) to "
-               "{branch}".format(repo_name=colored(data["project"]["name"],
-                                                   "blue"),
+               "{branch}".format(repo_name=colored(repo_name, "blue"),
                                  pusher=colored(data["user_name"],
                                                 "dark_cyan"),
                                  num_commits=len(data["commits"]),
                                  branch=colored(data["ref"].split("/", 2)[-1],
                                                 "dark_green")))
-        self.bot.msg(self.channel, msg)
-        self.commits_to_irc(data["commits"])
+        self.report_to_irc(repo_name, msg)
+        self.commits_to_irc(repo_name, data["commits"])
 
     def on_gitlab_tag_push(self, data):
+        repo_name = data["project"]["name"]
         msg = ("[{repo_name}] {pusher} added tag {tag}".format(
-            repo_name=colored(data["project"]["name"], "blue"),
+            repo_name=colored(repo_name, "blue"),
             pusher=colored(data["user_name"], "dark_cyan"),
             tag=colored(data["ref"].split("/", 2)[-1], "dark_green")))
-        self.bot.msg(self.channel, msg)
-        self.commits_to_irc(data["commits"])
+        self.report_to_irc(repo_name, msg)
+        self.commits_to_irc(repo_name, data["commits"])
 
     def on_gitlab_issue(self, data):
+        repo_name = data["project"]["name"]
         attribs = data["object_attributes"]
         action = attribs["action"]
         if action == "open":
@@ -335,17 +363,17 @@ class GitWebhookServer(Resource):
         elif action == "update":
             action = "updated"
         msg = ("[{repo_name}] {user} {action} Issue #{number} {title} "
-               "{url}".format(repo_name=colored(data["project"]["name"],
-                                                "blue"),
+               "{url}".format(repo_name=colored(repo_name, "blue"),
                               user=colored(data["user"]["name"], "dark_cyan"),
                               action=action,
                               number=colored(str(attribs["iid"]),
                                              "dark_yellow"),
                               title=unidecode(attribs["title"]),
                               url=attribs["url"]))
-        self.bot.msg(self.channel, msg)
+        self.report_to_irc(repo_name, msg)
 
     def on_gitlab_note(self, data):
+        repo_name = data["project"]["name"]
         attribs = data["object_attributes"]
         noteable_type = attribs["noteable_type"]
         if noteable_type == "Commit":
@@ -367,16 +395,17 @@ class GitWebhookServer(Resource):
             return
         msg = ("[{repo_name}] {user} commented on {noteable_type} {number} "
                "{title} {url}".format(
-                   repo_name=colored(data["project"]["name"], "blue"),
+                   repo_name=colored(repo_name, "blue"),
                    user=colored(data["user"]["name"], "dark_cyan"),
                    noteable_type=noteable_type,
                    number=colored(str(id), "dark_yellow"),
                    title=unidecode(title),
                    url=attribs["url"]))
-        self.bot.msg(self.channel, msg)
+        self.report_to_irc(repo_name, msg)
 
     def on_gitlab_merge_request(self, data):
         attribs = data["object_attributes"]
+        repo_name = attribs["target"]["name"]
         action = attribs["action"]
         if action == "open":
             action = colored("opened", "dark_green")
@@ -392,7 +421,7 @@ class GitWebhookServer(Resource):
             action = colored("approved", "dark_green")
         msg = ("[{repo_name}] {user} {action} Merge Request #{number} "
                "{title} ({source} -> {target}): {url}".format(
-                   repo_name=colored(attribs["target"]["name"], "blue"),
+                   repo_name=colored(repo_name, "blue"),
                    user=colored(data["user"]["name"], "dark_cyan"),
                    action=action,
                    number=colored(str(attribs["iid"]), "dark_yellow"),
@@ -400,4 +429,4 @@ class GitWebhookServer(Resource):
                    source=colored(attribs["source_branch"], "dark_blue"),
                    target=colored(attribs["target_branch"], "dark_red"),
                    url=attribs["url"]))
-        self.bot.msg(self.channel, msg)
+        self.report_to_irc(repo_name, msg)

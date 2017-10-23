@@ -26,7 +26,12 @@ HTTPLogServer:
   title: Awesome Log Server
 
 GitWebhook:
-  channel: "#mysuperchannel"
+  channels:
+    my_project:
+    - "#mysuperchannel"
+    - "#myotherchannel"
+    default:
+    - "#mydefaultchannel"
   sslport: 4041
   certificate: /path/to/cert.pem
   privkey: /path/to/privkey.pem

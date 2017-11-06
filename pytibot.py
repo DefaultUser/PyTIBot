@@ -320,11 +320,11 @@ class PyTIBot(irc.IRCClient, object):
             channel = user
 
         if cmdmode:
-            command = msg.split()[index]
-            args = msg.split(" ")[index+1:]
-            if args:
-                while args[0] == "":
-                    args.pop(0)
+            temp = msg.split(" ")[index:]
+            while temp[0] == "":
+                temp.pop(0)
+            command = temp[0]
+            args = temp[1:]
             if command in self.commands:
                 self.commands[command].send((args, user, userhost, channel))
             else:

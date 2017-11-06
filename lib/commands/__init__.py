@@ -36,13 +36,16 @@ def bot_help(bot):
         doc = []
         if args:
             for arg in args:
-                try:
-                    _gen = getattr(thismodule, commands[arg])
-                    doc.append(formatting.colored(arg + ": ", "red") +
-                               formatting.colored(_gen.__doc__, "dark_blue"))
-                except (AttributeError, KeyError):
-                    doc.append(formatting.colored("No command called ", "red") +
-                               formatting.colored(arg, "dark_green"))
+                if arg:
+                    try:
+                        _gen = getattr(thismodule, commands[arg])
+                        doc.append(formatting.colored(arg + ": ", "red") +
+                                   formatting.colored(_gen.__doc__,
+                                                      "dark_blue"))
+                    except (AttributeError, KeyError):
+                        doc.append(formatting.colored("No command called ",
+                                                      "red") +
+                                   formatting.colored(arg, "dark_green"))
         else:
             doc = [", ".join(commands)]
         for d in doc:

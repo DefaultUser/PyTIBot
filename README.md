@@ -28,16 +28,12 @@ Starting the bot
 Adjust the configuration file to your needs.
 Start the bot with
 ```
-twistd PyTIBot
-```
-or if you don't want to run it as a daemon
-```
-twistd -n PyTIBot
+twist PyTIBot
 ```
 By default pytibot.yaml is used, but you can specify another configuration
 file like this
 ```
-twistd PyTIBot -c otherconfig.yaml
+twist PyTIBot -c otherconfig.yaml
 ```
 
 

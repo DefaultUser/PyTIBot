@@ -36,11 +36,12 @@ from datetime import datetime, timedelta
 
 from util import log, formatting
 from util import filesystem as fs
+from util.misc import ensure_bytes, PY3
 
 import sys
 
 # py3 compatability
-if sys.version_info.major == 3:
+if PY3:
     unicode = str
     from html import escape as htmlescape
 else:
@@ -86,12 +87,6 @@ header = fs.get_contents("resources/header.inc")
 footer = fs.get_contents("resources/footer.inc")
 
 
-def _as_bytes(data):
-    if sys.version_info.major == 3:
-        return bytes(data, "utf-8")
-    return data
-
-
 def _onError(failure, request):
     logging.error(failure.getTraceback())
     if not request.finished:
@@ -129,24 +124,25 @@ class BasePage(BaseResource):
             self.channels = [self.channels]
         for channel in self.channels:
             name = channel.lstrip("#")
-            self.putChild(_as_bytes(name), LogPage(name,
-                                                   log.get_log_dir(config),
-                                                   "#{} - {}".format(
-                                                       name, self.title)))
+            self.putChild(ensure_bytes(name), LogPage(name,
+                                                      log.get_log_dir(config),
+                                                      "#{} - {}".format(
+                                                          name, self.title)))
         # add resources
         for f in fs.listdir("resources"):
             relpath = "/".join(["resources", f])
             if not (f.endswith(".html") or f.endswith(".inc")):
-                self.putChild(_as_bytes(f), File(fs.get_abs_path(relpath),
-                                                 defaultType="text/plain"))
+                self.putChild(ensure_bytes(f), File(fs.get_abs_path(relpath),
+                                                    defaultType="text/plain"))
 
     def render_GET(self, request):
         data = ""
         for channel in self.channels:
             data += "<a href='{0}'>{0}</a><br/>".format(channel.lstrip("#"))
-        return _as_bytes(base_page_template.format(title=self.title, data=data,
-                                                   header=header,
-                                                   footer=footer))
+        return ensure_bytes(base_page_template.format(title=self.title,
+                                                      data=data,
+                                                      header=header,
+                                                      footer=footer))
 
 
 class LogPage(BaseResource):
@@ -163,8 +159,8 @@ class LogPage(BaseResource):
             for f in fs.listdir("resources"):
                 relpath = "/".join(["resources", f])
                 if not (f.endswith(".html") or f.endswith(".inc")):
-                    self.putChild(_as_bytes(f), File(fs.get_abs_path(relpath),
-                                                     defaultType="text/plain"))
+                    self.putChild(ensure_bytes(f), File(
+                        fs.get_abs_path(relpath), defaultType="text/plain"))
 
     def channel_link(self):
         if self.singlechannel:
@@ -197,7 +193,7 @@ class LogPage(BaseResource):
                         log_data += line_templates[data["levelname"]].format(
                             **data)
                 log_data += '</table>'
-        request.write(_as_bytes(log_page_template.format(
+        request.write(ensure_bytes(log_page_template.format(
             log_data=log_data, title=self.title, header=header,
             footer=footer, channel=self.channel_link(), date=date,
             Level=MIN_LEVEL)))
@@ -304,7 +300,7 @@ class SearchPage(BaseResource):
             page = 1
         if page < 1:
             log_data = "Invalid page number specified"
-            request.write(_as_bytes(search_page_template.format(
+            request.write(ensure_bytes(search_page_template.format(
                 log_data=log_data, title=self.title, header=header,
                 footer=footer, channel=self.channel)))
             request.finish()
@@ -331,14 +327,14 @@ class SearchPage(BaseResource):
                     htmlescape(querystr))
         if sys.version_info.major < 3:
             log_data = log_data.encode("utf-8")
-        request.write(_as_bytes(search_page_template.format(
+        request.write(ensure_bytes(search_page_template.format(
             log_data=log_data, title=self.title, header=header,
             footer=footer, channel=self.channel_link())))
         request.finish()
 
     def render_GET(self, request):
         if b"q" not in request.args or request.args[b"q"] == ['']:
-            return _as_bytes(search_page_template.format(
+            return ensure_bytes(search_page_template.format(
                 log_data="", title=self.title, header=header,
                 footer=footer, channel=self.channel_link()))
         d = deferLater(reactor, 0, self._search_logs, request)

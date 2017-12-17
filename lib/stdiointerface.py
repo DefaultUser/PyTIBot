@@ -125,4 +125,4 @@ class STDIOInterface(LineOnlyReceiver, object):
         Usage: ban <channel> <user>
         """
         channel, user = data.split(None, 1)
-        self.bot.kick(channel, user)
+        self.bot.ban(channel, user)

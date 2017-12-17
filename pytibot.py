@@ -263,6 +263,12 @@ class PyTIBot(irc.IRCClient, object):
             for watcher in self.channelwatchers[user]:
                 watcher.msg(self.nickname, message)
 
+    def ban(self, channel, user):
+        """
+        Attempt to ban a user from a channel
+        """
+        self.mode(channel, True, "b", user=user)
+
     def joined(self, channel):
         """Triggered when joining a channel"""
         logging.info("Joined channel: {}".format(channel))

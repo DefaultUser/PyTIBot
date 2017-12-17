@@ -78,8 +78,9 @@ Channelmodules:
       msg_blacklist:
       - "evil word"
       # simple spam protection
-      buffer_length = 6
-      repeat_count = 3
+      buffer_length: 6 # default 5
+      repeat_count: 3 # default 3
+      max_highlights: 3 # default 5
   "#myweirdchannel":
   -
     ChannelLogger

@@ -208,9 +208,13 @@ Channelmodules:
       - evil_user
       msg_blacklist:
       - "evil word"
+      # simple spam protection
+      buffer_length: 6 # default 5
+      repeat_count: 3 # default 3
+      max_highlights: 3 # default 5
 ```
 *ChannelLogger* also needs some configuration that is shared by all ChannelLoggers (see section *Logging*).<br/>
-All fields in *Autokick* accept regular expressions.
+*user_blacklist* and *msg_blacklist* in *Autokick* accept regular expressions. If *repeat_count* of a user's last *buffer_length* messages are the same or a user highlights more than *max_highlights* users with the same message, this user will also be kicked.
 
 
 Logging

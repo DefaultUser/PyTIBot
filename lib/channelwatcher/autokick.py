@@ -32,6 +32,8 @@ class Autokick(abstract.ChannelWatcher):
         # number of repeating messages until a user is kicked
         self.repeat_count = config.get("repeat_count", 3)
         self.msg_buffer = defaultdict(lambda: deque([], buffer_len))
+        # maximum number of highlights in one message
+        self.max_highlights = config.get("max_highlights", 5)
 
     def remove_user_from_msgbuffer(self, user):
         self.msg_buffer.pop(user, None)
@@ -70,11 +72,12 @@ class Autokick(abstract.ChannelWatcher):
         if user == self.bot.nickname:
             return False
         message = irc.stripFormatting(message)
-        return self.check_msg_content(message) or self.check_spam(user,
-                                                                  message)
+        return (self.check_msg_content(message) or
+                self.check_spam(user, message) or
+                self.check_mass_highlight(message))
 
     def check_msg_content(self, message):
-        # check message for blacklisted words
+        """Check if a message contains blacklisted words"""
         for bl_msg in self.msg_blacklist:
             try:
                 if re.search(re.compile(bl_msg, re.IGNORECASE), message):
@@ -85,10 +88,25 @@ class Autokick(abstract.ChannelWatcher):
         return False
 
     def check_spam(self, user, message):
+        """Check if message is just repeated spam"""
         msg = message.lower()
+        # TODO: fuzzy string comparison
         self.msg_buffer[user].append(msg)
         if self.msg_buffer[user].count(msg) == self.repeat_count:
             return True
+        return False
+
+    def check_mass_highlight(self, message):
+        """Check if a message highlights too many users"""
+        if self.max_highlights <= 1:
+            return False
+        message = message.lower()
+        count = 0
+        for user in self.bot.userlist[self.channel]:
+            if user.lower() in message:
+                count += 1
+            if count > self.max_highlights:
+                return True
         return False
 
     def notice(self, user, message):

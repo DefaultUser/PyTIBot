@@ -112,3 +112,17 @@ class STDIOInterface(LineOnlyReceiver, object):
         """Quit the bot
         Usage: quit [message]"""
         self.bot.quit(message)
+
+    def irc_kick(self, data):
+        """Attempt to kick a user from a channel
+        Usage: kick <channel> <user>
+        """
+        channel, user = data.split(None, 1)
+        self.bot.kick(channel, user)
+
+    def irc_ban(self, data):
+        """Attempt to ban a user from a channel
+        Usage: ban <channel> <user>
+        """
+        channel, user = data.split(None, 1)
+        self.bot.kick(channel, user)

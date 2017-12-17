@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
-import logging
+from collections import deque, defaultdict
 from twisted.words.protocols import irc
 
 from . import abstract
@@ -28,6 +28,13 @@ class Autokick(abstract.ChannelWatcher):
         super(Autokick, self).__init__(bot, channel, config)
         self.user_blacklist = config["user_blacklist"]
         self.msg_blacklist = config["msg_blacklist"]
+        buffer_len = config.get("buffer_length", 5)
+        # number of repeating messages until a user is kicked
+        self.repeat_count = config.get("repeat_count", 3)
+        self.msg_buffer = defaultdict(lambda: deque([], buffer_len))
+
+    def remove_user_from_msgbuffer(self, user):
+        self.msg_buffer.pop(user, None)
 
     def topic(self, user, topic):
         pass
@@ -51,16 +58,23 @@ class Autokick(abstract.ChannelWatcher):
             self.bot.kick(self.channel, user)
 
     def part(self, user):
-        pass
+        self.remove_user_from_msgbuffer(user)
 
     def quit(self, user, quitMessage):
-        pass
+        self.remove_user_from_msgbuffer(user)
 
     def kick(self, kickee, kicker, message):
-        pass
+        self.remove_user_from_msgbuffer(kickee)
 
-    def check_msg(self, message):
+    def check_msg(self, user, message):
+        if user == self.bot.nickname:
+            return False
         message = irc.stripFormatting(message)
+        return self.check_msg_content(message) or self.check_spam(user,
+                                                                  message)
+
+    def check_msg_content(self, message):
+        # check message for blacklisted words
         for bl_msg in self.msg_blacklist:
             try:
                 if re.search(re.compile(bl_msg, re.IGNORECASE), message):
@@ -70,15 +84,22 @@ class Autokick(abstract.ChannelWatcher):
                     return True
         return False
 
+    def check_spam(self, user, message):
+        msg = message.lower()
+        self.msg_buffer[user].append(msg)
+        if self.msg_buffer[user].count(msg) == self.repeat_count:
+            return True
+        return False
+
     def notice(self, user, message):
-        if self.check_msg(message):
+        if self.check_msg(user, message):
             self.bot.kick(self.channel, user)
 
     def action(self, user, data):
         pass
 
     def msg(self, user, message):
-        if self.check_msg(message):
+        if self.check_msg(user, message):
             self.bot.kick(self.channel, user)
 
     def error(self, message):

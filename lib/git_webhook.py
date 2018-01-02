@@ -161,7 +161,7 @@ class GitWebhookServer(Resource):
         if action == "assigned" or action == "unassigned":
             payload = data["issue"]["assignee"]["login"]
         elif action == "labeled" or action == "unlabeled":
-            payload = data["issue"]["label"]
+            payload = data["label"]
         elif action == "milestoned":
             payload = data["issue"]["milestone"]["title"]
         elif action == "opened":

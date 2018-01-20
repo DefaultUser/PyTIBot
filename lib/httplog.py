@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2016>  <Sebastian Schmidt>
+# Copyright (C) <2016-2018>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -124,10 +124,9 @@ class BasePage(BaseResource):
             self.channels = [self.channels]
         for channel in self.channels:
             name = channel.lstrip("#")
-            self.putChild(ensure_bytes(name), LogPage(name,
-                                                      log.get_log_dir(config),
-                                                      "#{} - {}".format(
-                                                          name, self.title)))
+            self.putChild(ensure_bytes(name),
+                          LogPage(name, log.get_channellog_dir(config),
+                                  "#{} - {}".format(name, self.title)))
         # add resources
         for f in fs.listdir("resources"):
             relpath = "/".join(["resources", f])

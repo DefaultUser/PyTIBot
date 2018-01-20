@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017>  <Sebastian Schmidt>
+# Copyright (C) <2017-2018>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
+from twisted.python.failure import Failure
 import treq
 import codecs
 import json
@@ -26,6 +27,8 @@ import sys
 from unidecode import unidecode
 
 from util.formatting import colored
+from util.misc import PY3
+from lib import webhook_actions
 
 
 @defer.inlineCallbacks
@@ -53,6 +56,18 @@ class GitWebhookServer(Resource):
         self.github_secret = config["GitWebhook"].get("github_secret", None)
         self.gitlab_secret = config["GitWebhook"].get("gitlab_secret", None)
         self.channels = config["GitWebhook"]["channels"]
+        # local hooks and actions
+        self.actions = config["GitWebhook"].get("Actions", {})
+        self.hooks = config["GitWebhook"].get("Hooks", {})
+        self.rungroup_settings = config["GitWebhook"].get("RungroupSettings",
+                                                          {})
+        users = config["GitWebhook"].get("hook_report_users", [])
+        # don't fail if the config provides a single name instead of a list
+        if isinstance(users, str):
+            logging.warn("GitWebhook expected a list of users for "
+                         "'hook_report_users', but got a single string")
+            users = [users]
+        self.hook_report_users = users
 
     def render_POST(self, request):
         body = request.content.read()
@@ -70,7 +85,7 @@ class GitWebhookServer(Resource):
             eventtype = data["object_kind"]
             sig = request.getHeader(b"X-Gitlab-Token")
             service = "gitlab"
-        if sys.version_info.major == 3:
+        if PY3:
             eventtype = str(eventtype, "utf-8")
 
         secret = None
@@ -81,7 +96,7 @@ class GitWebhookServer(Resource):
         if secret:
             h = hmac.new(secret, body, sha1)
             if codecs.encode(h.digest(), "hex") != sig:
-                logging.warn("X-Hub-Signature does not correspond with "
+                logging.warn("Message's signature does not correspond with "
                              "the given secret - ignoring request")
                 request.setResponseCode(200)
                 return b""
@@ -95,6 +110,78 @@ class GitWebhookServer(Resource):
         # always return 200
         request.setResponseCode(200)
         return b""
+
+    def report_hook_success_msg(self, success, actionname):
+        """
+        Send a success or fail message to the 'hook_report_users'
+        """
+        if isinstance(success, Failure):
+            message = "Hook {} failed: {}".format(colored(actionname, "blue"),
+                                                  success.getErrorMessage())
+        else:
+            message = "Hook {} finished without errors".format(
+                colored(actionname, "blue"))
+        for user in self.hook_report_users:
+            self.bot.msg(user, message)
+
+    def push_hooks(self, data):
+        """
+        Trigger the defined push hooks
+        """
+        repo_name = data["project"]["name"]
+        projects = self.hooks.get("Push", [])
+        if repo_name in projects:
+            hooks = projects[repo_name]
+        elif "default" in projects:
+            hooks = projects["default"]
+        else:
+            return
+        branch = data["branch"]
+        for hook in hooks:
+            # check for allowed branch
+            branches = hook.get("branches", "<all>")
+            if not (branches == "<all>" or branch in branches):
+                continue
+            # check for ignored users
+            ignore_users = hook.get("ignore_users", [])
+            if data["pusher"]["username"] in ignore_users:
+                continue
+            action_name = hook.get("action", None)
+            if not action_name:
+                logging.warn("Push hook: Missing action for repo {}".format(
+                    repo_name))
+                continue
+            action = self.actions.get(action_name, None)
+            if not action:
+                logging.warn("No webhook action '{}' defined".format(
+                    action_name))
+                continue
+            action_type = action.get("type", None)
+            run_settings = self.rungroup_settings.get(action.get("rungroup",
+                                                                 "default"),
+                                                      {})
+            if action_type and hasattr(webhook_actions, action_type):
+                d = getattr(webhook_actions, action_type)(action_name, data,
+                                                          action,
+                                                          run_settings)
+                d.addBoth(self.report_hook_success_msg, action_name)
+            else:
+                logging.warn("No such action type: {}".format(
+                    action_type))
+
+        # Push: github_push, gitlab_push
+        # Tag: github_create (ref_type: tag), gitlab_tag_push
+        # implement later
+        # Issue: github_issues (opened, reopened, edited, closed),
+        #        gitlab_issue (open, reopen, update, close)
+        # PullRequest: github_pull_request (opened, reopened, closed, edited,
+        #                                   synchronize),
+        #              github_pull_request_review (review -> state == approved),
+        #              gitlab_merge_request (open, reopen, merge, close, update,
+        #                                    approved)
+        # Comment: github_issue_comment, github_commit_comment,
+        #          github_pull_request_review_comment, gitlab_note
+        # TODO: issue_hooks, tag_hooks, pullrequest_hooks and comment_hooks
 
     def report_to_irc(self, repo_name, message):
         channels = []
@@ -141,6 +228,7 @@ class GitWebhookServer(Resource):
             action = colored("force pushed", "red")
         url = yield shorten_github_url(data["compare"])
         repo_name = data["repository"]["name"]
+        branch = data["ref"].split("/", 2)[-1]
         msg = ("[{repo_name}] {pusher} {action} {num_commits} commit(s) to "
                "{branch}: {compare}".format(
                    repo_name=colored(repo_name, "blue"),
@@ -148,10 +236,24 @@ class GitWebhookServer(Resource):
                                   "dark_cyan"),
                    action=action,
                    num_commits=len(data["commits"]),
-                   branch=colored(data["ref"].split("/", 2)[-1], "dark_green"),
+                   branch=colored(branch, "dark_green"),
                    compare=url))
         self.report_to_irc(repo_name, msg)
         self.commits_to_irc(repo_name, data["commits"], github=True)
+        # subset of information that is common for both GitHUb and GitLab
+        # only a few useful pieces of information
+        subset = {"commits": data["commits"],
+                  "branch": branch,
+                  "project": {"name": data["repository"]["name"],
+                              "namespace": data["repository"]["full_name"].split(
+                                  "/")[0],
+                              "description": data["repository"]["description"],
+                              "url": data["repository"]["html_url"],
+                              "homepage": data["repository"]["homepage"]},
+                  "pusher": {"name": data["pusher"]["name"],
+                             "username": data["sender"]["login"],
+                             "id": data["sender"]["id"]}}
+        self.push_hooks(subset)
 
     @defer.inlineCallbacks
     def on_github_issues(self, data):
@@ -333,15 +435,28 @@ class GitWebhookServer(Resource):
 
     def on_gitlab_push(self, data):
         repo_name = data["project"]["name"]
+        branch = data["ref"].split("/", 2)[-1]
         msg = ("[{repo_name}] {pusher} pushed {num_commits} commit(s) to "
                "{branch}".format(repo_name=colored(repo_name, "blue"),
                                  pusher=colored(data["user_name"],
                                                 "dark_cyan"),
                                  num_commits=len(data["commits"]),
-                                 branch=colored(data["ref"].split("/", 2)[-1],
-                                                "dark_green")))
+                                 branch=colored(branch, "dark_green")))
         self.report_to_irc(repo_name, msg)
         self.commits_to_irc(repo_name, data["commits"])
+        # subset of information that is common for both GitHUb and GitLab
+        # only a few useful pieces of information
+        subset = {"commits": data["commits"],
+                  "branch": branch,
+                  "project": {"name": data["project"]["name"],
+                              "namespace": data["project"]["namespace"],
+                              "description": data["project"]["description"],
+                              "url": data["project"]["http_url"],
+                              "homepage": data["project"]["homepage"]},
+                  "pusher": {"name": data["user_name"],
+                             "username": data["user_username"],
+                             "id": data["user_id"]}}
+        self.push_hooks(subset)
 
     def on_gitlab_tag_push(self, data):
         repo_name = data["project"]["name"]

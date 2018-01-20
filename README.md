@@ -235,15 +235,15 @@ Log rotation will be applied at midnight.
 If the log directory is not set, the standard user log directory is used:
 On Linux and Unix:
 ```
-~/.cache/PyTIBot/log/
+~/.cache/PyTIBot/log/channellogs/
 ```
 On Mac OS X:
 ```
-~/Library/Logs/PyTIBot/
+~/Library/Logs/PyTIBot/channellogs/
 ```
 On Windows:
 ```
-C:\Users\<username>\AppData\Local\PyTIBot\Logs\
+C:\Users\<username>\AppData\Local\PyTIBot\Logs\channellogs\
 ```
 
 You can also use the builtin http server to create a webpage that shows the channel logs
@@ -283,8 +283,35 @@ GitWebhook:
   privkey: /path/to/privkey.pem
   github_secret: SECRETKEY
   gitlab_secret: SECRETKEY
+  hook_report_users: [myadmin]
+  Hooks:
+    Push:
+      default:
+      - action: act1
+        branches: <all>
+        ignore_users: []
+      my_project:
+      - action: do_noop # exclude my_project from the default Push hook
+  Actions:
+    act1:
+      type: process
+      command: ./my_process
+      path: /some/path/
+      args: ["1", test] # should be strings
+      rungroup: run1
+    do_noop:
+      type: noop
+      # rungroup is automatically set to default if not specified
+  RungroupSettings:
+    run1:
+      clear_previous: True
+      stop_running: False
 ```
-Alternatively you can specify *port* to create a plain TCP server without SSL/TLS encryption. However this is only recommended with a local SSL/TLS encrypted Proxy Server.
+Alternatively to *sslport* you can specify *port* to create a plain HTTP server without SSL/TLS encryption. However this is only recommended with a local SSL/TLS encrypted Proxy Server.<br/>
+Certain Webhook events can be used to trigger actions that the bot will execute (currently only Push events are supported). Success or failure will be reported to *hook_report_users*.<br/>
+Currently these types of actions are supported:
+  * noop: do nothing, useful for excluding a project from the default hook
+  * process: run a subprocess, only one process of every rungroup can run at the same time
 
 
 COPYRIGHT

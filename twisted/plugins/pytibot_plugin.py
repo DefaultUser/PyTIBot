@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2016>  <Sebastian Schmidt>
+# Copyright (C) <2016-2018>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -99,8 +99,8 @@ class PyTIBotServiceMaker(object):
             if len(channels) == 1:
                 title = config["HTTPLogServer"].get("title",
                                                     "PyTIBot Log Server")
-                root = LogPage(channels[0], log.get_log_dir(config), title,
-                               singlechannel=True)
+                root = LogPage(channels[0], log.get_channellog_dir(config),
+                               title, singlechannel=True)
             else:
                 root = BasePage(config)
             httpfactory = Site(root)

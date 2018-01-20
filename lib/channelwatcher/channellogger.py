@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017>  <Sebastian Schmidt>
+# Copyright (C) <2017-2018>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -43,10 +43,11 @@ class ChannelLogger(abstract.ChannelWatcher):
         # don't add multiple handlers for the same logger
         if not self.logger.handlers:
             # log to file
-            if not os.path.isdir(log.get_log_dir(bot.config)):
-                os.makedirs(log.get_log_dir(bot.config))
+            log_dir = log.get_channellog_dir(bot.config)
+            if not os.path.isdir(log_dir):
+                os.makedirs(log_dir)
             log_handler = log.TimedRotatingFileHandler(os.path.join(
-                log.get_log_dir(bot.config), name), when="midnight")
+                log_dir, name), when="midnight")
             if use_yaml:
                 log_handler.setFormatter(log.yaml_formatter)
                 log_handler.namer = log.yaml_namer

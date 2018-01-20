@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017>  <Sebastian Schmidt>
+# Copyright (C) <2017-2018>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -59,9 +59,10 @@ msg_templates = {TOPIC: "%(user)s changed the topic to: %(topic)s",
 
 
 @decorators.memoize
-def get_log_dir(config):
-    log_dir = config["Logging"].get("directory", fs.adirs.user_log_dir)
-    return log_dir
+def get_channellog_dir(config):
+    return config["Logging"].get("directory",
+                                 os.path.join(fs.adirs.user_log_dir,
+                                              "channellogs"))
 
 
 class YAMLFormatter(object):

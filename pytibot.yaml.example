@@ -37,6 +37,29 @@ GitWebhook:
   privkey: /path/to/privkey.pem
   github_secret: SECRETKEY
   gitlab_secret: SECRETKEY
+  hook_report_users: [myadmin]
+  Hooks:
+    Push:
+      default:
+      - action: act1
+        branches: <all>
+        ignore_users: []
+      my_project:
+      - action: do_noop # exclude my_project from the default Push hook
+  Actions:
+    act1:
+      type: process
+      command: ./my_process
+      path: /some/path/
+      args: [1, 2]
+      rungroup: run1
+    do_noop:
+      type: noop
+      # rungroup is automatically set to default if not specified
+  RungroupSettings:
+    run1:
+      clear_previous: True
+      stop_running: False
 
 Manhole:
   telnetPort: 9999

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2016>  <Sebastian Schmidt>
+# Copyright (C) <2015-2018>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,13 +19,16 @@
 import random
 import os
 from twisted.internet import defer
+from twisted.logger import Logger
 from treq import get
 from bidict import bidict
 import argparse
-import logging
 
 from util import filesystem as fs
 from util import formatting
+
+
+log = Logger()
 
 
 morse_dict = bidict({'A': '.-', 'B': '-...', 'C': '-.-.',
@@ -147,7 +150,7 @@ allow long fortunes, -o to allow offensive fortunes"""
         args, sender, senderhost, channel = yield
         options, unknown_options = parser.parse_known_args(args)
         if unknown_options:
-            logging.warn("Fortune: Unknown options: {}".format(unknown_options))
+            log.warn("Fortune: Unknown options: {}".format(unknown_options))
             bot.msg(channel, formatting.colored("Invalid input for fortune",
                                                 "red"))
             continue

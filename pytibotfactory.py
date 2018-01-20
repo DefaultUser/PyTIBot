@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2017>  <Sebastian Schmidt>
+# Copyright (C) <2015-2018>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from twisted.internet import protocol, reactor
-import logging
+from twisted.logger import Logger
 from pytibot import PyTIBot
 
 
@@ -25,6 +25,7 @@ class PyTIBotFactory(protocol.ClientFactory):
     """A factory for PyTIBot"""
     MAX_ATTEMPTS = 5
     RECONNECT_DELAY = 60
+    log = Logger()
 
     def __init__(self, config):
         self.config = config
@@ -44,7 +45,7 @@ class PyTIBotFactory(protocol.ClientFactory):
 
     def clientConnectionLost(self, connector, reason):
         """Triggered on"""
-        logging.error("connection lost ({})".format(reason))
+        self.log.error("connection lost ({})".format(reason))
         if self.bot:
             for channel in self.bot.channelwatchers:
                 for watcher in self.bot.channelwatchers[channel]:
@@ -56,7 +57,7 @@ class PyTIBotFactory(protocol.ClientFactory):
             reactor.stop()
 
     def clientConnectionFailed(self, connector, reason):
-        logging.error("connection failed ({})".format(reason))
+        self.log.error("connection failed ({})".format(reason))
         if self.bot:
             for channel in self.bot.channelwatchers:
                 for watcher in self.bot.channelwatchers[channel]:
@@ -67,5 +68,5 @@ class PyTIBotFactory(protocol.ClientFactory):
                               connector.connect)
             self.connection_attempts += 1
         else:
-            logging.critical("Connection can't be established - Shutting down")
+            self.log.critical("Connection can't be established - Shutting down")
             reactor.stop()

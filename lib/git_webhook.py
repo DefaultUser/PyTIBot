@@ -17,32 +17,19 @@
 from twisted.web.resource import Resource
 from twisted.internet import reactor, defer
 from twisted.python.failure import Failure
+from twisted.logger import Logger
 import treq
 import codecs
 import json
 import hmac
 from hashlib import sha1
-import logging
 import sys
 from unidecode import unidecode
 
 from util.formatting import colored
-from util.misc import PY3
+from util.misc import ensure_bytes, ensure_str
+from util.internet import shorten_github_url
 from lib import webhook_actions
-
-
-@defer.inlineCallbacks
-def shorten_github_url(url):
-    """
-    Shorten a github url using git.io - if it fails, return the original url
-    """
-    try:
-        response = yield treq.post("https://git.io", data={"url": url},
-                                   timeout=5)
-    except Exception as e:
-        logging.warn(e)
-        defer.returnValue(url)
-    defer.returnValue(response.headers.getRawHeaders("Location", [url])[0])
 
 
 class GitWebhookServer(Resource):
@@ -50,6 +37,7 @@ class GitWebhookServer(Resource):
     HTTP(S) Server for GitHub/Gitlab webhooks
     """
     isLeaf = True
+    log = Logger()
 
     def __init__(self, bot, config):
         self.bot = bot
@@ -64,8 +52,8 @@ class GitWebhookServer(Resource):
         users = config["GitWebhook"].get("hook_report_users", [])
         # don't fail if the config provides a single name instead of a list
         if isinstance(users, str):
-            logging.warn("GitWebhook expected a list of users for "
-                         "'hook_report_users', but got a single string")
+            self.log.warn("GitWebhook expected a list of users for "
+                          "'hook_report_users', but got a single string")
             users = [users]
         self.hook_report_users = users
 
@@ -85,8 +73,7 @@ class GitWebhookServer(Resource):
             eventtype = data["object_kind"]
             sig = request.getHeader(b"X-Gitlab-Token")
             service = "gitlab"
-        if PY3:
-            eventtype = str(eventtype, "utf-8")
+        eventtype = ensure_str(eventtype)
 
         secret = None
         if service == "github":
@@ -94,10 +81,11 @@ class GitWebhookServer(Resource):
         elif service == "gitlab":
             secret = self.gitlab_secret
         if secret:
+            secret = ensure_bytes(secret)
             h = hmac.new(secret, body, sha1)
             if codecs.encode(h.digest(), "hex") != sig:
-                logging.warn("Message's signature does not correspond with "
-                             "the given secret - ignoring request")
+                self.log.warn("Request's signature does not correspond"
+                              " with the given secret - ignoring request")
                 request.setResponseCode(200)
                 return b""
         if hasattr(self, "on_{}_{}".format(service, eventtype)):
@@ -105,7 +93,7 @@ class GitWebhookServer(Resource):
                                                                  eventtype)),
                               data)
         else:
-            logging.warn("Event {} not implemented for service {}".format(
+            self.log.warn("Event {} not implemented for service {}".format(
                 eventtype, service))
         # always return 200
         request.setResponseCode(200)
@@ -148,12 +136,12 @@ class GitWebhookServer(Resource):
                 continue
             action_name = hook.get("action", None)
             if not action_name:
-                logging.warn("Push hook: Missing action for repo {}".format(
+                self.log.warn("Push hook: Missing action for repo {}".format(
                     repo_name))
                 continue
             action = self.actions.get(action_name, None)
             if not action:
-                logging.warn("No webhook action '{}' defined".format(
+                self.log.warn("No webhook action '{}' defined".format(
                     action_name))
                 continue
             action_type = action.get("type", None)
@@ -166,7 +154,7 @@ class GitWebhookServer(Resource):
                                                           run_settings)
                 d.addBoth(self.report_hook_success_msg, action_name)
             else:
-                logging.warn("No such action type: {}".format(
+                self.log.warn("No such action type: {}".format(
                     action_type))
 
         # Push: github_push, gitlab_push
@@ -193,8 +181,8 @@ class GitWebhookServer(Resource):
             # don't error out if the config has a string instead of a list
             channels = [channels]
         if not channels:
-            logging.warn("Recieved webhook for repo [{repo}], but no IRC "
-                         "channel is configured for it, ignoring...")
+            self.log.warn("Recieved webhook for repo [{repo}], but no IRC "
+                          "channel is configured for it, ignoring...")
             return
         for channel in channels:
             self.bot.msg(channel, message)

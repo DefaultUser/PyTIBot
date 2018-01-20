@@ -20,13 +20,13 @@ from twisted.web.static import File
 from twisted.words.protocols import irc
 from twisted.internet import threads, reactor
 from twisted.internet.task import LoopingCall, deferLater
+from twisted.logger import Logger
 
 from whoosh.index import create_in
 from whoosh import fields
 from whoosh.qparser import QueryParser
 
 import yaml
-import logging
 import os
 import re
 import time
@@ -47,6 +47,9 @@ if PY3:
 else:
     # python2
     from cgi import escape as htmlescape
+
+
+logger = Logger()
 
 
 LEVEL_ALL = 10
@@ -88,7 +91,7 @@ footer = fs.get_contents("resources/footer.inc")
 
 
 def _onError(failure, request):
-    logging.error(failure.getTraceback())
+    logger.error("Error when answering a request:{}".format(failure))
     if not request.finished:
         request.setResponseCode(500)
         request.write("An error occured, please contact the administrator")

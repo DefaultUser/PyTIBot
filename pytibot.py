@@ -409,7 +409,7 @@ class PyTIBot(irc.IRCClient, object):
                 watcher.topic(nick, newTopic)
 
     def userJoined(self, user, channel):
-        """Triggered when a user changes nick"""
+        """Triggered when a user joins a channel"""
         channel = channel.lower()
         self.userlist[channel].append(user)
         self.log.info("{} joined {}".format(user, channel))

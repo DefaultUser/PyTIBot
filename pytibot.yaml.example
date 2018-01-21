@@ -62,7 +62,7 @@ GitWebhook:
       stop_running: False
 
 Manhole:
-  telnetPort: 9999
+  telnetport: 9999
 
 Commands:
   hello: hello

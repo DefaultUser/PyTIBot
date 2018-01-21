@@ -169,7 +169,7 @@ Additionally to IRC commands this bot can also be controlled via telnet.
 To turn this feature on, you need to set the port in the configuration file:
 ```
 Manhole:
-  telnetPort = 9999
+  telnetport = 9999
 ```
 You also need to specify login credentials in the file *manhole_cred* in the form of *user:password*.
 

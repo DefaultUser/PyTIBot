@@ -170,12 +170,12 @@ class PyTIBot(irc.IRCClient, object):
         """Enable a command - returns True at success"""
         # no such command
         if not hasattr(commands, cmd):
-            self.log.warning("No such command: {}".format(cmd))
+            self.log.warn("No such command: {}".format(cmd))
             return False
 
         # allready present
         if cmd in self.commands:
-            self.log.warning("Command {} allready enabled".format(cmd))
+            self.log.warn("Command {} allready enabled".format(cmd))
             return True
 
         name = name if name else cmd
@@ -193,7 +193,7 @@ class PyTIBot(irc.IRCClient, object):
         __trigs_inv = dict([[v, k] for k, v in triggers.__trigs__.items()])
         # no such trigger
         if not hasattr(triggers, trigger):
-            self.log.warning("No such trigger: {}".format(trigger))
+            self.log.warn("No such trigger: {}".format(trigger))
             return False
 
         # allready present
@@ -202,7 +202,7 @@ class PyTIBot(irc.IRCClient, object):
         for gen in self.triggers.values():
             enabled.append(gen.__name__)
         if trigger in enabled:
-            self.log.warning("Trigger {} allready enabled".format(trigger))
+            self.log.warn("Trigger {} allready enabled".format(trigger))
             return True
 
         # add trigger
@@ -226,7 +226,7 @@ class PyTIBot(irc.IRCClient, object):
         name = self.config["Auth"].get("username", None)
         pw = self.config["Auth"].get("password", None)
         if not (service and command and name and pw):
-            self.log.warning("Can't auth, not all options are set")
+            self.log.warn("Can't auth, not all options are set")
             return
         self.msg(service, "{} {} {}".format(command, name, pw))
 
@@ -497,8 +497,8 @@ class PyTIBot(irc.IRCClient, object):
     def kickedFrom(self, channel, kicker, message):
         """Triggered when bot gets kicked"""
         channel = channel.lower()
-        self.log.warning("Kicked from {} by {} ({})".format(channel, kicker,
-                                                            message))
+        self.log.warn("Kicked from {} by {} ({})".format(channel, kicker,
+                                                         message))
         if self.config["Connection"].get("rejoinKicked", False):
             self.join(channel)
             if self.config["Actions"]:

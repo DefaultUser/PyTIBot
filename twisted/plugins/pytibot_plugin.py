@@ -79,14 +79,20 @@ class PyTIBotServiceMaker(object):
         if config["Manhole"]:
             telnetPort = config.Manhole.get("telnetport", None)
             if telnetPort:
-                telnetPort = str(telnetPort)
+                telnetPort = "tcp:{}".format(telnetPort)
             sshPort = config.Manhole.get("sshport", None)
+            sshKeyDir = config.Manhole.get("sshKeyDir", "<USER DATA DIR>")
+            sshKeyName = config.Manhole.get("sshKeyName", "server.key")
+            sshKeySize = config.Manhole.get("sshKeySize", 4096)
             if sshPort:
-                sshPort = str(sshPort)
+                sshPort = "ssl:{}".format(sshPort)
             options = {'namespace': {'get_bot': ircbotfactory.get_bot},
                        'passwd': os.path.join(fs.adirs.user_config_dir,
                                               'manhole_cred'),
                        'sshPort': sshPort,
+                       'sshKeyDir': sshKeyDir,
+                       'sshKeyName': sshKeyName,
+                       'sshKeySize': sshKeySize,
                        'telnetPort': telnetPort}
             tn_sv = manhole_tap.makeService(options)
             tn_sv.setServiceParent(mService)

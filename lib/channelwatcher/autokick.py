@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017>  <Sebastian Schmidt>
+# Copyright (C) <2017-2018>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -27,6 +27,8 @@ class Autokick(abstract.ChannelWatcher):
     def __init__(self, bot, channel, config):
         super(Autokick, self).__init__(bot, channel, config)
         self.user_blacklist = config.get("user_blacklist", [])
+        self.user_whitelist = [user.lower() for user in
+                               config.get("user_whitelist", [])]
         self.msg_blacklist = config.get("msg_blacklist", [])
         buffer_len = config.get("buffer_length", 5)
         # number of repeating messages until a user is kicked
@@ -69,7 +71,8 @@ class Autokick(abstract.ChannelWatcher):
         self.remove_user_from_msgbuffer(kickee)
 
     def check_msg(self, user, message):
-        if user == self.bot.nickname:
+        user = user.lower()
+        if user == self.bot.nickname.lower() or user in self.user_whitelist:
             return False
         message = irc.stripFormatting(message)
         return (self.check_msg_content(message) or

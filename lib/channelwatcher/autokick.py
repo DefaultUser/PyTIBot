@@ -26,8 +26,8 @@ from . import abstract
 class Autokick(abstract.ChannelWatcher):
     def __init__(self, bot, channel, config):
         super(Autokick, self).__init__(bot, channel, config)
-        self.user_blacklist = config["user_blacklist"]
-        self.msg_blacklist = config["msg_blacklist"]
+        self.user_blacklist = config.get("user_blacklist", [])
+        self.msg_blacklist = config.get("msg_blacklist", [])
         buffer_len = config.get("buffer_length", 5)
         # number of repeating messages until a user is kicked
         self.repeat_count = config.get("repeat_count", 3)
@@ -90,7 +90,9 @@ class Autokick(abstract.ChannelWatcher):
     def check_spam(self, user, message):
         """Check if message is just repeated spam"""
         msg = message.lower()
-        # TODO: fuzzy string comparison
+        # replace nicks to prevent spam that only changes mentioned users
+        for nick in self.bot.userlist[self.channel]:
+            msg = msg.replace(nick.lower(), "<user>")
         self.msg_buffer[user].append(msg)
         if self.msg_buffer[user].count(msg) == self.repeat_count:
             return True

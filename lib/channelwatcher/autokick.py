@@ -38,7 +38,7 @@ class Autokick(abstract.ChannelWatcher):
         self.max_highlights = config.get("max_highlights", 5)
 
     def remove_user_from_msgbuffer(self, user):
-        self.msg_buffer.pop(user, None)
+        self.msg_buffer.pop(user.lower(), None)
 
     def topic(self, user, topic):
         pass

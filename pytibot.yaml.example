@@ -104,6 +104,11 @@ Channelmodules:
       buffer_length: 6 # default 5
       repeat_count: 3 # default 3
       max_highlights: 3 # default 5
+  -
+    Greeter:
+      standard_nicks: [test]
+      patterns: ["*!webchat@*", "*!*@gateway/web/*"] # shell like pattern matching
+      message: Welcome, $USER!
   "#myweirdchannel":
   -
     ChannelLogger

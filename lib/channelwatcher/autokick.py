@@ -125,5 +125,5 @@ class Autokick(abstract.ChannelWatcher):
         if self.check_msg(user, message):
             self.bot.kick(self.channel, user)
 
-    def error(self, message):
+    def connectionLost(self, reason):
         pass

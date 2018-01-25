@@ -47,9 +47,6 @@ class PyTIBotFactory(protocol.ClientFactory):
         """Triggered on"""
         self.log.error("connection lost ({})".format(reason))
         if self.bot:
-            for channel in self.bot.channelwatchers:
-                for watcher in self.bot.channelwatchers[channel]:
-                    watcher.error("Connection lost")
             self.bot.stop_webhook_server()
         if self.autoreconnect:
             connector.connect()
@@ -59,9 +56,6 @@ class PyTIBotFactory(protocol.ClientFactory):
     def clientConnectionFailed(self, connector, reason):
         self.log.error("connection failed ({})".format(reason))
         if self.bot:
-            for channel in self.bot.channelwatchers:
-                for watcher in self.bot.channelwatchers[channel]:
-                    watcher.error("Connection failed")
             self.bot.stop_webhook_server()
         if self.connection_attempts < PyTIBotFactory.MAX_ATTEMPTS:
             reactor.callLater(PyTIBotFactory.RECONNECT_DELAY,

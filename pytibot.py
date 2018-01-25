@@ -613,6 +613,10 @@ class PyTIBot(irc.IRCClient, object):
 
         return d
 
+    def get_user_info(self, user):
+        """Returns the whois info for a user"""
+        return defer.maybeDeferred(self.user_info, user.lower())
+
     def irc_RPL_NAMREPLY(self, prefix, params):
         """
         Reply for the NAMES command. Will automatically be issued when joining
@@ -637,4 +641,7 @@ class PyTIBot(irc.IRCClient, object):
 
     def connectionLost(self, reason):
         self.stdiointerface.loseConnection()
+        for channel in self.channelwatchers:
+            for watcher in self.channelwatchers[channel]:
+                watcher.connectionLost(reason)
         super(PyTIBot, self).connectionLost(reason)

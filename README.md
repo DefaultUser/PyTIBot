@@ -212,9 +212,15 @@ Channelmodules:
       buffer_length: 6 # default 5
       repeat_count: 3 # default 3
       max_highlights: 3 # default 5
+  -
+    Greeter:
+      standard_nicks: [test]
+      patterns: ["*!webchat@*", "*!*@gateway/web/*"] # shell like pattern matching
+      message: Welcome, $USER!
 ```
 *ChannelLogger* also needs some configuration that is shared by all ChannelLoggers (see section *Logging*).<br/>
-*user_blacklist* and *msg_blacklist* in *Autokick* accept regular expressions. If *repeat_count* of a user's last *buffer_length* messages are the same or a user highlights more than *max_highlights* users with the same message, this user will also be kicked.
+*user_blacklist* and *msg_blacklist* in *Autokick* accept regular expressions. If *repeat_count* of a user's last *buffer_length* messages are the same or a user highlights more than *max_highlights* users with the same message, this user will also be kicked.<br/>
+The *Greeter* channelmodule will greet new users when they join the given channel if their whois information (`nick!ident@host`) matches one of the given *patterns*. For every nick this will only happen once unless this nick is part of the *standard_nicks* (this is persistent even after restart/lost connection). For the patterns, you can use shell like pattern matching. The above *patterns* are examples to greet webchat users on Quakenet and Freenode.
 
 
 Logging

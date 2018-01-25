@@ -91,5 +91,5 @@ class ChannelLogger(abstract.ChannelWatcher):
         self.logger.log(log.MSG, log.msg_templates[log.MSG],
                         {"user": user, "message": message})
 
-    def error(self, message):
-        self.logger.error(message)
+    def connectionLost(self, reason):
+        self.logger.error("Connection Lost")

@@ -26,7 +26,8 @@ from hashlib import sha1
 import sys
 from unidecode import unidecode
 
-from util.formatting import colored
+from util.formatting import colored, closest_irc_color, split_rgb_string,\
+    good_contrast_with_black
 from util.misc import ensure_bytes, ensure_str
 from util.internet import shorten_github_url
 from lib import webhook_actions
@@ -252,8 +253,17 @@ class GitWebhookServer(Resource):
             payload = data["issue"]["assignee"]["login"]
         elif action == "labeled" or action == "unlabeled":
             url = yield shorten_github_url(data["issue"]["html_url"])
+            color = data["label"]["color"]
+            try:
+                bg = closest_irc_color(*split_rgb_string(color))
+                fg = "black" if good_contrast_with_black[bg] else "white"
+            except ValueError as e:
+                self.log.error("Issue label: could not find a closest IRC "
+                               "color for colorcode '{}'".format(color))
+                bg = None
+                fg = "dark_green"
             payload = "{} ({})".format(colored(data["label"]["name"],
-                                               "dark_green"), url)
+                                               fg, bg), url)
         elif action == "milestoned":
             payload = data["issue"]["milestone"]["title"]
         elif action == "opened":

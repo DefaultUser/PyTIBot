@@ -18,6 +18,7 @@ appdirs
 whoosh
 bidict
 unidecode
+colormath
 apiclient (python module for google api) (optional)
 Unix fortune (optional)
 ```

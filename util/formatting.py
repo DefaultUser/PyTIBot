@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - Formatting Helper
-# Copyright (C) <2015>  <Sebastian Schmidt, Mattia Basaglia>
+# Copyright (C) <2015-2018>  <Sebastian Schmidt, Mattia Basaglia>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,8 +16,11 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
 import re
+from bidict import bidict
+from colormath.color_objects import sRGBColor, LabColor
+from colormath.color_conversions import convert_color
+from colormath.color_diff import delta_e_cie2000
 
 ## \brief Token to start underlined text
 _UNDERLINE = "\x1f"
@@ -32,7 +35,7 @@ _NORMAL = "\x0f"
 
 ## \brief Maps color names to the corresponding mIRC numerical values
 ## (as a two-digit strings)
-color_code = {
+color_code = bidict({
     "white": "00",
     "black": "01",
     "dark_blue": "02",
@@ -49,13 +52,33 @@ color_code = {
     "magenta": "13",
     "dark_gray": "14",
     "gray": "15"
-}
+})
 
 ## \brief hex color codes for mIRC numerical values
 hex_colors = ["#FFFFFF", "#000000", "#00007F", "#009300", "#FF0000",
               "#7F0000", "#9C009C", "#FC7F00", "#FFFF00", "#00FC00",
               "#009393", "#00FFFF", "#0000FC", "#FF00FF", "#7F7F7F",
               "#D2D2D2"]
+
+# dict that indicates if a color is a good background for black text
+good_contrast_with_black = {
+    "white": True,
+    "black": False,
+    "dark_blue": False,
+    "dark_green": True,
+    "red": True,
+    "dark_red": True,
+    "dark_magenta": True,
+    "dark_yellow": True,
+    "yellow": True,
+    "green": True,
+    "dark_cyan": True,
+    "cyan": True,
+    "blue": True,
+    "magenta": True,
+    "dark_gray": True,
+    "gray": True
+}
 
 ANSI_CSI = "\x1b["
 ANSI_FG_START = 30
@@ -242,3 +265,40 @@ def ansi_colored(text, fg=None, bg=None):
         else:
             infocodes.append(str(ansi_colors[bg] + ANSI_BG_START))
     return ANSI_CSI + ";".join(infocodes) + "m" + text + ANSI_CSI + "0m"
+
+
+def split_rgb_string(hex_string):
+    """
+    \brief Convert a hex string to a R G B tuple
+    \param hex_string string in the form of 'rgb' or 'rrggbb' (leading '#' will
+    be stripped)
+    \returns 3-tuple with values between 0 and 255
+    """
+    hex_string = hex_string.lstrip("#")
+    if len(hex_string) == 3:
+        r, g, b = map(lambda x: int(x*2, 16), hex_string)
+        return r, g, b
+    elif len(hex_string) == 6:
+        r, g, b = map(lambda x: int(x, 16), [hex_string[i:i+2] for i in
+                                             range(0, len(hex_string), 2)])
+        return r, g, b
+    raise ValueError("Needs a string of form 'rgb' or 'rrggbb")
+
+
+def closest_irc_color(r, g, b):
+    """
+    \brief Find the closest irc color
+    \param r Red value (0-255)
+    \param g Green value (0-255)
+    \param b Blue value (0-255)
+    \returns The closest irc color name
+    """
+    color_lab1 = convert_color(sRGBColor(r, g, b, is_upscaled=True), LabColor)
+
+    def sort_function(val):
+        col = convert_color(sRGBColor(*split_rgb_string(val[1]),
+                                      is_upscaled=True), LabColor)
+        return delta_e_cie2000(color_lab1, col)
+    closest_index, closest_distance = min(enumerate(hex_colors),
+                                          key=sort_function)
+    return color_code.inv["{:02}".format(closest_index)]

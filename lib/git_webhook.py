@@ -100,6 +100,18 @@ class GitWebhookServer(Resource):
         request.setResponseCode(200)
         return b""
 
+    def github_label_colors(self, label):
+        color = label["color"]
+        try:
+            bg = closest_irc_color(*split_rgb_string(color))
+            fg = "black" if good_contrast_with_black[bg] else "white"
+        except Exception as e:
+            self.log.error("Issue label: could not find a closest IRC "
+                           "color for colorcode '{}' ({})".format(color, e))
+            bg = None
+            fg = "dark_green"
+        return fg, bg
+
     def report_hook_success_msg(self, success, actionname):
         """
         Send a success or fail message to the 'hook_report_users'
@@ -253,15 +265,7 @@ class GitWebhookServer(Resource):
             payload = data["issue"]["assignee"]["login"]
         elif action == "labeled" or action == "unlabeled":
             url = yield shorten_github_url(data["issue"]["html_url"])
-            color = data["label"]["color"]
-            try:
-                bg = closest_irc_color(*split_rgb_string(color))
-                fg = "black" if good_contrast_with_black[bg] else "white"
-            except ValueError as e:
-                self.log.error("Issue label: could not find a closest IRC "
-                               "color for colorcode '{}'".format(color))
-                bg = None
-                fg = "dark_green"
+            fg, bg = self.github_label_colors(data["label"])
             payload = "{} ({})".format(colored(data["label"]["name"],
                                                fg, bg), url)
         elif action == "milestoned":
@@ -355,7 +359,10 @@ class GitWebhookServer(Resource):
         if action == "assigned" or action == "unassigned":
             payload = data["pull_request"]["assignee"]["login"]
         elif action == "labeled" or action == "unlabeled":
-            payload = data["pull_request"]["label"]
+            url = yield shorten_github_url(data["pull_request"]["html_url"])
+            fg, bg = self.github_label_colors(data["label"])
+            payload = "{} ({})".format(colored(data["label"]["name"],
+                                               fg, bg), url)
         elif action == "milestoned":
             payload = data["pull_request"]["milestone"]["title"]
         elif action == "review_requested":

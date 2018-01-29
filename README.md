@@ -7,8 +7,8 @@ bot can only connect to one server at a time.
 
 Dependencies
 ------------
+Development and testing was mainly done with python2, python3 should work but is not extensively tested.
 ```
-python2 (as twisted does not support python3 yet)
 twisted
 treq
 python-yaml

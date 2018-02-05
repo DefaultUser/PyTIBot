@@ -478,6 +478,7 @@ class PyTIBot(irc.IRCClient, object):
         channel = channel.lower()
         self.remove_user_from_cache(user)
         self.userlist[channel].remove(user)
+        self.log.info("{} left {}".format(user, channel))
 
         if channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:
@@ -485,6 +486,7 @@ class PyTIBot(irc.IRCClient, object):
 
     def userQuit(self, user, quitMessage):
         self.remove_user_from_cache(user)
+        self.log.info("{} quit({})".format(user, quitMessage))
 
         for channel in self.userlist.keys():
             channel = channel.lower()

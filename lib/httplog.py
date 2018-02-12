@@ -173,19 +173,19 @@ class LogPage(BaseResource):
         log_data = "Log not found"
         MIN_LEVEL = LEVEL_IMPORTANT
         try:
-            MIN_LEVEL = int(request.args[b"level"][0])
-        except (KeyError, ValueError):
-            pass
+            MIN_LEVEL = int(request.args.get(b"level", [MIN_LEVEL])[0])
+        except ValueError as e:
+            logger.warn("Got invalid log 'level' in request arguments: "
+                        "{}".format(request.args[b"level"]))
         filename = None
-        if b"date" in request.args:
-            date = unicode(request.args[b"date"][0], "utf-8")
-            if date == datetime.today().strftime("%Y-%m-%d"):
-                filename = "{}.yaml".format(self.channel)
-            elif date_regex.match(date):
-                filename = "{}.{}.yaml".format(self.channel, date)
-            elif date == "current":
-                filename = "{}.yaml".format(self.channel)
-                date = datetime.today().strftime("%Y-%m-%d")
+        date = unicode(request.args.get(b"date", ["current"])[0], "utf-8")
+        if date == datetime.today().strftime("%Y-%m-%d"):
+            filename = "{}.yaml".format(self.channel)
+        elif date_regex.match(date):
+            filename = "{}.{}.yaml".format(self.channel, date)
+        elif date == "current":
+            filename = "{}.yaml".format(self.channel)
+            date = datetime.today().strftime("%Y-%m-%d")
         if filename and os.path.isfile(os.path.join(self.log_dir, filename)):
             with open(os.path.join(self.log_dir, filename)) as logfile:
                 log_data = '<table>'
@@ -202,8 +202,6 @@ class LogPage(BaseResource):
         request.finish()
 
     def render_GET(self, request):
-        if not request.args:
-            request.args[b"date"] = [b"current"]
         d = deferLater(reactor, 0, self._show_log, request)
         d.addErrback(_onError, request)
         return NOT_DONE_YET

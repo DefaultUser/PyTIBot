@@ -16,15 +16,30 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from twisted.logger import Logger
+
+
+log = Logger()
+
 
 def whois(bot):
     """Return the WHOISUSER reply as notice"""
     def _reply(params, sender):
-        bot.notice(sender, ", ".join(params))
+        try:
+            bot.notice(sender, ", ".join(params))
+        except Exception as e:
+            _eb(e, sender)
+
+    def _eb(fail, sender):
+        log.error("An error occured while retrieving 'whois' "
+                  "information: {}".format(fail))
+        bot.notice(sender, "An error occured")
 
     while True:
         args, sender, senderhost, channel = yield
-        bot.get_user_info(args[0]).addCallback(_reply, sender)
+        bot.get_user_info(args[0]).addCallbacks(_reply, _eb,
+                                                callbackArgs=[sender],
+                                                errbackArgs=[sender])
 
 
 def hello(bot):

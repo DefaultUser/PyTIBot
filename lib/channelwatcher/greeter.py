@@ -37,7 +37,8 @@ class Greeter(abstract.ChannelWatcher):
             self.log.warn("'patterns' should be a list, not a single string")
             self.patterns = [self.patterns]
         # nicks that many users are likely to use
-        self.standard_nicks = set(config.get("standard_nicks", []))
+        self.standard_nicks = set(map(lambda x: x.lower(),
+                                      config.get("standard_nicks", [])))
         self.message = formatting.from_human_readable(
             config.get("message", "Welcome, $USER"))
         # read list of previously greeted users from disk
@@ -62,11 +63,18 @@ class Greeter(abstract.ChannelWatcher):
             return
 
         def _cb(userinfo):
-            userstring = "{}!{}@{}".format(*userinfo[:3])
+            # disconnecting just after joining might cause problems
+            try:
+                userstring = "{}!{}@{}".format(*userinfo[:3])
+            except Exception as e:
+                self.log.error("Error while creating userstring  for user "
+                               "{}:{}".format(user, e))
+                return
             for pattern in self.patterns:
                 if fnmatch(userstring, pattern):
                     self.log.debug("Pattern found for user {}".format(user))
                     self.bot.notice(user, self.message.replace("$USER", user))
+                    print(self.message.replace("$USER", user))
                     if user_low not in self.standard_nicks:
                         self.log.debug("Adding {} to 'already_greeted'")
                         self.already_greeted.add(user_low)

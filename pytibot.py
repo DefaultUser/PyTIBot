@@ -564,8 +564,12 @@ class PyTIBot(irc.IRCClient, object):
         if user in self._usercallback:
             callbacks, userinfo = self._usercallback[user]
 
-            for cb in callbacks:
-                cb.callback(userinfo)
+            if len(userinfo) == 0:
+                for cb in callbacks:
+                    cb.errback(KeyError("No such nick {}".format(user)))
+            else:
+                for cb in callbacks:
+                    cb.callback(userinfo)
 
             del self._usercallback[user]
         if user in self._authcallback:

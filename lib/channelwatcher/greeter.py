@@ -63,13 +63,7 @@ class Greeter(abstract.ChannelWatcher):
             return
 
         def _cb(userinfo):
-            # disconnecting just after joining might cause problems
-            try:
-                userstring = "{}!{}@{}".format(*userinfo[:3])
-            except Exception as e:
-                self.log.error("Error while creating userstring  for user "
-                               "{}:{}".format(user, e))
-                return
+            userstring = "{}!{}@{}".format(*userinfo[:3])
             for pattern in self.patterns:
                 if fnmatch(userstring, pattern):
                     self.log.debug("Pattern found for user {}".format(user))

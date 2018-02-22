@@ -25,21 +25,19 @@ log = Logger()
 def whois(bot):
     """Return the WHOISUSER reply as notice"""
     def _reply(params, sender):
-        try:
-            bot.notice(sender, ", ".join(params))
-        except Exception as e:
-            _eb(e, sender)
+        bot.notice(sender, ", ".join(params))
 
-    def _eb(fail, sender):
+    def _eb(fail, sender, nick):
         log.error("An error occured while retrieving 'whois' "
-                  "information: {}".format(fail))
-        bot.notice(sender, "An error occured")
+                  "information for nick {}: {}".format(nick, fail))
+        bot.notice(sender, "Could not retrieve 'whois' information "
+                   "for {}".format(nick))
 
     while True:
         args, sender, senderhost, channel = yield
         bot.get_user_info(args[0]).addCallbacks(_reply, _eb,
                                                 callbackArgs=[sender],
-                                                errbackArgs=[sender])
+                                                errbackArgs=[sender, args[0]])
 
 
 def hello(bot):

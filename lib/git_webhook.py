@@ -412,7 +412,7 @@ class GitWebhookServer(Resource):
                    user=colored(data["review"]["user"]["login"], "dark_cyan"),
                    number=colored(str(data["pull_request"]["number"]),
                                   "dark_yellow"),
-                   title=data["pull_request"]["title"],
+                   title=unidecode(data["pull_request"]["title"]),
                    head=colored(data["pull_request"]["head"]["ref"],
                                 "dark_blue"),
                    base=colored(data["pull_request"]["base"]["ref"],

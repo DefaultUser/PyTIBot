@@ -1,4 +1,4 @@
-twisted
+twisted[tls]
 treq
 yamlcfg
 appdirs

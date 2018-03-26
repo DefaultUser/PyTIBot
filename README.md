@@ -8,12 +8,11 @@ bot can only connect to one server at a time.
 Dependencies
 ------------
 Development and testing was mainly done with python2, python3 should work but is not extensively tested.
+The following packages are needed (also see requirements.txt):
 ```
 twisted
 treq
-python-yaml
 yamlcfg
-xmlrpclib
 appdirs
 whoosh
 bidict
@@ -21,6 +20,10 @@ unidecode
 colormath
 apiclient (python module for google api) (optional)
 Unix fortune (optional)
+```
+The optional packages will not be installed by
+```
+pip install -r requirements.txt
 ```
 
 

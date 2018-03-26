@@ -1,0 +1,8 @@
+twisted
+treq
+yamlcfg
+appdirs
+whoosh
+bidict
+unidecode
+colormath

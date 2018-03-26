@@ -60,7 +60,7 @@ class GitWebhookServer(Resource):
 
     def render_POST(self, request):
         body = request.content.read()
-        data = json.loads(body)
+        data = json.loads(ensure_str(body))
         service = None
         # GitHub
         if request.getHeader(b"X-GitHub-Event"):

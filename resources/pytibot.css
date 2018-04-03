@@ -21,19 +21,47 @@ table {
     width: 100%
 }
 
+table td {
+    padding: 8px;
+    text-align: left;
+    display: block;
+}
+
 table td.user {
-    text-align: right;
+    text-align: left;
+    vertical-align: top;
     width: 20ch;
+    font-weight: bold;
+    display: inline-block;
 }
 
 table td.time {
     text-align: center;
+    vertical-align: top;
     width: 10ch;
+    display: inline-block;
 }
 
-table td {
-    padding: 8px;
-    text-align: left;
+@media (min-width: 600px) {
+    table td.user {
+        text-align: right;
+        width: 20ch;
+        font-weight: bold;
+        display: table-cell;
+    }
+
+    table td.time {
+        text-align: center;
+        vertical-align: top;
+        width: 10ch;
+        display: table-cell;
+    }
+
+    table td {
+        padding: 8px;
+        text-align: left;
+        display: table-cell;
+    }
 }
 
 label{

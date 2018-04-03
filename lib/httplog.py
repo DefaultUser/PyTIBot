@@ -36,7 +36,7 @@ from datetime import datetime, timedelta
 
 from util import log, formatting
 from util import filesystem as fs
-from util.misc import ensure_bytes, PY3
+from util.misc import ensure_bytes, ensure_str, PY3
 
 import sys
 
@@ -178,7 +178,7 @@ class LogPage(BaseResource):
             logger.warn("Got invalid log 'level' in request arguments: "
                         "{}".format(request.args[b"level"]))
         filename = None
-        date = unicode(request.args.get(b"date", ["current"])[0], "utf-8")
+        date = ensure_str(request.args.get(b"date", [b"current"])[0])
         if date == datetime.today().strftime("%Y-%m-%d"):
             filename = "{}.yaml".format(self.channel)
         elif date_regex.match(date):

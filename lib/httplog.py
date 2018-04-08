@@ -61,25 +61,34 @@ date_regex = re.compile(r"^(19|20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|"
 url_pat = re.compile(r"(((https?)|(ftps?)|(sftp))://[^\s\"\')]+)")
 
 line_templates = defaultdict(str, {
-    "MSG": '<tr><td class="time">{time}</td><td class="user">'
-           '{user}</td><td>{message}</td></tr>',
-    "ACTION": '<tr><td class="time">{time}</td><td class="user"><i>'
+    "MSG": '<tr><td class="time"><span id="{index}"></span><a href="#{index}">'
+           '{time}</a></td><td class="user">{user}</td><td>{message}</td></tr>',
+    "ACTION": '<tr><td class="time"><span id="{index}"></span>'
+              '<a href="#{index}">{time}</a></td><td class="user"><i>'
               '*{user}</i></td><td><i>{data}</i></td></tr>',
-    "NOTICE": '<tr><td class="time">{time}</td><td class="user">'
+    "NOTICE": '<tr><td class="time"><span id="{index}"></span>'
+              '<a href="#{index}">{time}</a></td><td class="user">'
               '[{user}</td><td>{message}]</td></tr>',
-    "KICK": '<tr><td class="time">{time}</td><td class="user">&lt;'
+    "KICK": '<tr><td class="time"><span id="{index}"></span>'
+            '<a href="#{index}">{time}</a></td><td class="user">&lt;'
             '--</td><td>{kickee} was kicked by {kicker}({message})</td></tr>',
-    "QUIT": '<tr><td class="time">{time}</td><td class="user">&lt;'
+    "QUIT": '<tr><td class="time"><span id="{index}"></span><a href="#{index}">'
+            '{time}</a></td><td class="user">&lt;'
             '--</td><td>QUIT: {user}({quitMessage})</td></tr>',
-    "PART": '<tr><td class="time">{time}</td><td class="user">&lt;'
+    "PART": '<tr><td class="time"><span id="{index}"></span><a href="#{index}">'
+            '{time}</a></td><td class="user">&lt;'
             '--</td><td>{user} left the channel</td></tr>',
-    "JOIN": '<tr><td class="time">{time}</td><td class="user">--&gt;'
+    "JOIN": '<tr><td class="time"><span id="{index}"></span><a href="#{index}">'
+            '{time}</a></td><td class="user">--&gt;'
             '</td><td>{user} joined the channel</td></tr>',
-    "NICK": '<tr><td class="time">{time}</td><td class="user"></td>'
+    "NICK": '<tr><td class="time"><span id="{index}"></span><a href="#{index}">'
+            '{time}</a></td><td class="user"></td>'
             '<td>{oldnick} is now known as {newnick}</td></tr>',
-    "TOPIC": '<tr><td class="time">{time}</td><td class="user"></td>'
+    "TOPIC": '<tr><td class="time"><span id="{index}"></span>'
+             '<a href="#{index}">{time}</a></td><td class="user"></td>'
              '<td>{user} changed the topic to: {topic}</td></tr>',
-    "ERROR": '<tr><td class="time">{time}</td><td class="user"><span'
+    "ERROR": '<tr><td class="time"><span id="{index}"></span>'
+             '<a href="#{index}">{time}</a></td><td class="user"><span'
              ' style="color:#FF0000">ERROR</span></td><td>{msg}</td></tr>'})
 
 
@@ -170,6 +179,7 @@ class LogPage(BaseResource):
         return self.channel
 
     def _show_log(self, request):
+        print(request.args)
         log_data = "Log not found"
         MIN_LEVEL = LEVEL_IMPORTANT
         try:
@@ -189,11 +199,11 @@ class LogPage(BaseResource):
         if filename and os.path.isfile(os.path.join(self.log_dir, filename)):
             with open(os.path.join(self.log_dir, filename)) as logfile:
                 log_data = '<table>'
-                for data in yaml.load_all(logfile):
+                for i, data in enumerate(yaml.load_all(logfile)):
                     if data["levelno"] > MIN_LEVEL:
                         _prepare_yaml_element(data)
                         log_data += line_templates[data["levelname"]].format(
-                            **data)
+                            **data, index=i)
                 log_data += '</table>'
         request.write(ensure_bytes(log_page_template.format(
             log_data=log_data, title=self.title, header=header,

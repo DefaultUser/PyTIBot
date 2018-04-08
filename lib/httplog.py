@@ -23,7 +23,7 @@ from twisted.internet.task import LoopingCall, deferLater
 from twisted.logger import Logger
 
 from whoosh.index import create_in
-from whoosh import fields
+from whoosh import fields, highlight
 from whoosh.qparser import QueryParser
 
 import yaml
@@ -237,7 +237,7 @@ class SearchPage(BaseResource):
             for element in yaml.load_all(f.read()):
                 if element["levelname"] == "MSG":
                     msg = irc.stripFormatting(element["message"])
-                    if sys.version_info.major == 3:
+                    if PY3:
                         content.append(msg)
                     else:
                         content.append(msg.decode("utf-8", 'replace'))
@@ -247,7 +247,8 @@ class SearchPage(BaseResource):
             except ValueError:
                 # default to today
                 date = datetime.now()
-            c = u" ... ".join(content)
+            # U+2026 is "horizontal ellipsis"
+            c = u"\u2026 ".join(content)
         return c, date
 
     def _setup_index(self):
@@ -318,11 +319,13 @@ class SearchPage(BaseResource):
             return
         with self.ix.searcher() as searcher:
             query = QueryParser("content", self.ix.schema).parse(querystr)
-            results = searcher.search_page(query, page,
-                                           pagelen=self.pagelen,
-                                           sortedby="date", reverse=True)
+            res_page = searcher.search_page(query, page,
+                                            pagelen=self.pagelen,
+                                            sortedby="date", reverse=True)
+            res_page.results.fragmenter = highlight.SentenceFragmenter(
+                sentencechars=u".!?\u2026")
             log_data = ""
-            for hit in results:
+            for hit in res_page:
                 log_data += ("<ul><div><label><a href='{channel}?date="
                              "{date}'>{date}</a></label>".format(
                                  channel=self.channel_link(),
@@ -330,10 +333,10 @@ class SearchPage(BaseResource):
                              hit.highlights("content") +
                              "</div></ul>")
             else:
-                if not results.is_last_page():
+                if not res_page.is_last_page():
                     log_data += "<a href='?q={}&page={}'>Next</a>".format(
                         querystr, page + 1)
-            if not results:
+            if not res_page:
                 log_data = "No Logs found containg: {}".format(
                     htmlescape(querystr))
         if sys.version_info.major < 3:

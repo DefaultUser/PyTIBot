@@ -323,7 +323,7 @@ class SearchPage(BaseResource):
                                             pagelen=self.pagelen,
                                             sortedby="date", reverse=True)
             res_page.results.fragmenter = highlight.SentenceFragmenter(
-                sentencechars=u".!?\u2026")
+                sentencechars=u".!?\u2026", charlimit=None)
             log_data = ""
             for hit in res_page:
                 log_data += ("<ul><div><label><a href='{channel}?date="

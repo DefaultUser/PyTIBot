@@ -30,7 +30,7 @@ def get_base_dir():
 
 
 @memoize
-def config_file(name="pytibot.ini"):
+def config_file(name="pytibot.yaml"):
     return os.path.join(adirs.user_config_dir, name)
 
 

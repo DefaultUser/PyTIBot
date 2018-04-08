@@ -119,6 +119,14 @@ def _prepare_yaml_element(element):
                                          element["message"])
 
 
+def add_resources_to_root(root):
+    for f in fs.listdir("resources"):
+        relpath = "/".join(["resources", f])
+        if not (f.endswith(".html") or f.endswith(".inc")):
+            root.putChild(ensure_bytes(f), File(fs.get_abs_path(relpath),
+                                                defaultType="text/plain"))
+
+
 class BaseResource(Resource, object):
     def getChild(self, name, request):
         if name == b'':
@@ -132,19 +140,15 @@ class BasePage(BaseResource):
         self.title = config["HTTPLogServer"].get("title", "PyTIBot Log Server")
         # add channel logs
         self.channels = config["HTTPLogServer"].get("channels", [])
-        if not isinstance(self.channels, list):
-            self.channels = [self.channels]
+        search_pagelen = config["HTTPLogServer"].get("search_pagelen", 5)
         for channel in self.channels:
             name = channel.lstrip("#")
             self.putChild(ensure_bytes(name),
                           LogPage(name, log.get_channellog_dir(config),
-                                  "#{} - {}".format(name, self.title)))
+                                  "#{} - {}".format(name, self.title),
+                                  search_pagelen))
         # add resources
-        for f in fs.listdir("resources"):
-            relpath = "/".join(["resources", f])
-            if not (f.endswith(".html") or f.endswith(".inc")):
-                self.putChild(ensure_bytes(f), File(fs.get_abs_path(relpath),
-                                                    defaultType="text/plain"))
+        add_resources_to_root(self)
 
     def render_GET(self, request):
         data = ""
@@ -157,21 +161,19 @@ class BasePage(BaseResource):
 
 
 class LogPage(BaseResource):
-    def __init__(self, channel, log_dir, title, singlechannel=False):
+    def __init__(self, channel, log_dir, title, search_pagelen,
+                 singlechannel=False):
         super(LogPage, self).__init__()
         self.channel = channel.lstrip("#")
         self.log_dir = log_dir
         self.title = title
         self.singlechannel = singlechannel
         self.putChild(b"search", SearchPage(self.channel, log_dir, title,
+                                            search_pagelen,
                                             singlechannel=singlechannel))
 
         if singlechannel:
-            for f in fs.listdir("resources"):
-                relpath = "/".join(["resources", f])
-                if not (f.endswith(".html") or f.endswith(".inc")):
-                    self.putChild(ensure_bytes(f), File(
-                        fs.get_abs_path(relpath), defaultType="text/plain"))
+            add_resources_to_root(self)
 
     def channel_link(self):
         if self.singlechannel:
@@ -218,14 +220,13 @@ class LogPage(BaseResource):
 
 
 class SearchPage(BaseResource):
-    PAGELEN = 5
-
-    def __init__(self, channel, log_dir, title, singlechannel=False):
+    def __init__(self, channel, log_dir, title, pagelen, singlechannel=False):
         super(SearchPage, self).__init__()
         self.channel = channel
         self.log_dir = log_dir
         self.title = title
         self.last_index_update = 0
+        self.pagelen = pagelen
         self.singlechannel = singlechannel
         self._setup_index()
 
@@ -318,7 +319,7 @@ class SearchPage(BaseResource):
         with self.ix.searcher() as searcher:
             query = QueryParser("content", self.ix.schema).parse(querystr)
             results = searcher.search_page(query, page,
-                                           pagelen=SearchPage.PAGELEN,
+                                           pagelen=self.pagelen,
                                            sortedby="date", reverse=True)
             log_data = ""
             for hit in results:

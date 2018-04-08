@@ -203,7 +203,7 @@ class LogPage(BaseResource):
                     if data["levelno"] > MIN_LEVEL:
                         _prepare_yaml_element(data)
                         log_data += line_templates[data["levelname"]].format(
-                            **data, index=i)
+                            index=i, **data)
                 log_data += '</table>'
         request.write(ensure_bytes(log_page_template.format(
             log_data=log_data, title=self.title, header=header,

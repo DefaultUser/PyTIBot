@@ -45,7 +45,7 @@ class PyTIBotFactory(protocol.ClientFactory):
 
     def clientConnectionLost(self, connector, reason):
         """Triggered on"""
-        self.log.error("connection lost ({})".format(reason))
+        self.log.error("connection lost ({reason})", reason=reason)
         if self.bot:
             self.bot.stop_webhook_server()
         if self.autoreconnect:
@@ -54,7 +54,7 @@ class PyTIBotFactory(protocol.ClientFactory):
             reactor.stop()
 
     def clientConnectionFailed(self, connector, reason):
-        self.log.error("connection failed ({})".format(reason))
+        self.log.error("connection failed ({reason})", reason=reason)
         if self.bot:
             self.bot.stop_webhook_server()
         if self.connection_attempts < PyTIBotFactory.MAX_ATTEMPTS:

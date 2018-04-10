@@ -29,7 +29,8 @@ def whois(bot):
 
     def _eb(fail, sender, nick):
         log.error("An error occured while retrieving 'whois' "
-                  "information for nick {}: {}".format(nick, fail))
+                  "information for nick {nick}: {error}",
+                  nick=nick, error=fail)
         bot.notice(sender, "Could not retrieve 'whois' information "
                    "for {}".format(nick))
 

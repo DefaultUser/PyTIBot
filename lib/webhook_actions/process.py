@@ -73,7 +73,8 @@ def _maybe_run_next_process(rungroup):
     try:
         process = _run_process(action_id, action)
     except Exception as e:
-        log.warn("Error starting process {}: {}".format(action_id, e))
+        log.warn("Error starting process {action_id}: {error}",
+                 action_id=action_id, error=e)
         d.errback(e)
         _maybe_run_next_process(rungroup)
     else:
@@ -88,12 +89,13 @@ def _queue_process(action_id, action, runsettings):
     d = defer.Deferred()
     rungroup = action.get("rungroup", "default")
     if runsettings.get("clear_previous", False) and rungroup in process_queue:
-        log.debug("Clearing process_buffer for rungroup {}".format(rungroup))
+        log.debug("Clearing process_buffer for rungroup {group}",
+                  group=rungroup)
         process_queue[rungroup].clear()
     if runsettings.get("stop_running", False) and rungroup in running_processes:
         if os.name == "posix":
             log.debug("Sending KILL signal to current process "
-                      "of rungroup {}".format(rungroup))
+                      "of rungroup {group}", group=rungroup)
             running_processes[rungroup].signalProcess("KILL")
         else:
             log.warn("Stopping processes is only supported on posix OSs, "

@@ -26,6 +26,7 @@ from twisted.internet.error import ProcessDone
 from twisted.logger import Logger, textFileLogObserver
 
 from util import filesystem as fs
+from util.misc import ensure_str
 
 
 def _backup_logs(log_name, maxbackups):
@@ -58,10 +59,10 @@ class LoggingProcessProtocol(ProcessProtocol, object):
         self.finished = defer.Deferred()
 
     def outReceived(self, data):
-        self.log.info(data.strip())
+        self.log.info("{data}", data=ensure_str(data.strip()))
 
     def errReceived(self, data):
-        self.log.error(data.strip())
+        self.log.error("{data}", data=ensure_str(data.strip()))
 
     def processEnded(self, reason):
         if reason.check(ProcessDone):
@@ -69,7 +70,8 @@ class LoggingProcessProtocol(ProcessProtocol, object):
             self.log.info("Process finished without error")
         else:
             self.finished.errback(reason)
-            self.log.error("Process ended with error: {!r}".format(reason))
+            self.log.error("Process ended with error: {reason!r}",
+                           reason=reason)
 
 
 def start_subprocess(cmd, args=(), path=None, env=None, usePTY=True):

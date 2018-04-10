@@ -66,7 +66,7 @@ class Greeter(abstract.ChannelWatcher):
             userstring = "{}!{}@{}".format(*userinfo[:3])
             for pattern in self.patterns:
                 if fnmatch(userstring, pattern):
-                    self.log.debug("Pattern found for user {}".format(user))
+                    self.log.debug("Pattern found for user {user}", user=user)
                     self.bot.notice(user, self.message.replace("$USER", user))
                     print(self.message.replace("$USER", user))
                     if user_low not in self.standard_nicks:
@@ -76,7 +76,8 @@ class Greeter(abstract.ChannelWatcher):
 
         def _eb(fail):
             self.log.error("An error occured while retrieving 'whois' "
-                           "information about user {}: {}".format(user, fail))
+                           "information about user {user}: {error}",
+                           user=user, error=fail)
 
         if user_low in self.already_greeted:
             return

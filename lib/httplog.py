@@ -100,7 +100,7 @@ footer = fs.get_contents("resources/footer.inc")
 
 
 def _onError(failure, request):
-    logger.error("Error when answering a request:{}".format(failure))
+    logger.error("Error when answering a request: {e}", e=failure)
     if not request.finished:
         request.setResponseCode(500)
         request.write("An error occured, please contact the administrator")
@@ -188,7 +188,7 @@ class LogPage(BaseResource):
             MIN_LEVEL = int(request.args.get(b"level", [MIN_LEVEL])[0])
         except ValueError as e:
             logger.warn("Got invalid log 'level' in request arguments: "
-                        "{}".format(request.args[b"level"]))
+                        "{level}", level=request.args[b"level"])
         filename = None
         date = ensure_str(request.args.get(b"date", [b"current"])[0])
         if date == datetime.today().strftime("%Y-%m-%d"):

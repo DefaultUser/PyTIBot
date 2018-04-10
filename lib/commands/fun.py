@@ -150,7 +150,8 @@ allow long fortunes, -o to allow offensive fortunes"""
         args, sender, senderhost, channel = yield
         options, unknown_options = parser.parse_known_args(args)
         if unknown_options:
-            log.warn("Fortune: Unknown options: {}".format(unknown_options))
+            log.warn("Fortune: Unknown options: {options}",
+                     options=unknown_options)
             bot.msg(channel, formatting.colored("Invalid input for fortune",
                                                 "red"))
             continue

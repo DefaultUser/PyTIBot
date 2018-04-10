@@ -94,8 +94,8 @@ class GitWebhookServer(Resource):
                                                                  eventtype)),
                               data)
         else:
-            self.log.warn("Event {} not implemented for service {}".format(
-                eventtype, service))
+            self.log.warn("Event {eventtype} not implemented for service "
+                          "{service}", eventtype=eventtype, service=service)
         # always return 200
         request.setResponseCode(200)
         return b""
@@ -107,7 +107,8 @@ class GitWebhookServer(Resource):
             fg = "black" if good_contrast_with_black[bg] else "white"
         except Exception as e:
             self.log.error("Issue label: could not find a closest IRC "
-                           "color for colorcode '{}' ({})".format(color, e))
+                           "color for colorcode '{color}' ({error})",
+                           color=color, error=e)
             bg = None
             fg = "dark_green"
         return fg, bg
@@ -149,13 +150,13 @@ class GitWebhookServer(Resource):
                 continue
             action_name = hook.get("action", None)
             if not action_name:
-                self.log.warn("Push hook: Missing action for repo {}".format(
-                    repo_name))
+                self.log.warn("Push hook: Missing action for repo {name}",
+                              name=repo_name)
                 continue
             action = self.actions.get(action_name, None)
             if not action:
-                self.log.warn("No webhook action '{}' defined".format(
-                    action_name))
+                self.log.warn("No webhook action '{name}' defined",
+                              name=action_name)
                 continue
             action_type = action.get("type", None)
             run_settings = self.rungroup_settings.get(action.get("rungroup",
@@ -167,8 +168,8 @@ class GitWebhookServer(Resource):
                                                           run_settings)
                 d.addBoth(self.report_hook_success_msg, action_name)
             else:
-                self.log.warn("No such action type: {}".format(
-                    action_type))
+                self.log.warn("No such action type: {action_type}",
+                              action_type=action_type)
 
         # Push: github_push, gitlab_push
         # Tag: github_create (ref_type: tag), gitlab_tag_push
@@ -195,7 +196,8 @@ class GitWebhookServer(Resource):
             channels = [channels]
         if not channels:
             self.log.warn("Recieved webhook for repo [{repo}], but no IRC "
-                          "channel is configured for it, ignoring...")
+                          "channel is configured for it, ignoring...",
+                          repo=repo_name)
             return
         for channel in channels:
             self.bot.msg(channel, message)

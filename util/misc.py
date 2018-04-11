@@ -22,13 +22,13 @@ import sys
 PY3 = sys.version_info.major == 3
 
 
-def ensure_bytes(data):
+def str_to_bytes(data):
     if PY3:
         return bytes(data, "utf-8")
     return data
 
 
-def ensure_str(data):
+def bytes_to_str(data):
     if PY3:
         return str(data, "utf-8")
-    return str(data)
+    return data

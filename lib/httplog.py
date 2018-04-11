@@ -36,7 +36,7 @@ from datetime import datetime, timedelta
 
 from util import log, formatting
 from util import filesystem as fs
-from util.misc import ensure_bytes, ensure_str, PY3
+from util.misc import str_to_bytes, bytes_to_str, PY3
 
 import sys
 
@@ -123,7 +123,7 @@ def add_resources_to_root(root):
     for f in fs.listdir("resources"):
         relpath = "/".join(["resources", f])
         if not (f.endswith(".html") or f.endswith(".inc")):
-            root.putChild(ensure_bytes(f), File(fs.get_abs_path(relpath),
+            root.putChild(str_to_bytes(f), File(fs.get_abs_path(relpath),
                                                 defaultType="text/plain"))
 
 
@@ -143,7 +143,7 @@ class BasePage(BaseResource):
         search_pagelen = config["HTTPLogServer"].get("search_pagelen", 5)
         for channel in self.channels:
             name = channel.lstrip("#")
-            self.putChild(ensure_bytes(name),
+            self.putChild(str_to_bytes(name),
                           LogPage(name, log.get_channellog_dir(config),
                                   "#{} - {}".format(name, self.title),
                                   search_pagelen))
@@ -154,7 +154,7 @@ class BasePage(BaseResource):
         data = ""
         for channel in self.channels:
             data += "<a href='{0}'>{0}</a><br/>".format(channel.lstrip("#"))
-        return ensure_bytes(base_page_template.format(title=self.title,
+        return str_to_bytes(base_page_template.format(title=self.title,
                                                       data=data,
                                                       header=header,
                                                       footer=footer))
@@ -181,7 +181,6 @@ class LogPage(BaseResource):
         return self.channel
 
     def _show_log(self, request):
-        print(request.args)
         log_data = "Log not found"
         MIN_LEVEL = LEVEL_IMPORTANT
         try:
@@ -190,7 +189,7 @@ class LogPage(BaseResource):
             logger.warn("Got invalid log 'level' in request arguments: "
                         "{level}", level=request.args[b"level"])
         filename = None
-        date = ensure_str(request.args.get(b"date", [b"current"])[0])
+        date = bytes_to_str(request.args.get(b"date", [b"current"])[0])
         if date == datetime.today().strftime("%Y-%m-%d"):
             filename = "{}.yaml".format(self.channel)
         elif date_regex.match(date):
@@ -207,7 +206,7 @@ class LogPage(BaseResource):
                         log_data += line_templates[data["levelname"]].format(
                             index=i, **data)
                 log_data += '</table>'
-        request.write(ensure_bytes(log_page_template.format(
+        request.write(str_to_bytes(log_page_template.format(
             log_data=log_data, title=self.title, header=header,
             footer=footer, channel=self.channel_link(), date=date,
             Level=MIN_LEVEL)))
@@ -312,7 +311,7 @@ class SearchPage(BaseResource):
             page = 1
         if page < 1:
             log_data = "Invalid page number specified"
-            request.write(ensure_bytes(search_page_template.format(
+            request.write(str_to_bytes(search_page_template.format(
                 log_data=log_data, title=self.title, header=header,
                 footer=footer, channel=self.channel)))
             request.finish()
@@ -341,14 +340,14 @@ class SearchPage(BaseResource):
                     htmlescape(querystr))
         if sys.version_info.major < 3:
             log_data = log_data.encode("utf-8")
-        request.write(ensure_bytes(search_page_template.format(
+        request.write(str_to_bytes(search_page_template.format(
             log_data=log_data, title=self.title, header=header,
             footer=footer, channel=self.channel_link())))
         request.finish()
 
     def render_GET(self, request):
         if b"q" not in request.args or request.args[b"q"] == ['']:
-            return ensure_bytes(search_page_template.format(
+            return str_to_bytes(search_page_template.format(
                 log_data="", title=self.title, header=header,
                 footer=footer, channel=self.channel_link()))
         d = deferLater(reactor, 0, self._search_logs, request)

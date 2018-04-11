@@ -17,7 +17,6 @@
 from twisted.internet import defer
 from twisted.logger import Logger
 import treq
-from util.misc import ensure_str
 
 
 log = Logger()
@@ -33,6 +32,6 @@ def shorten_github_url(url):
                                    timeout=5)
     except Exception as e:
         log.warn("Error shortening github url({url}): {error}",
-                 url=ensure_str(url), error=e)
+                 url=url, error=e)
         defer.returnValue(url)
     defer.returnValue(response.headers.getRawHeaders("Location", [url])[0])

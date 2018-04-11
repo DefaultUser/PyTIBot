@@ -19,7 +19,7 @@
 from twisted.protocols.basic import LineOnlyReceiver
 
 from util import formatting
-from util.misc import ensure_bytes, ensure_str
+from util.misc import str_to_bytes, bytes_to_str
 
 
 class STDIOInterface(LineOnlyReceiver, object):
@@ -31,13 +31,13 @@ class STDIOInterface(LineOnlyReceiver, object):
 
     def sendLine(self, line):
         # Python3 compatibility: ensure that line is a bytes string
-        super(STDIOInterface, self).sendLine(ensure_bytes(line))
+        super(STDIOInterface, self).sendLine(str_to_bytes(line))
 
     def lineReceived(self, line):
         if not line:
             return
         # type(line) is bytes -> convert to str for python3
-        line = ensure_str(line)
+        line = bytes_to_str(line)
         try:
             command, data = line.split(None, 1)
         except ValueError:

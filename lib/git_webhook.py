@@ -28,7 +28,7 @@ from unidecode import unidecode
 
 from util.formatting import colored, closest_irc_color, split_rgb_string,\
     good_contrast_with_black
-from util.misc import ensure_bytes, ensure_str
+from util.misc import str_to_bytes, bytes_to_str
 from util.internet import shorten_github_url
 from lib import webhook_actions
 
@@ -60,7 +60,7 @@ class GitWebhookServer(Resource):
 
     def render_POST(self, request):
         body = request.content.read()
-        data = json.loads(ensure_str(body))
+        data = json.loads(bytes_to_str(body))
         service = None
         # GitHub
         if request.getHeader(b"X-GitHub-Event"):
@@ -74,7 +74,7 @@ class GitWebhookServer(Resource):
             eventtype = data["object_kind"]
             sig = request.getHeader(b"X-Gitlab-Token")
             service = "gitlab"
-        eventtype = ensure_str(eventtype)
+        eventtype = bytes_to_str(eventtype)
 
         secret = None
         if service == "github":
@@ -82,7 +82,7 @@ class GitWebhookServer(Resource):
         elif service == "gitlab":
             secret = self.gitlab_secret
         if secret:
-            secret = ensure_bytes(secret)
+            secret = str_to_bytes(secret)
             h = hmac.new(secret, body, sha1)
             if codecs.encode(h.digest(), "hex") != sig:
                 self.log.warn("Request's signature does not correspond"

@@ -32,10 +32,16 @@ def shutdown(bot):
 
 def ignore(bot):
     """Modify the ignore list - use '+' or 'add' to extend, '-' or 'remove' \
-to remove from the list"""
+to remove from the list, 'ls' or 'list' to show the list"""
     def _do_ignore(is_admin, sender, args):
         if is_admin:
-            if len(args) < 2:
+            if len(args) == 1 and args[0].lower() in ("ls", "list"):
+                ignorelist = bot.get_ignorelist()
+                if ignorelist:
+                    bot.notice(sender, ", ".join(ignorelist))
+                else:
+                    bot.notice(sender, "Ignorelist is empty")
+            elif len(args) < 2:
                 bot.notice(sender, "Too few arguments")
             else:
                 task = args[0]

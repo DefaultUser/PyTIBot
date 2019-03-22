@@ -18,7 +18,8 @@
 
 from .channellogger import ChannelLogger
 from .autokick import Autokick
+from .autovoice import Autovoice
 from .greeter import Greeter
 
 
-__all__ = [ChannelLogger, Autokick, Greeter]
+__all__ = [ChannelLogger, Autokick, Autovoice, Greeter]

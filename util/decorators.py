@@ -46,7 +46,7 @@ def memoize_deferred(f):
         key = "(" + ", ".join([str(arg) for arg in args]) + ")"
         key = key + "|" + str(kwargs)
         if key not in f.cache:
-            f.cache[key] = f(*args, **kwargs)
-            return f.cache[key].addCallback(save_to_cache, key)
+            d = f(*args, **kwargs)
+            return d.addCallback(save_to_cache, key)
         return f.cache[key]
     return inner

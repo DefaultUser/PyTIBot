@@ -531,9 +531,9 @@ class PyTIBot(irc.IRCClient, object):
         user = user.lower()
         d = defer.Deferred()
         if user not in self._usercallback:
-            self._usercallback[user] = [[], []]
+            self._usercallback[user] = {"defers": [], "userinfo": []}
 
-        self._usercallback[user][0].append(d)
+        self._usercallback[user]["defers"].append(d)
         self.whois(user)
         return d
 
@@ -542,9 +542,9 @@ class PyTIBot(irc.IRCClient, object):
         user = user.lower()
         d = defer.Deferred()
         if user not in self._authcallback:
-            self._authcallback[user] = [[], []]
+            self._authcallback[user] = {"defers": [], "userinfo": []}
 
-        self._authcallback[user][0].append(d)
+        self._authcallback[user]["defers"].append(d)
         self.whois(user)
         return d
 
@@ -561,12 +561,13 @@ class PyTIBot(irc.IRCClient, object):
         if user not in self._usercallback:
             # Never asked for it
             return
-        self._usercallback[user][1] += params[1:]
+        self._usercallback[user]["userinfo"] += params[1:]
 
     def irc_RPL_ENDOFWHOIS(self, prefix, params):
         user = params[1].lower()
         if user in self._usercallback:
-            callbacks, userinfo = self._usercallback[user]
+            callbacks = self._usercallback[user]["defers"]
+            userinfo = self._usercallback[user]["userinfo"]
 
             if len(userinfo) == 0:
                 for cb in callbacks:
@@ -585,11 +586,11 @@ class PyTIBot(irc.IRCClient, object):
             del self._authcallback[user]
 
     def irc_RPL_WHOISAUTH(self, prefix, params):
-        user = params[1].lower()
+        user = params["userinfo"].lower()
         if user not in self._authcallback:
             # Never asked for it
             return
-        self._authcallback[user][1] += params[1:]
+        self._authcallback[user]["userinfo"] += params[1:]
 
     def is_user_admin(self, user):
         """Check if an user is admin - returns a deferred!"""

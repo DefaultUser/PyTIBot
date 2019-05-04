@@ -1,19 +1,20 @@
-<!DOCTYPE html>
-<html>
+<html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
 <head>
-    <meta charset=utf-8>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title}</title>
-    <link href="/pytibot.css" rel="stylesheet">
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title t:render="title" />
+    <link href="/pytibot.css" rel="stylesheet"/>
 </head>
 <body>
     <div id="container">
-        {header}
+        <header t:render="header" />
         <div id="main">
-            Channel logs are available for:</br>
-            {data}
+            Channel logs are available for:
+            <ul>
+                <li t:render="channel_item" />
+            </ul>
         </div>
-        {footer}
+        <footer t:render="footer" />
     </div>
 </body>
 </html>

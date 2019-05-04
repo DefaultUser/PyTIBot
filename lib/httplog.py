@@ -21,6 +21,8 @@ from twisted.words.protocols import irc
 from twisted.internet import threads, reactor
 from twisted.internet.task import LoopingCall, deferLater
 from twisted.logger import Logger
+from twisted.web.template import Element, XMLFile, renderer, tags, flatten, Tag
+from twisted.python.filepath import FilePath
 
 from whoosh.index import create_in
 from whoosh import fields, highlight
@@ -37,6 +39,8 @@ from html import escape as htmlescape
 from util import log, formatting
 from util import filesystem as fs
 from util.misc import str_to_bytes, bytes_to_str
+from util.internet import webpage_error_handler, BaseResource
+from util.whoosh_tag_formatter import WhooshTagFormatter
 
 
 logger = Logger()
@@ -48,65 +52,14 @@ LEVEL_IMPORTANT = 16
 
 date_regex = re.compile(r"^(19|20)\d\d[- /.](0[1-9]|1[012])[- /.](0[1-9]|"
                         r"[12][0-9]|3[01])$")
-url_pat = re.compile(r"(((https?)|(ftps?)|(sftp))://[^\s\"\')]+)")
-
-line_templates = defaultdict(str, {
-    "MSG": '<tr><td class="time"><span id="{index}"></span><a href="#{index}">'
-           '{time}</a></td><td class="user">{user}</td><td>{message}</td></tr>',
-    "ACTION": '<tr><td class="time"><span id="{index}"></span>'
-              '<a href="#{index}">{time}</a></td><td class="user"><i>'
-              '*{user}</i></td><td><i>{data}</i></td></tr>',
-    "NOTICE": '<tr><td class="time"><span id="{index}"></span>'
-              '<a href="#{index}">{time}</a></td><td class="user">'
-              '[{user}</td><td>{message}]</td></tr>',
-    "KICK": '<tr><td class="time"><span id="{index}"></span>'
-            '<a href="#{index}">{time}</a></td><td class="user">&lt;'
-            '--</td><td>{kickee} was kicked by {kicker}({message})</td></tr>',
-    "QUIT": '<tr><td class="time"><span id="{index}"></span><a href="#{index}">'
-            '{time}</a></td><td class="user">&lt;'
-            '--</td><td>QUIT: {user}({quitMessage})</td></tr>',
-    "PART": '<tr><td class="time"><span id="{index}"></span><a href="#{index}">'
-            '{time}</a></td><td class="user">&lt;'
-            '--</td><td>{user} left the channel</td></tr>',
-    "JOIN": '<tr><td class="time"><span id="{index}"></span><a href="#{index}">'
-            '{time}</a></td><td class="user">--&gt;'
-            '</td><td>{user} joined the channel</td></tr>',
-    "NICK": '<tr><td class="time"><span id="{index}"></span><a href="#{index}">'
-            '{time}</a></td><td class="user"></td>'
-            '<td>{oldnick} is now known as {newnick}</td></tr>',
-    "TOPIC": '<tr><td class="time"><span id="{index}"></span>'
-             '<a href="#{index}">{time}</a></td><td class="user"></td>'
-             '<td>{user} changed the topic to: {topic}</td></tr>',
-    "ERROR": '<tr><td class="time"><span id="{index}"></span>'
-             '<a href="#{index}">{time}</a></td><td class="user"><span'
-             ' style="color:#FF0000">ERROR</span></td><td>{msg}</td></tr>'})
-
-
-base_page_template = fs.get_contents("resources/base_page_template.html")
-log_page_template = fs.get_contents("resources/log_page_template.html")
-search_page_template = fs.get_contents("resources/search_page_template.html")
-header = fs.get_contents("resources/header.inc")
-footer = fs.get_contents("resources/footer.inc")
-
-
-def _onError(failure, request):
-    logger.error("Error when answering a request: {e}", e=failure)
-    if not request.finished:
-        request.setResponseCode(500)
-        request.write(b"An error occured, please contact the administrator")
-        request.finish()
 
 
 def _prepare_yaml_element(element):
     """Prepare a yaml element for display in html"""
     element["time"] = element["time"][11:]
-    for key, val in element.items():
-        if isinstance(element[key], str):
-            element[key] = htmlescape(val)
     if "message" in element:
-        element["message"] = formatting.to_html(element["message"])
-        element["message"] = url_pat.sub(r"<a href='\1'>\1</a>",
-                                         element["message"])
+        element["message"] = formatting.to_tags(element["message"],
+                                                link_urls=True)
 
 
 def add_resources_to_root(root):
@@ -117,11 +70,39 @@ def add_resources_to_root(root):
                                                 defaultType="text/plain"))
 
 
-class BaseResource(Resource, object):
-    def getChild(self, name, request):
-        if name == b'':
-            return self
-        return super(BaseResource, self).getChild(name, request)
+class HeaderElement(Element):
+    loader = XMLFile(FilePath(fs.get_abs_path("resources/header.inc")))
+
+
+class FooterElement(Element):
+    loader = XMLFile(FilePath(fs.get_abs_path("resources/footer.inc")))
+
+
+class PageElement(Element):
+    def __init__(self, page, *args, **kwargs):
+        self.page = page
+        super(PageElement, self).__init__(*args, **kwargs)
+
+    @renderer
+    def title(self, request, tag):
+        return tag(self.page.title)
+
+    @renderer
+    def header(self, request, tag):
+        yield HeaderElement()
+
+    @renderer
+    def footer(self, request, tag):
+        yield FooterElement()
+
+
+class BasePageElement(PageElement):
+    loader = XMLFile(FilePath(fs.get_abs_path("resources/base_page_template.html")))
+
+    @renderer
+    def channel_item(self, request, tag):
+        for channel in self.page.channels:
+            yield tag.clone()(tags.a(channel, href=channel.lstrip("#")))
 
 
 class BasePage(BaseResource):
@@ -141,14 +122,93 @@ class BasePage(BaseResource):
         # add resources
         add_resources_to_root(self)
 
-    def render_GET(self, request):
-        data = ""
-        for channel in self.channels:
-            data += "<a href='{0}'>{0}</a><br/>".format(channel.lstrip("#"))
-        return str_to_bytes(base_page_template.format(title=self.title,
-                                                      data=data,
-                                                      header=header,
-                                                      footer=footer))
+    def element(self):
+        return BasePageElement(self)
+
+
+class LogPageElement(PageElement):
+    loader = XMLFile(FilePath(fs.get_abs_path("resources/log_page_template.html")))
+    js = 'window.onload = (function() {{document.getElementById("LevelPicker").value = "{}";}});'
+
+    @staticmethod
+    def get_log_level(request):
+        MIN_LEVEL = LEVEL_IMPORTANT
+        try:
+            MIN_LEVEL = int(request.args.get(b"level", [MIN_LEVEL])[0])
+        except ValueError as e:
+            logger.warn("Got invalid log 'level' in request arguments: "
+                        "{lvl}", lvl=request.args[b"level"])
+        return MIN_LEVEL
+
+    @staticmethod
+    def get_date(request):
+        date = bytes_to_str(request.args.get(b"date", [b"current"])[0])
+        if date == "current":
+            date = datetime.today().strftime("%Y-%m-%d")
+        return date
+
+    @renderer
+    def date_input(self, request, tag):
+        return tag.fillSlots(date=LogPageElement.get_date(request))
+
+    @renderer
+    def levelPicker_setter(self, request, tag):
+        level = LogPageElement.get_log_level(request)
+        return tag(LogPageElement.js.format(level))
+
+    @renderer
+    def search_link(self, request, tag):
+        return tag.fillSlots(channel=self.page.channel_link())
+
+    @renderer
+    def log_row(self, request, tag):
+        date = LogPageElement.get_date(request)
+        level = LogPageElement.get_log_level(request)
+        found = False
+        for i, data in enumerate(self.page.log_items(date, level)):
+            found = True
+            timetag = tags.td(tags.span(id=str(i)),
+                              tags.a(data["time"], href="#{}".format(i)),
+                              class_="time")
+            user = ""
+            msg = ""
+            if data["levelname"] == "MSG":
+                user = data["user"]
+                msg = data["message"]
+            elif data["levelname"] == "ACTION":
+                user = tags.i("*{}".format(data["user"]))
+                msg = tags.i(data["data"])
+            elif data["levelname"] == "NOTICE":
+                user = "[{}".format(data["user"])
+                msg = "{}]".format(data["message"])
+            elif data["levelname"] == "KICK":
+                user = "<--"
+                msg = "{kickee} was kicked by {kicker}({message})".format(**data)
+            elif data["levelname"] == "QUIT":
+                user = "<--"
+                msg = "QUIT: {user}({quitMessage})".format(**data)
+            elif data["levelname"] == "PART":
+                user = "<--"
+                msg = "{} left the channel".format(data["user"])
+            elif data["levelname"] == "JOIN":
+                user = "-->"
+                msg = "{} joined the channel".format(data["user"])
+            elif data["levelname"] == "NICK":
+                user = ""
+                msg = "{oldnick} is now known as {newnick}".format(
+                    data["oldnick"], data["newnick"])
+            elif data["levelname"] == "TOPIC":
+                user = ""
+                msg = "{user} changed topic to: {topic}".format(
+                    data["user"], data["topic"])
+            elif data["levelname"] == "ERROR":
+                user = tags.span("ERROR", style="color:#ff0000")
+                msg = data["msg"]
+            usertag = tags.td(user, class_="user")
+            datatag = tags.td(msg)
+            yield tag.clone()(timetag, usertag, datatag)
+        if not found:
+            yield tag("Log not found")
 
 
 class LogPage(BaseResource):
@@ -171,42 +231,60 @@ class LogPage(BaseResource):
             return ""
         return self.channel
 
-    def _show_log(self, request):
-        log_data = "Log not found"
-        MIN_LEVEL = LEVEL_IMPORTANT
-        try:
-            MIN_LEVEL = int(request.args.get(b"level", [MIN_LEVEL])[0])
-        except ValueError as e:
-            logger.warn("Got invalid log 'level' in request arguments: "
-                        "{level}", level=request.args[b"level"])
+    def log_items(self, date, level):
         filename = None
-        date = bytes_to_str(request.args.get(b"date", [b"current"])[0])
         if date == datetime.today().strftime("%Y-%m-%d"):
             filename = "{}.yaml".format(self.channel)
         elif date_regex.match(date):
             filename = "{}.{}.yaml".format(self.channel, date)
         elif date == "current":
-            filename = "{}.yaml".format(self.channel)
-            date = datetime.today().strftime("%Y-%m-%d")
+            filename = "{}.yaml".format(self.page.channel)
         if filename and os.path.isfile(os.path.join(self.log_dir, filename)):
             with open(os.path.join(self.log_dir, filename)) as logfile:
-                log_data = '<table>'
                 for i, data in enumerate(yaml.full_load_all(logfile)):
-                    if data["levelno"] > MIN_LEVEL:
+                    if data["levelno"] > level:
                         _prepare_yaml_element(data)
-                        log_data += line_templates[data["levelname"]].format(
-                            index=i, **data)
-                log_data += '</table>'
-        request.write(str_to_bytes(log_page_template.format(
-            log_data=log_data, title=self.title, header=header,
-            footer=footer, channel=self.channel_link(), date=date,
-            Level=MIN_LEVEL)))
-        request.finish()
+                        yield data
 
-    def render_GET(self, request):
-        d = deferLater(reactor, 0, self._show_log, request)
-        d.addErrback(_onError, request)
-        return NOT_DONE_YET
+    def element(self):
+        return LogPageElement(self)
+
+
+class SearchPageElement(PageElement):
+    loader = XMLFile(FilePath(fs.get_abs_path("resources/search_page_template.html")))
+
+    @renderer
+    def channel_page(self, request, tag):
+        return tag.fillSlots(channel=self.page.channel_link())
+
+    @renderer
+    def search_item(self, request, tag):
+        if b"q" not in request.args or request.args[b"q"] == ['']:
+            yield tag("")
+        else:
+            querystr = bytes_to_str(request.args[b"q"][0])
+            if b"page" in request.args:
+                try:
+                    page = int(request.args[b"page"][0])
+                except ValueError:
+                    page = -1
+            else:
+                page = 1
+            if page < 1:
+                yield tag("Invalid page number specified")
+            else:
+                results = self.page.search_logs(querystr, page)
+                if not results["hits"]:
+                    yield tag("No Logs found containing: {}".format(querystr))
+                for hit in results["hits"]:
+                    date = hit["date"].strftime("%Y-%m-%d")
+                    href = "{}?date={}".format(self.page.channel_link(), date)
+                    yield tag.clone()(tags.div(tags.label(tags.a(date,
+                                                                 href=href)),
+                                               hit["content"]))
+                if not results["last_page"]:
+                    yield tag.clone()(tags.a("Next",
+                        href="?q={}&page={}".format(querystr, page+1)))
 
 
 class SearchPage(BaseResource):
@@ -292,22 +370,7 @@ class SearchPage(BaseResource):
             return ".."
         return "/{}".format(self.channel)
 
-    def _search_logs(self, request):
-        querystr = bytes_to_str(request.args[b"q"][0])
-        if b"page" in request.args:
-            try:
-                page = int(request.args[b"page"][0])
-            except ValueError:
-                page = -1
-        else:
-            page = 1
-        if page < 1:
-            log_data = "Invalid page number specified"
-            request.write(str_to_bytes(search_page_template.format(
-                log_data=log_data, title=self.title, header=header,
-                footer=footer, channel=self.channel)))
-            request.finish()
-            return
+    def search_logs(self, querystr, page):
         with self.ix.searcher() as searcher:
             query = QueryParser("content", self.ix.schema).parse(querystr)
             res_page = searcher.search_page(query, page,
@@ -315,36 +378,18 @@ class SearchPage(BaseResource):
                                             sortedby="date", reverse=True)
             res_page.results.fragmenter = highlight.SentenceFragmenter(
                 sentencechars=u".!?\u2026", charlimit=None)
+            res_page.results.formatter = WhooshTagFormatter()
             log_data = ""
+            res = {"last_page": res_page.is_last_page(), "hits": []}
             for hit in res_page:
-                log_data += ("<ul><div><label><a href='{channel}?date="
-                             "{date}'>{date}</a></label>".format(
-                                 channel=self.channel_link(),
-                                 date=hit["date"].strftime("%Y-%m-%d")) +
-                             hit.highlights("content") +
-                             "</div></ul>")
-            else:
-                if not res_page.is_last_page():
-                    log_data += "<a href='?q={}&page={}'>Next</a>".format(
-                        querystr, page + 1)
-            if not res_page:
-                log_data = "No Logs found containg: {}".format(
-                    htmlescape(querystr))
-        request.write(str_to_bytes(search_page_template.format(
-            log_data=log_data, title=self.title, header=header,
-            footer=footer, channel=self.channel_link())))
-        request.finish()
+                res["hits"].append({"date": hit["date"], "content": hit.highlights("content")})
+            return res
 
-    def render_GET(self, request):
-        if b"q" not in request.args or request.args[b"q"] == ['']:
-            return str_to_bytes(search_page_template.format(
-                log_data="", title=self.title, header=header,
-                footer=footer, channel=self.channel_link()))
+    def element(self):
+        return SearchPageElement(self)
+
         if self.ix is None:
             return str_to_bytes(search_page_template.format(
                 log_data="Indexing..., Please try again later",
                 title=self.title, header=header, footer=footer,
                 channel=self.channel_link()))
-        d = deferLater(reactor, 0, self._search_logs, request)
-        d.addErrback(_onError, request)
-        return NOT_DONE_YET

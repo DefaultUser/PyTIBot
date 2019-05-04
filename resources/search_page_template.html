@@ -1,25 +1,26 @@
-<!DOCTYPE html>
-<html>
+<html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
 <head>
-    <meta charset=utf-8>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title}</title>
-    <link href="/pytibot.css" rel="stylesheet">
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title t:render="title"/>
+    <link href="/pytibot.css" rel="stylesheet"/>
 </head>
 <body>
     <div id="container">
-        {header}
+        <header t:render="header"/>
         <div id="main">
             <form method="PUT" id="MyForm">
-                <input name="q" id="SearchTerm">
+                <input name="q" id="SearchTerm"/>
 
                 <button>Search</button>
             </form>
-            <a href="{channel}">Back to log page</a>
+            <a t:render="channel_page"><t:attr name="href"><t:slot name="channel"/></t:attr>Back to log page</a>
 
-            <p id="txtblock">{log_data}</p>
+            <p id="txtblock"><ul>
+                <t:transparent t:render="search_item" />
+            </ul></p>
         </div>
-        {footer}
+        <footer t:render="footer"/>
     </div>
 </body>
 </html>

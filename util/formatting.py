@@ -17,10 +17,12 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
+from collections import namedtuple
 from bidict import bidict
 from colormath.color_objects import sRGBColor, LabColor
 from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
+from twisted.web.template import tags
 
 ## \brief Token to start underlined text
 _UNDERLINE = "\x1f"
@@ -32,6 +34,8 @@ _COLOR = "\x03"
 _ITALIC = "\x1d"
 ## \brief Token to end formatted text
 _NORMAL = "\x0f"
+
+url_pat = re.compile(r"(((https?)|(ftps?)|(sftp))://[^\s\"\')]+)")
 
 ## \brief Maps color names to the corresponding mIRC numerical values
 ## (as a two-digit strings)
@@ -184,30 +188,12 @@ format_pattern = re.compile("(\x1f)|(\x02)|(\x03)(\\d{1,2}(,\\d{1,2})?)?|"
                             "(\x1d)|(\x0f)")
 # underline, bold, color, (fg,bg?), (,bg), italic, normal
 
-
-def _info_dict_to_style(info_dict):
-    styles = []
-    if info_dict["underline"]:
-        styles.append("text-decoration:underline")
-    if info_dict["bold"]:
-        styles.append("font-weight:bold")
-    if info_dict["fg"]:
-        styles.append("color:{}".format(hex_colors[info_dict["fg"]]))
-    if info_dict["bg"]:
-        styles.append("background-color:{}".format(
-            hex_colors[info_dict["bg"]]))
-    if info_dict["italic"]:
-        styles.append("font-style:italic")
-
-    if styles:
-        return '<span style="{style}">{{text}}</span>'.format(
-            style=";".join(styles))
-    return "{text}"
+styled_text = namedtuple("StyledText", "text style")
 
 
-def to_html(text):
+def _extract_irc_style(text):
     """
-    \brief Convert a string with IRC formatting information to html formatting
+    \brief Extract IRC formatting information from string
     """
     # <span style="color:{color}">{substr}</span>
     # <span style="background-color:{bg_color}">{substr}</span>
@@ -215,37 +201,103 @@ def to_html(text):
     # <span style="font-style:italic">{substr}</span>
     # <span style="font-weight:bold">{substr}</span>
     substrings = format_pattern.split(text)
+    style_dict = {"underline": False, "bold": False, "fg": None, "bg": None,
+                  "italic": False}
     if len(substrings) % 8:
         # first substring has no formatting information
-        html = substrings[0]
+        yield styled_text(text=substrings[0], style=style_dict)
         start = 1
     else:
-        html = ""
         start = 0
-    info_dict = {"underline": False, "bold": False, "fg": None, "bg": None,
-                 "italic": False}
     for i in range(start, len(substrings), 8):
         if substrings[i]:
-            info_dict["underline"] = not info_dict["underline"]
+            style_dict["underline"] = not style_dict["underline"]
         if substrings[i+1]:
-            info_dict["bold"] = not info_dict["bold"]
+            style_dict["bold"] = not style_dict["bold"]
         if substrings[i+2]:
             if not substrings[i+3]:
-                info_dict["fg"] = None
-                info_dict["bg"] = None
+                style_dict["fg"] = None
+                style_dict["bg"] = None
             elif "," in substrings[i+3]:
-                info_dict["fg"], info_dict["bg"] = [int(val) for val in
-                                                    substrings[i+3].split(",")]
+                style_dict["fg"], style_dict["bg"] = [int(val) for val in
+                                                      substrings[i+3].split(",")]
             else:
-                info_dict["fg"] = int(substrings[i+3])
+                style_dict["fg"] = int(substrings[i+3])
         if substrings[i+5]:
-            info_dict["italic"] = not info_dict["italic"]
+            style_dict["italic"] = not style_dict["italic"]
         if substrings[i+6]:
             # big reset switch
-            info_dict = {"underline": False, "bold": False, "fg": None,
-                         "bg": None, "italic": False}
-        html += _info_dict_to_style(info_dict).format(text=substrings[i+7])
+            style_dict = {"underline": False, "bold": False, "fg": None,
+                          "bg": None, "italic": False}
+        yield styled_text(text=substrings[i+7], style=style_dict)
+
+def _style_html_string(style_dict):
+    styles = []
+    if style_dict["underline"]:
+        styles.append("text-decoration:underline")
+    if style_dict["bold"]:
+        styles.append("font-weight:bold")
+    if style_dict["fg"]:
+        styles.append("color:{}".format(hex_colors[style_dict["fg"]]))
+    if style_dict["bg"]:
+        styles.append("background-color:{}".format(
+            hex_colors[style_dict["bg"]]))
+    if style_dict["italic"]:
+        styles.append("font-style:italic")
+    return styles
+
+def _style_dict_to_html(text, style_dict, link_urls=True):
+    styles = _style_html_string(style_dict)
+    if link_urls:
+        text = url_pat.sub(r"<a href='\1'>\1</a>", text)
+    if styles:
+        return '<span style="{style}">{text}</span>'.format(
+            style=";".join(styles), text=text)
+    return text
+
+
+def to_html(text, link_urls=True):
+    """
+    \brief Convert a string with IRC formatting information to html formatting
+    """
+    html = ""
+    for frag in _extract_irc_style(text):
+        html += _style_dict_to_html(frag.text, frag.style, link_urls)
     return html
+
+
+def _style_dict_to_tags(text, style_dict, link_urls=True):
+    styles = _style_html_string(style_dict)
+    if link_urls:
+        if url_pat.search(text):
+            frag_list = []
+            start = 0
+            for match in url_pat.finditer(text):
+                frag_list.append(text[start:match.start()])
+                link = match.group(0)
+                frag_list.append(tags.a(link, href=link))
+                start = match.end()
+            if start < len(text):
+                frag_list.append(text[start:])
+            text = frag_list
+    if styles:
+        return tags.span(text, style=styles)
+    return text
+
+
+def to_tags(text, link_urls=True):
+    """
+    \brief Convert a string with IRC formatting information to web template tags
+    """
+    # <span style="color:{color}">{substr}</span>
+    # <span style="background-color:{bg_color}">{substr}</span>
+    # <span style="text-decoration:underline">{substr}</span>
+    # <span style="font-style:italic">{substr}</span>
+    # <span style="font-weight:bold">{substr}</span>
+    t = []
+    for frag in _extract_irc_style(text):
+        t.append(_style_dict_to_tags(frag.text, frag.style, link_urls))
+    return t
 
 
 colorpat = re.compile(r"\$COLOR(\((\d{{1,2}}|{colors})(,(\d{{1,2}}|{colors}))?\))?".format(

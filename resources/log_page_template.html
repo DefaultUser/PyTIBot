@@ -1,50 +1,48 @@
-<!DOCTYPE html>
-<html>
+<html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
 <head>
-    <meta charset=utf-8>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{title}</title>
-    <link href="/pytibot.css" rel="stylesheet">
-    <link href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" rel="stylesheet">
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title t:render="title" />
+    <link href="/pytibot.css" rel="stylesheet"/>
+    <link href="https://code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css" rel="stylesheet"/>
     <script src="https://code.jquery.com/jquery-3.1.1.js"></script>
     <script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
     <script src="/modernizr-custom-3.3.1.min.js"></script>
     <script>
-        $(function() {{
-            if (!Modernizr.inputtypes['date']) {{
-                $('input[type=date]').datepicker({{
+        $(function() {
+            if (!Modernizr.inputtypes['date']) {
+                $('input[type=date]').datepicker({
                     dateFormat: 'yy-mm-dd'
-                }});
-            }}
-        }});
+                });
+            }
+        });
     </script>
 </head>
 <body>
     <div id="container">
-        {header}
+        <header t:render="header" />
         <div id="main">
             <form method="PUT" id="MyForm" action="#">
-                <input name="date" type="date" id="DatePicker" value="{date}">
+                <input name="date" type="date" id="DatePicker" t:render="date_input"><t:attr name="value"><t:slot name="date"/></t:attr></input>
 
                 <select name="level" id="LevelPicker">
-                    <option value=10>ALL</option>
-                    <option value=11>MOST</option>
-                    <option value=16>IMPORTANT</option>
+                    <option value="10">ALL</option>
+                    <option value="11">MOST</option>
+                    <option value="16">IMPORTANT</option>
                 </select>
 
                 <button>Show log</button>
             </form>
-            <script>
-            $(function() {{
-                $("#LevelPicker").val({Level});
-            }});
-            </script>
+            <!-- Needed because HTML is bad -->
+            <script t:render="levelPicker_setter">  </script>
 
-            <a href='{channel}/search'>Search</a>
+            <a t:render="search_link"><t:attr name="href"><t:slot name="channel"/>/search</t:attr>Search</a>
 
-            <p id="txtblock">{log_data}</p>
+            <p id="txtblock"><table>
+                <tr t:render="log_row" />
+            </table></p>
         </div>
-        {footer}
+        <footer t:render="footer"/>
     </div>
 </body>
 </html>

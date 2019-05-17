@@ -578,7 +578,8 @@ class PyTIBot(irc.IRCClient, object):
 
             del self._usercallback[user]
         if user in self._authcallback:
-            callbacks, userinfo = self._authcallback[user]
+            callbacks = self._authcallback[user]["defers"]
+            userinfo = self._authcallback[user]["userinfo"]
 
             for cb in callbacks:
                 cb.callback(userinfo)
@@ -586,7 +587,7 @@ class PyTIBot(irc.IRCClient, object):
             del self._authcallback[user]
 
     def irc_RPL_WHOISAUTH(self, prefix, params):
-        user = params["userinfo"].lower()
+        user = params[1].lower()
         if user not in self._authcallback:
             # Never asked for it
             return

@@ -77,6 +77,10 @@ Commands:
   pypi: search_pypi
   fortune: fortune
 
+Aliases:
+  cointoss: random heads tails
+  whoami: whois $USER
+
 Triggers:
   enabled: [youtube, import_this]
 

@@ -87,6 +87,11 @@ You can specify which commands should be enabled here.
 The key is the command you have to type in IRC, the value is the name of the
 python function that should be executed.
 
+Aliases:<br/>
+Aliases allow defining pseudo-commands so that command-argument combinations
+can be called using these aliases. *$USER* will be expanded to the nickname
+of the caller.
+
 Triggers:<br/>
 *enabled* - list of all triggers<br/>
 specific options for the triggers

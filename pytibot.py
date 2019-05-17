@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
+from collections import namedtuple
 from twisted.words.protocols import irc
 from twisted.internet import defer, reactor, stdio
 from twisted.internet import ssl
@@ -35,6 +36,8 @@ from util import decorators
 # WHOIS reply for AUTH name (NONSTANDARD REPLY!)
 irc.symbolic_to_numeric["RPL_WHOISAUTH"] = "330"
 irc.numeric_to_symbolic["330"] = "RPL_WHOISAUTH"
+
+Alias = namedtuple("Alias", "command arguments")
 
 
 class PyTIBot(irc.IRCClient, object):
@@ -59,6 +62,7 @@ class PyTIBot(irc.IRCClient, object):
         self._usercallback = {}
         self._authcallback = {}
         self.commands = {}
+        self.aliases = {}
         self.triggers = {}
         self.userlist = {}
         self.webhook_port = None
@@ -87,6 +91,17 @@ class PyTIBot(irc.IRCClient, object):
         cmds.update(self._default_commands)
         for name, cmd in cmds.items():
             self.enable_command(cmd, name)
+
+        # clear the aliases
+        self.aliases = {}
+
+        # load the aliases
+        if self.config["Aliases"]:
+            aliases = self.config["Aliases"]
+        else:
+            aliases = {}
+        for name, body in aliases.items():
+            self.enable_alias(body, name)
 
         # clear the triggers
         del self.triggers
@@ -186,6 +201,25 @@ class PyTIBot(irc.IRCClient, object):
             self.config["Commands"][name] = cmd
             self.config.write()
             self.log.info("Added {name}={cmd} to config", name=name, cmd=cmd)
+        return True
+
+    def enable_alias(self, body, name, add_to_config=False):
+        cmd, args = body.split(" ", 1)
+        if not hasattr(commands, cmd):
+            self.log.warn("No such command: {cmd}", cmd=cmd)
+            return False
+
+        # allready present
+        if name in self.aliases:
+            self.log.warn("Alias {name} allready enabled", name=name)
+            return True
+
+        self.aliases[name] = Alias(command=cmd, arguments=args.split(" "))
+        # add to config
+        if add_to_config:
+            self.config["Aliases"][name] = body
+            self.config.write()
+            self.log.info("Added {name}={body} to config", name=name, body=body)
         return True
 
     def enable_trigger(self, trigger, add_to_config=False):
@@ -333,6 +367,12 @@ class PyTIBot(irc.IRCClient, object):
                 temp.pop(0)
             command = temp[0]
             args = temp[1:]
+            if command in self.aliases:
+                args = self.aliases[command].arguments
+                while "$USER" in args:
+                    index = args.index("$USER")
+                    args[index] = user
+                command = self.aliases[command].command
             if command in self.commands:
                 self.commands[command].send((args, user, userhost, channel))
             else:

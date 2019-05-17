@@ -33,6 +33,10 @@ def bot_help(bot):
     while True:
         args, sender, senderhost, channel = yield
         commands = {name: gen.__name__ for name, gen in bot.commands.items()}
+        aliases = []
+        for name, alias in bot.aliases.items():
+            aliases.append("{name} ({body})".format(
+                name=name, body=" ".join([alias.command] + alias.arguments)))
         doc = []
         if args:
             for arg in args:
@@ -47,6 +51,10 @@ def bot_help(bot):
                                                       "red") +
                                    formatting.colored(arg, "dark_green"))
         else:
-            doc = [", ".join(commands)]
+            doc = [formatting.colored("Commands: ", "dark_yellow") +
+                   ", ".join(commands)]
+            if aliases:
+                doc.append(formatting.colored("Aliases: ", "dark_green") +
+                           ", ".join(aliases))
         for d in doc:
             bot.msg(channel, d, length=510)

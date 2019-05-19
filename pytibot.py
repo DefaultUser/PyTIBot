@@ -368,7 +368,7 @@ class PyTIBot(irc.IRCClient, object):
             command = temp[0]
             args = temp[1:]
             if command in self.aliases:
-                args = self.aliases[command].arguments
+                args = self.aliases[command].arguments.copy()
                 while "$USER" in args:
                     index = args.index("$USER")
                     args[index] = user

@@ -238,17 +238,34 @@ def to_html(text):
     return html
 
 
+colorpat = re.compile(r"\$COLOR(\((\d{{1,2}}|{colors})(,(\d{{1,2}}|{colors}))?\))?".format(
+    colors="|".join(color_code.keys())))
+rainbowpat = re.compile(r"\$RAINBOW\(([^)]+)\)")
 def from_human_readable(text):
     """
     \brief Convert human readable formatting information to IRC formatting
     """
-    colorpat = re.compile(r"\$COLOR(\((\d{1,2}(,\d{1,2})?)\))?")
-    rainbowpat = re.compile(r"\$RAINBOW\(([^)]+)\)")
+    def colorname_sub(match):
+        fg = match.group(2)
+        fg = color_code.get(fg, fg)
+        bg = match.group(4)
+        bg = color_code.get(bg, bg)
+        if fg and bg:
+            col_code = fg + "," + bg
+        elif fg:
+            col_code = fg
+        else:
+            col_code = ""
+        return _COLOR + col_code
     # Replace colors
-    text = colorpat.sub(lambda match: _COLOR + match.group(1)[1:-1]
-                        if match.group(1) else _COLOR, text)
+    text = colorpat.sub(colorname_sub, text)
     text = rainbowpat.sub(lambda match: rainbow(match.group(1)),
                           text)
+    # other formatting
+    text = text.replace("$UNDERLINE", _UNDERLINE)
+    text = text.replace("$BOLD", _BOLD)
+    text = text.replace("$ITALIC", _ITALIC)
+    text = text.replace("$NOFORMAT", _NORMAL)
     return text
 
 

@@ -69,7 +69,8 @@ class Greeter(abstract.ChannelWatcher):
                     self.log.debug("Pattern found for user {user}", user=user)
                     self.bot.notice(user, self.message.replace("$USER", user))
                     if user_low not in self.standard_nicks:
-                        self.log.debug("Adding {} to 'already_greeted'")
+                        self.log.debug("Adding {user} to 'already_greeted'",
+                                       user=user)
                         self.already_greeted.add(user_low)
                     return
 

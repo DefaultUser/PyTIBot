@@ -166,10 +166,7 @@ These can be specified under the [Simple Trigger] section<br/>
 If *answer* is a list, a random element of that list is chosen.
 
 "$USER" and "$CHANNEL" will be expanded to the user and channel, which triggered
-the line. Also you can specify colors with "$COLOR(1,2)", where the first number
-stands for the font color and the second one is the background [optional]. Color
-range is from 0 to 15.
-**Attention**: don't put a whitespace between these numbers.
+the line. Text formatting described in section [Text Formatting](#text-formatting).
 
 
 Manhole access
@@ -230,6 +227,25 @@ Channelmodules:
 *ChannelLogger* also needs some configuration that is shared by all ChannelLoggers (see section *Logging*).<br/>
 *user_blacklist* and *msg_blacklist* in *Autokick* accept regular expressions. If *repeat_count* of a user's last *buffer_length* messages are the same or a user highlights more than *max_highlights* users with the same message, this user will also be kicked.<br/>
 The *Greeter* channelmodule will greet new users when they join the given channel if their whois information (`nick!ident@host`) matches one of the given *patterns*. For every nick this will only happen once unless this nick is part of the *standard_nicks* (this is persistent even after restart/lost connection). For the patterns, you can use shell like pattern matching. The above *patterns* are examples to greet webchat users on Quakenet and Freenode.
+
+
+Text Formatting
+---------------
+Several control codes are available for formatting messages sent to IRC:
+- `$COLOR`
+- `$RAINBOW`
+- `$BOLD`
+- `$ITALIC`
+- `$UNDERLINE`
+- `$NOFORMAT`
+
+The `$COLOR` control code can take parameters: `$COLOR(fg,bg)`
+The first parameter stands for the font color and the second one for the
+background [optional]. These colors can either be the color names (seen util/formatting.py)
+or directly the color code ranging from 0 to 15.<br/>
+**Attention**: Don't put a whitespace between the colors.<br/>
+`$RAINBOW` takes the text that should be colorized as paramter:
+`$RAINBOW(Example text in rainbow) - no colors here`
 
 
 Logging

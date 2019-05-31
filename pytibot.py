@@ -31,7 +31,7 @@ from lib.simpletrigger import simple_trigger
 from lib import triggers
 from lib.git_webhook import GitWebhookServer
 from lib import channelwatcher
-from util import decorators
+from util import decorators, formatting
 
 # WHOIS reply for AUTH name (NONSTANDARD REPLY!)
 irc.symbolic_to_numeric["RPL_WHOISAUTH"] = "330"
@@ -504,6 +504,7 @@ class PyTIBot(irc.IRCClient, object):
                 "$KICKER", kicker)
             msg = msg.replace("$KICKEE", kickee).replace("$CHANNEL",
                                                          channel)
+            msg = formatting.from_human_readable(msg)
             if msg:
                 self.msg(channel, msg)
 
@@ -552,6 +553,7 @@ class PyTIBot(irc.IRCClient, object):
                     "$KICKER", kicker)
                 msg = msg.replace("$CHANNEL", channel).replace("$MESSAGE",
                                                                message)
+                msg = formatting.from_human_readable(msg)
                 if msg:
                     self.msg(channel, msg)
 

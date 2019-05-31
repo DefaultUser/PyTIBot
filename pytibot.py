@@ -372,6 +372,12 @@ class PyTIBot(irc.IRCClient, object):
                 while "$USER" in args:
                     index = args.index("$USER")
                     args[index] = user
+                # replace $ARGS with arguments from command
+                if "$ARGS" in args:
+                    index = args.index("$ARGS")
+                    args.remove("$ARGS")
+                    for arg in temp[-1:0:-1]:
+                        args.insert(index, arg)
                 command = self.aliases[command].command
             if command in self.commands:
                 self.commands[command].send((args, user, userhost, channel))

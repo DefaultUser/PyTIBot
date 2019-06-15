@@ -6,3 +6,4 @@ whoosh
 bidict
 unidecode
 colormath
+markovify

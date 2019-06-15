@@ -225,13 +225,17 @@ Channelmodules:
       patterns: ["*!webchat@*", "*!*@gateway/web/*"] # shell like pattern matching
       message: Welcome, $USER!
   -
-    MarkovChat:
-      corpus: mycorpus # file in <config dir>/markov/<channel>/
-      chat_rate: 0.01 # chance of a chat message
-      add_rate: 0.6 # chance of extending the model
+    MarkovChat: # needs a list
+    - corpus: mycorpus # file in <config dir>/markov/<channel>/
+      chat_rate: 0.01 # chance of a chat message, default 0.1
+      add_rate: 0.6 # chance of extending the model, default 0.4
       keywords:
       - special
       - markov
+    - corpus: second_corpus
+      keywords:
+      - python
+      - pytibot
 ```
 *ChannelLogger* also needs some configuration that is shared by all ChannelLoggers (see section *Logging*).<br/>
 *user_blacklist* and *msg_blacklist* in *Autokick* accept regular expressions. If *repeat_count* of a user's last *buffer_length* messages are the same or a user highlights more than *max_highlights* users with the same message, this user will also be kicked.<br/>

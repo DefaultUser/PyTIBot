@@ -20,6 +20,7 @@ from .channellogger import ChannelLogger
 from .autokick import Autokick
 from .autovoice import Autovoice
 from .greeter import Greeter
+from .markov import MarkovChat
 
 
-__all__ = [ChannelLogger, Autokick, Autovoice, Greeter]
+__all__ = [ChannelLogger, Autokick, Autovoice, Greeter, MarkovChat]

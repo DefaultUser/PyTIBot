@@ -116,7 +116,7 @@ class GitWebhookServer(Resource):
         Returns True if the event should be filtered out according to user rules
         """
         def _f(rule):
-            key_path, val = re.split("\s+==\s+", rule, maxsplit=1)
+            key_path, val = re.split("\s*==\s*", rule, maxsplit=1)
             temp = data
             for key_frag in key_path.split("."):
                 temp = temp[key_frag]

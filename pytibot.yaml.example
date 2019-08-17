@@ -38,6 +38,11 @@ GitWebhook:
   github_secret: SECRETKEY
   gitlab_secret: SECRETKEY
   hook_report_users: [myadmin]
+  FilterRules:
+  # example for github
+  - eventtype == issues AND action == pinned
+  # example for gitlab
+  - eventtype == note AND object_attributes.noteable_type == Snippet
   Hooks:
     Push:
       default:

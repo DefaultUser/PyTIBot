@@ -315,6 +315,16 @@ GitWebhook:
   github_secret: SECRETKEY
   gitlab_secret: SECRETKEY
   hook_report_users: [myadmin]
+  FilterRules:
+  # filter out webhook shots using the following rules
+  # for a single rule, 'AND' can be used to join multiple conditions
+  # OR is not supported
+  # example for github (API: https://developer.github.com/v3/activity/events/types/)
+  - eventtype == issues AND action == pinned
+  # use '.' to access subelements, accessing lists is not supported
+  - eventtype == push AND pusher.name == filteredUser
+  # example for gitlab (API: https://docs.gitlab.com/ce/user/project/integrations/webhooks.html)
+  - eventtype == note AND object_attributes.noteable_type == Snippet
   Hooks:
     Push:
       default:

@@ -23,6 +23,7 @@ import codecs
 import json
 import hmac
 from hashlib import sha1
+import re
 import sys
 from unidecode import unidecode
 
@@ -45,6 +46,8 @@ class GitWebhookServer(Resource):
         self.github_secret = config["GitWebhook"].get("github_secret", None)
         self.gitlab_secret = config["GitWebhook"].get("gitlab_secret", None)
         self.channels = config["GitWebhook"]["channels"]
+        # filter settings
+        self.filter_rules = config["GitWebhook"].get("FilterRules", [])
         # local hooks and actions
         self.actions = config["GitWebhook"].get("Actions", {})
         self.hooks = config["GitWebhook"].get("Hooks", {})
@@ -74,6 +77,10 @@ class GitWebhookServer(Resource):
             eventtype = data["object_kind"]
             sig = request.getHeader(b"X-Gitlab-Token")
             service = "gitlab"
+        # other: not implemented
+        else:
+            request.setResponseCode(403)
+            return b""
         eventtype = bytes_to_str(eventtype)
 
         secret = None
@@ -89,7 +96,11 @@ class GitWebhookServer(Resource):
                               " with the given secret - ignoring request")
                 request.setResponseCode(200)
                 return b""
-        if hasattr(self, "on_{}_{}".format(service, eventtype)):
+        # filtering: inject eventtype for filtering
+        data["eventtype"] = eventtype
+        if self.filter_event(data):
+            self.log.debug("filtering out event {event}", event=data)
+        elif hasattr(self, "on_{}_{}".format(service, eventtype)):
             reactor.callLater(0, getattr(self, "on_{}_{}".format(service,
                                                                  eventtype)),
                               data)
@@ -99,6 +110,26 @@ class GitWebhookServer(Resource):
         # always return 200
         request.setResponseCode(200)
         return b""
+
+    def filter_event(self, data):
+        """
+        Returns True if the event should be filtered out according to user rules
+        """
+        def _f(rule):
+            key_path, val = re.split("\s+==\s+", rule, maxsplit=1)
+            temp = data
+            for key_frag in key_path.split("."):
+                temp = temp[key_frag]
+            # value from rules are always strings
+            return str(temp) == val
+        for rule in self.filter_rules:
+            try:
+                if all(map(_f, re.split("\s+AND\s+", rule))):
+                    return True
+            except Exception as e:
+                self.log.warn("Filter rule '{rule}' couldn't be applied: {e}",
+                              rule=rule, e=e)
+        return False
 
     def github_label_colors(self, label):
         color = label["color"]

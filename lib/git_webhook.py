@@ -121,7 +121,9 @@ class GitWebhookServer(Resource):
             for key_frag in key_path.split("."):
                 temp = temp[key_frag]
             # value from rules are always strings
-            return str(temp) == val
+            temp = str(temp)
+            return any(temp==v for v in re.split("\s*\|\s*", val))
+
         for rule in self.filter_rules:
             try:
                 if all(map(_f, re.split("\s+AND\s+", rule))):

@@ -318,9 +318,10 @@ GitWebhook:
   FilterRules:
   # filter out webhook shots using the following rules
   # for a single rule, 'AND' can be used to join multiple conditions
-  # OR is not supported
+  # using 'OR' to join multiple conditions is not supported
+  # use '|' to compare an element to different values
   # example for github (API: https://developer.github.com/v3/activity/events/types/)
-  - eventtype == issues AND action == pinned
+  - eventtype == issues AND action == pinned | unpinned
   # use '.' to access subelements, accessing lists is not supported
   - eventtype == push AND pusher.name == filteredUser
   # example for gitlab (API: https://docs.gitlab.com/ce/user/project/integrations/webhooks.html)

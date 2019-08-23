@@ -315,6 +315,9 @@ GitWebhook:
   github_secret: SECRETKEY
   gitlab_secret: SECRETKEY
   hook_report_users: [myadmin]
+  # option to prevent multiple PR review and review comment messages on github in short intervals by grouping events
+  # events will be delayed by 10 seconds
+  PreventGitHubReviewSpam: true
   FilterRules:
   # filter out webhook shots using the following rules
   # for a single rule, 'AND' can be used to join multiple conditions

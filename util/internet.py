@@ -30,8 +30,8 @@ def shorten_github_url(url):
     try:
         response = yield treq.post("https://git.io", data={"url": url},
                                    timeout=5)
+        defer.returnValue(response.headers.getRawHeaders("Location", [url])[0])
     except Exception as e:
         log.warn("Error shortening github url({url}): {error}",
                  url=url, error=e)
         defer.returnValue(url)
-    defer.returnValue(response.headers.getRawHeaders("Location", [url])[0])

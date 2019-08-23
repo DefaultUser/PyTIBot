@@ -40,6 +40,7 @@ class GitWebhookServer(Resource):
     """
     isLeaf = True
     log = Logger()
+    GH_ReviewSpamPrevention_Delay = 10
 
     def __init__(self, bot, config):
         self.bot = bot
@@ -48,6 +49,12 @@ class GitWebhookServer(Resource):
         self.channels = config["GitWebhook"]["channels"]
         # filter settings
         self.filter_rules = config["GitWebhook"].get("FilterRules", [])
+        self.prevent_github_review_spam = config["GitWebhook"].get(
+                "PreventGitHubReviewSpam", False)
+        self._gh_review_buffer = []
+        self._gh_review_delayed_call = None
+        self._gh_review_comment_buffer = []
+        self._gh_review_comment_delayed_call = None
         # local hooks and actions
         self.actions = config["GitWebhook"].get("Actions", {})
         self.hooks = config["GitWebhook"].get("Hooks", {})
@@ -439,41 +446,104 @@ class GitWebhookServer(Resource):
                    payload=payload))
         self.report_to_irc(repo_name, msg)
 
-    @defer.inlineCallbacks
-    def on_github_pull_request_review(self, data):
-        repo_name = data["repository"]["name"]
-        url = yield shorten_github_url(data["review"]["html_url"])
-        msg = ("[{repo_name}] {user} reviewed Pull Request #{number} {title} "
-               "({head} -> {base}): {url}".format(
+    def _github_PR_review_send_msg(self, is_comment, repo_name, user,
+                                   pr_number, title, action, head, base, urls):
+        type_ = "Review Comment" if is_comment else "Review"
+        msg = ("[{repo_name}] {user} {action} {type_} for Pull Request "
+               "#{number} {title} ({head} -> {base}): {url}".format(
                    repo_name=colored(repo_name, "blue"),
-                   user=colored(data["review"]["user"]["login"], "dark_cyan"),
-                   number=colored(str(data["pull_request"]["number"]),
-                                  "dark_yellow"),
-                   title=unidecode(data["pull_request"]["title"]),
-                   head=colored(data["pull_request"]["head"]["ref"],
-                                "dark_blue"),
-                   base=colored(data["pull_request"]["base"]["ref"],
-                                "dark_red"),
-                   url=url))
+                   user=colored(user, "dark_cyan"),
+                   action=action,
+                   type_=type_,
+                   number=colored(pr_number, "dark_yellow"),
+                   title=unidecode(title),
+                   head=colored(head, "dark_blue"),
+                   base=colored(base, "dark_red"),
+                   url=", ".join(urls)))
         self.report_to_irc(repo_name, msg)
 
     @defer.inlineCallbacks
+    def github_handle_review_spam(self, is_comment):
+        # Clear buffer and callID first as later async calls give control
+        # back to the reactor. This way, the buffer could be changed in the
+        # middle of this function and events could be lost
+        if is_comment:
+            buffer = self._gh_review_comment_buffer
+            self._gh_review_comment_buffer = []
+            self._gh_review_comment_delayed_call = None
+            type_ = "comment"
+        else:
+            buffer = self._gh_review_buffer
+            self._gh_review_buffer = []
+            self._gh_review_delayed_call = None
+            type_ = "review"
+        partition = {}
+        for event in buffer:
+            repo_name = event["repository"]["name"]
+            user = event[type_]["user"]["login"]
+            pr_number = event["pull_request"]["number"]
+            action = event["action"]
+            key = (repo_name, pr_number, user, action)
+            if key not in partition:
+                partition[key] = []
+            partition[key].append(event)
+        for k, events in partition.items():
+            repo_name, pr_number, user, action = k
+            title = events[0]["pull_request"]["title"]
+            head = events[0]["pull_request"]["head"]["ref"]
+            base = events[0]["pull_request"]["base"]["ref"]
+            # remove duplicate urls
+            full_urls = {e[type_]["html_url"] for e in events}
+            urls_defers = [shorten_github_url(url) for url in full_urls]
+            results = yield defer.DeferredList(urls_defers)
+            urls = [res[1] for res in results]
+            self._github_PR_review_send_msg(is_comment, repo_name, user,
+                                            pr_number, title, action, head,
+                                            base, urls)
+
+    @defer.inlineCallbacks
+    def on_github_pull_request_review(self, data):
+        if self.prevent_github_review_spam:
+            self._gh_review_buffer.append(data)
+            if self._gh_review_delayed_call:
+                self._gh_review_delayed_call.cancel()
+            self._gh_review_delayed_call = reactor.callLater(
+                    GitWebhookServer.GH_ReviewSpamPrevention_Delay,
+                    self.github_handle_review_spam, False)
+        else:
+            url = yield shorten_github_url(data["review"]["html_url"])
+            self._github_PR_review_send_msg(
+                False,
+                data["repository"]["name"],
+                data["review"]["user"]["login"],
+                data["pull_request"]["number"],
+                data["pull_request"]["title"],
+                data["action"],
+                data["pull_request"]["head"]["ref"],
+                data["pull_request"]["base"]["ref"],
+                [url])
+
+    @defer.inlineCallbacks
     def on_github_pull_request_review_comment(self, data):
-        repo_name = data["repository"]["name"]
-        url = yield shorten_github_url(data["comment"]["html_url"])
-        msg = ("[{repo_name}] {user} commented on Pull Request #{number} "
-               "{title} ({head} -> {base}): {url}".format(
-                   repo_name=colored(repo_name, "blue"),
-                   user=colored(data["comment"]["user"]["login"], "dark_cyan"),
-                   number=colored(str(data["pull_request"]["number"]),
-                                  "dark_yellow"),
-                   title=unidecode(data["pull_request"]["title"]),
-                   head=colored(data["pull_request"]["head"]["ref"],
-                                "dark_blue"),
-                   base=colored(data["pull_request"]["base"]["ref"],
-                                "dark_red"),
-                   url=url))
-        self.report_to_irc(repo_name, msg)
+        if self.prevent_github_review_spam:
+            self._gh_review_comment_buffer.append(data)
+            if self._gh_review_comment_delayed_call:
+                self._gh_review_comment_delayed_call.cancel()
+            self._gh_review_comment_delayed_call = reactor.callLater(
+                    GitWebhookServer.GH_ReviewSpamPrevention_Delay,
+                    self.github_handle_review_spam, True)
+        else:
+            url = yield shorten_github_url(data["comment"]["html_url"])
+            self._github_PR_review_send_msg(
+                True,
+                data["repository"]["name"],
+                data["comment"]["user"]["login"],
+                data["pull_request"]["number"],
+                data["pull_request"]["title"],
+                data["action"],
+                data["pull_request"]["head"]["ref"],
+                data["pull_request"]["base"]["ref"],
+                [url])
 
     def on_gitlab_push(self, data):
         repo_name = data["project"]["name"]

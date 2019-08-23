@@ -410,7 +410,7 @@ class GitWebhookServer(Resource):
         elif action == "review_requested":
             action = "requested review for"
             payload = data["requested_reviewer"]["login"]
-        elif action == "review_request_removeded":
+        elif action == "review_request_removed":
             action = "removed review request for"
             payload = data["requested_reviewer"]["login"]
         elif action == "opened":

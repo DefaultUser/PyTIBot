@@ -40,7 +40,7 @@ class GitWebhookServer(Resource):
     """
     isLeaf = True
     log = Logger()
-    GH_ReviewSpamPrevention_Delay = 10
+    GH_ReviewFloodPrevention_Delay = 10
 
     def __init__(self, bot, config):
         self.bot = bot
@@ -49,8 +49,8 @@ class GitWebhookServer(Resource):
         self.channels = config["GitWebhook"]["channels"]
         # filter settings
         self.filter_rules = config["GitWebhook"].get("FilterRules", [])
-        self.prevent_github_review_spam = config["GitWebhook"].get(
-                "PreventGitHubReviewSpam", False)
+        self.prevent_github_review_flood = config["GitWebhook"].get(
+                "PreventGitHubReviewFlood", False)
         self._gh_review_buffer = []
         self._gh_review_delayed_call = None
         self._gh_review_comment_buffer = []
@@ -463,7 +463,7 @@ class GitWebhookServer(Resource):
         self.report_to_irc(repo_name, msg)
 
     @defer.inlineCallbacks
-    def github_handle_review_spam(self, is_comment):
+    def github_handle_review_flood(self, is_comment):
         # Clear buffer and callID first as later async calls give control
         # back to the reactor. This way, the buffer could be changed in the
         # middle of this function and events could be lost
@@ -503,13 +503,13 @@ class GitWebhookServer(Resource):
 
     @defer.inlineCallbacks
     def on_github_pull_request_review(self, data):
-        if self.prevent_github_review_spam:
+        if self.prevent_github_review_flood:
             self._gh_review_buffer.append(data)
             if self._gh_review_delayed_call:
                 self._gh_review_delayed_call.cancel()
             self._gh_review_delayed_call = reactor.callLater(
-                    GitWebhookServer.GH_ReviewSpamPrevention_Delay,
-                    self.github_handle_review_spam, False)
+                    GitWebhookServer.GH_ReviewFloodPrevention_Delay,
+                    self.github_handle_review_flood, False)
         else:
             url = yield shorten_github_url(data["review"]["html_url"])
             self._github_PR_review_send_msg(
@@ -525,13 +525,13 @@ class GitWebhookServer(Resource):
 
     @defer.inlineCallbacks
     def on_github_pull_request_review_comment(self, data):
-        if self.prevent_github_review_spam:
+        if self.prevent_github_review_flood:
             self._gh_review_comment_buffer.append(data)
             if self._gh_review_comment_delayed_call:
                 self._gh_review_comment_delayed_call.cancel()
             self._gh_review_comment_delayed_call = reactor.callLater(
-                    GitWebhookServer.GH_ReviewSpamPrevention_Delay,
-                    self.github_handle_review_spam, True)
+                    GitWebhookServer.GH_ReviewFloodPrevention_Delay,
+                    self.github_handle_review_flood, True)
         else:
             url = yield shorten_github_url(data["comment"]["html_url"])
             self._github_PR_review_send_msg(

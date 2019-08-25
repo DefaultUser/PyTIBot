@@ -1,5 +1,6 @@
 twisted[tls]
 treq
+PyYAML>=5.1.2
 yamlcfg
 appdirs
 whoosh

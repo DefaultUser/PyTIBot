@@ -200,7 +200,7 @@ class LogPage(BaseResource):
         if filename and os.path.isfile(os.path.join(self.log_dir, filename)):
             with open(os.path.join(self.log_dir, filename)) as logfile:
                 log_data = '<table>'
-                for i, data in enumerate(yaml.load_all(logfile)):
+                for i, data in enumerate(yaml.full_load_all(logfile)):
                     if data["levelno"] > MIN_LEVEL:
                         _prepare_yaml_element(data)
                         log_data += line_templates[data["levelname"]].format(
@@ -233,7 +233,7 @@ class SearchPage(BaseResource):
         path = os.path.join(self.log_dir, name)
         with open(path) as f:
             content = []
-            for element in yaml.load_all(f.read()):
+            for element in yaml.full_load_all(f.read()):
                 if element["levelname"] == "MSG":
                     msg = irc.stripFormatting(element["message"])
                     if PY3:

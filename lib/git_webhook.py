@@ -397,7 +397,7 @@ class GitWebhookServer(Resource):
         action = data["action"]
         payload = None
         repo_name = data["repository"]["name"]
-        user = data["pull_request"]["user"]["login"]
+        user = data["sender"]["login"]
         if action == "assigned" or action == "unassigned":
             payload = data["pull_request"]["assignee"]["login"]
         elif action == "labeled" or action == "unlabeled":
@@ -423,7 +423,6 @@ class GitWebhookServer(Resource):
                 user = data["pull_request"]["merged_by"]["login"]
             else:
                 action = colored(action, "red")
-                user = data["sender"]["login"]
         elif action == "synchronize":
             action = "synchronized"
         elif action == "ready_for_review":

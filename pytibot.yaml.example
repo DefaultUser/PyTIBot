@@ -24,6 +24,8 @@ HTTPLogServer:
   certificate: /path/to/cert.pem
   privkey: /path/to/privkey.pem
   title: Awesome Log Server
+  search_pagelen: 5
+  indexer_procs: 4 # use multiple processes for indexing logs
 
 GitWebhook:
   channels:

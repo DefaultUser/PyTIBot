@@ -107,8 +107,10 @@ class PyTIBotServiceMaker(object):
                                                     "PyTIBot Log Server")
                 search_pagelen = config["HTTPLogServer"].get("search_pagelen",
                                                              5)
+                indexer_procs = config["HTTPLogServer"].get("indexer_procs", 1)
                 root = LogPage(channels[0], log.get_channellog_dir(config),
-                               title, search_pagelen, singlechannel=True)
+                               title, search_pagelen, indexer_procs,
+                               singlechannel=True)
             else:
                 root = BasePage(config)
             httpfactory = Site(root)

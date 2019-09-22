@@ -141,12 +141,13 @@ class BasePage(BaseResource):
         # add channel logs
         self.channels = config["HTTPLogServer"].get("channels", [])
         search_pagelen = config["HTTPLogServer"].get("search_pagelen", 5)
+        indexer_procs = config["HTTPLogServer"].get("indexer_procs", 1)
         for channel in self.channels:
             name = channel.lstrip("#")
             self.putChild(str_to_bytes(name),
                           LogPage(name, log.get_channellog_dir(config),
                                   "#{} - {}".format(name, self.title),
-                                  search_pagelen))
+                                  search_pagelen, indexer_procs))
         # add resources
         add_resources_to_root(self)
 
@@ -161,7 +162,7 @@ class BasePage(BaseResource):
 
 
 class LogPage(BaseResource):
-    def __init__(self, channel, log_dir, title, search_pagelen,
+    def __init__(self, channel, log_dir, title, search_pagelen, indexer_procs,
                  singlechannel=False):
         super(LogPage, self).__init__()
         self.channel = channel.lstrip("#")
@@ -169,7 +170,7 @@ class LogPage(BaseResource):
         self.title = title
         self.singlechannel = singlechannel
         self.putChild(b"search", SearchPage(self.channel, log_dir, title,
-                                            search_pagelen,
+                                            search_pagelen, indexer_procs,
                                             singlechannel=singlechannel))
 
         if singlechannel:
@@ -219,13 +220,15 @@ class LogPage(BaseResource):
 
 
 class SearchPage(BaseResource):
-    def __init__(self, channel, log_dir, title, pagelen, singlechannel=False):
+    def __init__(self, channel, log_dir, title, pagelen, indexer_procs,
+                 singlechannel=False):
         super(SearchPage, self).__init__()
         self.channel = channel
         self.log_dir = log_dir
         self.title = title
         self.last_index_update = 0
         self.pagelen = pagelen
+        self.indexer_procs = indexer_procs
         self.singlechannel = singlechannel
         self._setup_index()
 
@@ -260,7 +263,7 @@ class SearchPage(BaseResource):
         if not os.path.exists(indexpath):
             os.makedirs(indexpath)
         self.ix = create_in(indexpath, schema)
-        writer = self.ix.writer()
+        writer = self.ix.writer(procs=self.indexer_procs)
         for name in os.listdir(self.log_dir):
             if name.startswith(self.channel + ".") and name.endswith(".yaml"):
                 c, date = self._fields_from_yaml(name)
@@ -272,7 +275,7 @@ class SearchPage(BaseResource):
 
     def update_index(self):
         with self.ix.searcher() as searcher:
-            writer = self.ix.writer()
+            writer = self.ix.writer(procs=self.indexer_procs)
             indexed_paths = set()
             for field in searcher.all_stored_fields():
                 indexed_paths.add(field["path"])

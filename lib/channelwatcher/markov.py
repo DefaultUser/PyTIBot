@@ -19,6 +19,7 @@
 import markovify
 import random
 import os
+from twisted.logger import Logger
 
 from . import abstract
 from util import filesystem as fs
@@ -49,6 +50,8 @@ class MarkovChat(abstract.ChannelWatcher):
             unit.save_corpus()
 
 class MarkovUnit(object):
+    log = Logger()
+
     def __init__(self, parent, corpus, keywords, chat_rate, add_rate):
         self.parent = parent
         self.corpus = corpus
@@ -58,12 +61,12 @@ class MarkovUnit(object):
         if not os.path.isfile(self.corpus):
             raise IOError("No such file: {}".format(self.corpus))
         with open(self.corpus) as f:
-            self.model = markovify.Text(f.read())
+            self.model = markovify.NewlineText(f.read())
 
     def add_to_corpus(self, message):
-        if not message.endswith("."):
-            message = message + "."
-        temp = markovify.Text(message)
+        if not message.endswith("\n"):
+            message = message + "\n"
+        temp = markovify.NewlineText(message.strip())
         self.model = markovify.combine([self.model, temp])
 
     def handle_msg(self, message):
@@ -75,6 +78,13 @@ class MarkovUnit(object):
             self.add_to_corpus(message)
 
     def save_corpus(self):
+        try:
+            text = "\n".join(self.model.sentence_join(sentence) for sentence in
+                             self.model.to_dict()["parsed_sentences"])
+        except Exception as e:
+            self.log.error("An error occured while saving a markov chain: "
+                           "{error}", error=e)
+            return
         with open(self.corpus, "w") as f:
-            f.write(self.model.rejoined_text.replace(".", ".\n"))
+            f.write(text)
 

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - Formatting Helper
-# Copyright (C) <2015-2018>  <Sebastian Schmidt, Mattia Basaglia>
+# Copyright (C) <2015-2019>  <Sebastian Schmidt, Mattia Basaglia>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -95,6 +95,8 @@ def colored(text, fgcolor, bgcolor=None, endtoken=True):
     \param endtoken Send the colortoken at the end to end colored text
     \returns A string with IRC colors if color is valid
     """
+    if not isinstance(text, str):
+        text = str(text)
     if fgcolor not in color_code:
         print("Color {} not valid, no color added".format(fgcolor))
         return text

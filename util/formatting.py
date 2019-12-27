@@ -128,6 +128,8 @@ def rainbow(text, colors=["red", "dark_yellow", "green", "cyan", "blue",
     \returns A string with valid IRC color codes inserted at the right
     positions
     """
+    if not isinstance(text, str):
+        text = str(text)
     ret = ""
     color = ""
     for index, char in enumerate(text):
@@ -145,6 +147,8 @@ def underlined(text, endtoken=True):
     \param endtoken end the underlined text
     \returns A underlined string
     """
+    if not isinstance(text, str):
+        text = str(text)
     if endtoken:
         return _UNDERLINE + text + _UNDERLINE
     return _UNDERLINE + text
@@ -156,6 +160,8 @@ def italic(text, endtoken=True):
     \param endtoken end the italic text
     \returns A italic string
     """
+    if not isinstance(text, str):
+        text = str(text)
     if endtoken:
         return _ITALIC + text + _ITALIC
     return _ITALIC + text
@@ -167,6 +173,8 @@ def bold(text, endtoken=True):
     \param endtoken end the bold text
     \returns A bold string
     """
+    if not isinstance(text, str):
+        text = str(text)
     if endtoken:
         return _BOLD + text + _BOLD
     return _BOLD + text

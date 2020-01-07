@@ -7,7 +7,7 @@ bot can only connect to one server at a time.
 
 Dependencies
 ------------
-Development and testing was switched to python3, python2 should still work but is no longer tested. Python2 is not recommended.
+This bot requires Python3. Python2 is no longer supported.
 The following packages are needed (also see requirements.txt):
 ```
 twisted

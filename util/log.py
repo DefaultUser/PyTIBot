@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2018>  <Sebastian Schmidt>
+# Copyright (C) <2017-2020>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,11 +17,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-import logging.handlers
+from logging.handlers import TimedRotatingFileHandler
 import os
 import yaml
 import time
-import sys
 
 from util import decorators
 from util import filesystem as fs
@@ -77,110 +76,6 @@ class YAMLFormatter(object):
             d[field] = record.__dict__[field]
         d.update(record.__dict__["args"])
         return yaml.dump(d, explicit_start=True, default_flow_style=False)
-
-
-if sys.version_info.major < 3:
-    # TODO: drop python2 support once twisted is fully ported to python3
-    class TimedRotatingFileHandler(logging.handlers.TimedRotatingFileHandler):
-        """
-        This class is a backport of the
-        python3 version of TimedRotatingFileHandler
-
-        Copyright 2001-2016 by Vinay Sajip. All Rights Reserved.
-
-        Permission to use, copy, modify, and distribute this software and its
-        documentation for any purpose and without fee is hereby granted,
-        provided that the above copyright notice appear in all copies and that
-        both that copyright notice and this permission notice appear in
-        supporting documentation, and that the name of Vinay Sajip
-        not be used in advertising or publicity pertaining to distribution
-        of the software without specific, written prior permission.
-        VINAY SAJIP DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOFTWARE, INCLUDING
-        ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL
-        VINAY SAJIP BE LIABLE FOR ANY SPECIAL, INDIRECT OR CONSEQUENTIAL DAMAGES OR
-        ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER
-        IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT
-        OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
-        """
-        def __init__(self, filename, when='h', interval=1, backupCount=0,
-                     encoding=None, delay=False, utc=False):
-            super(TimedRotatingFileHandler, self).__init__(filename, when,
-                                                           interval,
-                                                           backupCount,
-                                                           encoding, delay,
-                                                           utc)
-            self.namer = None
-            self.rotator = None
-
-        def rotation_filename(self, default_name):
-            if not callable(self.namer):
-                result = default_name
-            else:
-                result = self.namer(default_name)
-            return result
-
-        def rotate(self, source, dest):
-            if not callable(self.rotator):
-                # Issue 18940: A file may not have been created if delay is True.
-                if os.path.exists(source):
-                    os.rename(source, dest)
-            else:
-                self.rotator(source, dest)
-
-        def doRollover(self):
-            if self.stream:
-                self.stream.close()
-                self.stream = None
-
-            # get the time that this sequence started at and make it a TimeTuple
-            currentTime = int(time.time())
-            dstNow = time.localtime(currentTime)[-1]
-            t = self.rolloverAt - self.interval
-
-            if self.utc:
-                timeTuple = time.gmtime(t)
-            else:
-                timeTuple = time.localtime(t)
-                dstThen = timeTuple[-1]
-                if dstNow != dstThen:
-                    if dstNow:
-                        addend = 3600
-                    else:
-                        addend = -3600
-                    timeTuple = time.localtime(t + addend)
-
-            dfn = self.rotation_filename(self.baseFilename + "." +
-                                         time.strftime(self.suffix, timeTuple))
-
-            if os.path.exists(dfn):
-                os.remove(dfn)
-            self.rotate(self.baseFilename, dfn)
-
-            if self.backupCount > 0:
-                for s in self.getFilesToDelete():
-                    os.remove(s)
-
-            if not self.delay:
-                self.stream = self._open()
-
-            newRolloverAt = self.computeRollover(currentTime)
-            while newRolloverAt <= currentTime:
-                newRolloverAt = newRolloverAt + self.interval
-            # If DST changes and midnight or weekly rollover, adjust for this.
-            if (self.when == 'MIDNIGHT' or self.when.startswith('W')) and not self.utc:
-                dstAtRollover = time.localtime(newRolloverAt)[-1]
-                if dstNow != dstAtRollover:
-                    # DST kicks in before next rollover, so we need to deduct an hour
-                    if not dstNow:
-                        addend = -3600
-                    # DST bows out before next rollover, so we need to add an hour
-                    else:
-                        addend = 3600
-                    newRolloverAt += addend
-            self.rolloverAt = newRolloverAt
-
-else:
-    TimedRotatingFileHandler = logging.handlers.TimedRotatingFileHandler
 
 
 txt_formatter = logging.Formatter('%(asctime)s %(message)s')

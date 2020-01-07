@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2016-2018>  <Sebastian Schmidt>
+# Copyright (C) <2016-2020>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -30,23 +30,13 @@ import yaml
 import os
 import re
 import time
-from datetime import datetime
 from collections import defaultdict
 from datetime import datetime, timedelta
+from html import escape as htmlescape
 
 from util import log, formatting
 from util import filesystem as fs
-from util.misc import str_to_bytes, bytes_to_str, PY3
-
-import sys
-
-# py3 compatability
-if PY3:
-    unicode = str
-    from html import escape as htmlescape
-else:
-    # python2
-    from cgi import escape as htmlescape
+from util.misc import str_to_bytes, bytes_to_str
 
 
 logger = Logger()
@@ -111,7 +101,7 @@ def _prepare_yaml_element(element):
     """Prepare a yaml element for display in html"""
     element["time"] = element["time"][11:]
     for key, val in element.items():
-        if type(element[key]) == str:
+        if isinstance(element[key], str):
             element[key] = htmlescape(val)
     if "message" in element:
         element["message"] = formatting.to_html(element["message"])
@@ -239,10 +229,7 @@ class SearchPage(BaseResource):
             for element in yaml.full_load_all(f.read()):
                 if element["levelname"] == "MSG":
                     msg = irc.stripFormatting(element["message"])
-                    if PY3:
-                        content.append(msg)
-                    else:
-                        content.append(msg.decode("utf-8", 'replace'))
+                    content.append(msg)
             datestr = name.lstrip(self.channel + ".").rstrip(".yaml")
             try:
                 date = datetime.strptime(datestr, "%Y-%m-%d")
@@ -267,7 +254,7 @@ class SearchPage(BaseResource):
         for name in os.listdir(self.log_dir):
             if name.startswith(self.channel + ".") and name.endswith(".yaml"):
                 c, date = self._fields_from_yaml(name)
-                writer.add_document(path=unicode(name), content=c, date=date)
+                writer.add_document(path=name, content=c, date=date)
         writer.commit()
         self.last_index_update = time.time()
         lc = LoopingCall(self.update_index)
@@ -283,7 +270,7 @@ class SearchPage(BaseResource):
             if name.startswith(self.channel + ".") and name.endswith(".yaml"):
                 if name not in indexed_paths:
                     c, date = self._fields_from_yaml(name)
-                    writer.add_document(path=unicode(name), content=c,
+                    writer.add_document(path=name, content=c,
                                         date=date)
         # <channelname>.yaml is the only file that can change
         name = u"{}.yaml".format(self.channel)
@@ -304,7 +291,7 @@ class SearchPage(BaseResource):
         return "/{}".format(self.channel)
 
     def _search_logs(self, request):
-        querystr = unicode(request.args[b"q"][0], "utf-8")
+        querystr = bytes_to_str(request.args[b"q"][0])
         if b"page" in request.args:
             try:
                 page = int(request.args[b"page"][0])
@@ -341,8 +328,6 @@ class SearchPage(BaseResource):
             if not res_page:
                 log_data = "No Logs found containg: {}".format(
                     htmlescape(querystr))
-        if sys.version_info.major < 3:
-            log_data = log_data.encode("utf-8")
         request.write(str_to_bytes(search_page_template.format(
             log_data=log_data, title=self.title, header=header,
             footer=footer, channel=self.channel_link())))

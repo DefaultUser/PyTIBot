@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017>  <Sebastian Schmidt>
+# Copyright (C) <2017-2020>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,19 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-import sys
-
-
-PY3 = sys.version_info.major == 3
-
 
 def str_to_bytes(data):
-    if PY3:
-        return bytes(data, "utf-8")
-    return data
+    return bytes(data, "utf-8")
 
 
 def bytes_to_str(data):
-    if PY3:
-        return str(data, "utf-8")
-    return data
+    return str(data, "utf-8")

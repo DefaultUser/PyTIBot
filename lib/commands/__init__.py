@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2016>  <Sebastian Schmidt>
+# Copyright (C) <2015-2020>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,7 +44,7 @@ def bot_help(bot):
                     try:
                         _gen = getattr(thismodule, commands[arg])
                         doc.append(formatting.colored(arg + ": ", "red") +
-                                   formatting.colored(_gen.__doc__,
+                                   formatting.colored(_gen.__doc__ or "No help available",
                                                       "dark_blue"))
                     except (AttributeError, KeyError):
                         doc.append(formatting.colored("No command called ",

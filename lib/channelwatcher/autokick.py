@@ -94,7 +94,7 @@ class Autokick(abstract.ChannelWatcher):
         """Check if message is just repeated spam"""
         msg = message.lower()
         # replace nicks to prevent spam that only changes mentioned users
-        for nick in self.bot.userlist[self.channel]:
+        for nick in self.bot.userlist[self.channel.lower()]:
             msg = msg.replace(nick.lower(), "<user>")
         self.msg_buffer[user].append(msg)
         if self.msg_buffer[user].count(msg) == self.repeat_count:
@@ -107,7 +107,7 @@ class Autokick(abstract.ChannelWatcher):
             return False
         message = message.lower()
         count = 0
-        for user in self.bot.userlist[self.channel]:
+        for user in self.bot.userlist[self.channel.lower()]:
             if user.lower() in message:
                 count += 1
             if count > self.max_highlights:

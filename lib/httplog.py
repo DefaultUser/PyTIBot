@@ -93,7 +93,7 @@ def _onError(failure, request):
     logger.error("Error when answering a request: {e}", e=failure)
     if not request.finished:
         request.setResponseCode(500)
-        request.write("An error occured, please contact the administrator")
+        request.write(b"An error occured, please contact the administrator")
         request.finish()
 
 

@@ -220,7 +220,8 @@ class SearchPage(BaseResource):
         self.pagelen = pagelen
         self.indexer_procs = indexer_procs
         self.singlechannel = singlechannel
-        self._setup_index()
+        self.ix = None
+        threads.deferToThread(self._setup_index)
 
     def _fields_from_yaml(self, name):
         path = os.path.join(self.log_dir, name)
@@ -249,16 +250,17 @@ class SearchPage(BaseResource):
                                  self.channel)
         if not os.path.exists(indexpath):
             os.makedirs(indexpath)
-        self.ix = create_in(indexpath, schema)
-        writer = self.ix.writer(procs=self.indexer_procs)
+        ix = create_in(indexpath, schema)
+        writer = ix.writer(procs=self.indexer_procs)
         for name in os.listdir(self.log_dir):
             if name.startswith(self.channel + ".") and name.endswith(".yaml"):
                 c, date = self._fields_from_yaml(name)
                 writer.add_document(path=name, content=c, date=date)
         writer.commit()
         self.last_index_update = time.time()
+        self.ix = ix
         lc = LoopingCall(self.update_index)
-        lc.start(300, now=False)
+        reactor.callFromThread(lc.start, 30, now=False)
 
     def update_index(self):
         with self.ix.searcher() as searcher:
@@ -338,6 +340,11 @@ class SearchPage(BaseResource):
             return str_to_bytes(search_page_template.format(
                 log_data="", title=self.title, header=header,
                 footer=footer, channel=self.channel_link()))
+        if self.ix is None:
+            return str_to_bytes(search_page_template.format(
+                log_data="Indexing..., Please try again later",
+                title=self.title, header=header, footer=footer,
+                channel=self.channel_link()))
         d = deferLater(reactor, 0, self._search_logs, request)
         d.addErrback(_onError, request)
         return NOT_DONE_YET

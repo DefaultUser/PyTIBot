@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2018>  <Sebastian Schmidt>
+# Copyright (C) <2015-2020>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ from lib import triggers
 from lib.git_webhook import GitWebhookServer
 from lib import channelwatcher
 from util import decorators, formatting
+from util.irc import UserInfo
 
 # WHOIS reply for AUTH name (NONSTANDARD REPLY!)
 irc.symbolic_to_numeric["RPL_WHOISAUTH"] = "330"
@@ -579,7 +580,7 @@ class PyTIBot(irc.IRCClient, object):
         user = user.lower()
         d = defer.Deferred()
         if user not in self._usercallback:
-            self._usercallback[user] = {"defers": [], "userinfo": []}
+            self._usercallback[user] = {"defers": [], "userinfo": None}
 
         self._usercallback[user]["defers"].append(d)
         self.whois(user)
@@ -590,7 +591,7 @@ class PyTIBot(irc.IRCClient, object):
         user = user.lower()
         d = defer.Deferred()
         if user not in self._authcallback:
-            self._authcallback[user] = {"defers": [], "userinfo": []}
+            self._authcallback[user] = {"defers": [], "userinfo": None}
 
         self._authcallback[user]["defers"].append(d)
         self.whois(user)
@@ -605,11 +606,13 @@ class PyTIBot(irc.IRCClient, object):
             del self.get_auth.cache[key]
 
     def irc_RPL_WHOISUSER(self, prefix, params):
-        user = params[1].lower()
-        if user not in self._usercallback:
+        _, nick, user, host, _, realname = params
+        if nick.lower() not in self._usercallback:
             # Never asked for it
             return
-        self._usercallback[user]["userinfo"] += params[1:]
+        self._usercallback[nick.lower()]["userinfo"] = UserInfo(nick=nick, user=user,
+                                                         host=host,
+                                                         realname=realname)
 
     def irc_RPL_ENDOFWHOIS(self, prefix, params):
         user = params[1].lower()
@@ -617,7 +620,7 @@ class PyTIBot(irc.IRCClient, object):
             callbacks = self._usercallback[user]["defers"]
             userinfo = self._usercallback[user]["userinfo"]
 
-            if len(userinfo) == 0:
+            if userinfo is None:
                 for cb in callbacks:
                     cb.errback(KeyError("No such nick {}".format(user)))
             else:
@@ -639,7 +642,7 @@ class PyTIBot(irc.IRCClient, object):
         if user not in self._authcallback:
             # Never asked for it
             return
-        self._authcallback[user]["userinfo"] += params[1:]
+        self._authcallback[user]["userinfo"] = params[1:]
 
     def is_user_admin(self, user):
         """Check if an user is admin - returns a deferred!"""
@@ -650,7 +653,7 @@ class PyTIBot(irc.IRCClient, object):
             if not userinfo:
                 d.callback(False)
             else:
-                if userinfo[2] in self.get_adminlist():
+                if userinfo.host in self.get_adminlist():
                     d.callback(True)
                 else:
                     d.callback(False)

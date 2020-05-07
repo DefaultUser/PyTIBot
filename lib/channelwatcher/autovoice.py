@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2019>  <Sebastian Schmidt>
+# Copyright (C) <2019-2020>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,10 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from fnmatch import fnmatch
 from twisted.logger import Logger
 
 from . import abstract
+from util.irc import match_userinfo
 
 
 class Autovoice(abstract.ChannelWatcher):
@@ -45,9 +45,8 @@ class Autovoice(abstract.ChannelWatcher):
             return
 
         def _cb(userinfo):
-            userstring = "{}!{}@{}".format(*userinfo[:3])
             for pattern in self.patterns:
-                if fnmatch(userstring, pattern):
+                if match_userinfo(userinfo, pattern):
                     self.log.debug("Pattern found for user {user}", user=user)
                     self.bot.mode(self.channel, True, "v", user=user)
                     return

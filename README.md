@@ -222,7 +222,10 @@ Channelmodules:
   -
     Greeter:
       standard_nicks: [test]
-      patterns: ["*!webchat@*", "*!*@gateway/web/*"] # shell like pattern matching
+      patterns: 
+      - "realname == *webchat*" # similar to webhook event filter (nick, user, host, realname)
+      - "*!webchat@* # shell like pattern matching"
+      - "*!*@gateway/web/*"
       message: Welcome, $USER!
   -
     MarkovChat: # needs a list

@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2018>  <Sebastian Schmidt>
+# Copyright (C) <2017-2020>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ from unidecode import unidecode
 
 from util.formatting import colored, closest_irc_color, split_rgb_string,\
     good_contrast_with_black
-from util.misc import str_to_bytes, bytes_to_str
+from util.misc import str_to_bytes, bytes_to_str, filter_dict
 from util.internet import shorten_github_url
 from lib import webhook_actions
 
@@ -122,23 +122,7 @@ class GitWebhookServer(Resource):
         """
         Returns True if the event should be filtered out according to user rules
         """
-        def _f(rule):
-            key_path, val = re.split("\s*==\s*", rule, maxsplit=1)
-            temp = data
-            for key_frag in key_path.split("."):
-                temp = temp[key_frag]
-            # value from rules are always strings
-            temp = str(temp)
-            return any(temp==v for v in re.split("\s*\|\s*", val))
-
-        for rule in self.filter_rules:
-            try:
-                if all(map(_f, re.split("\s+AND\s+", rule))):
-                    return True
-            except Exception as e:
-                self.log.warn("Filter rule '{rule}' couldn't be applied: {e}",
-                              rule=rule, e=e)
-        return False
+        return any(filter_dict(data, rule) for rule in self.filter_rules)
 
     def github_label_colors(self, label):
         color = label["color"]

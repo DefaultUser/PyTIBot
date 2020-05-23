@@ -135,7 +135,7 @@ class PyTIBot(irc.IRCClient, object):
                         config = watcher[name]
                     else:
                         name = watcher
-                        config = None
+                        config = {}
                     if not hasattr(channelwatcher, name):
                         self.log.warn("No channelwatcher called {name}, "
                                       "ignoring", name=name)
@@ -643,7 +643,7 @@ class PyTIBot(irc.IRCClient, object):
         if user not in self._authcallback:
             # Never asked for it
             return
-        self._authcallback[user]["userinfo"] = params[1:]
+        self._authcallback[user]["userinfo"] = params[2]
 
     def is_user_admin(self, user):
         """Check if an user is admin - returns a deferred!"""
@@ -663,7 +663,7 @@ class PyTIBot(irc.IRCClient, object):
             if not authinfo:
                 d.callback(False)
             else:
-                if authinfo[1] in self.get_adminlist():
+                if authinfo in self.get_adminlist():
                     d.callback(True)
                 else:
                     d.callback(False)

@@ -215,6 +215,10 @@ Channelmodules:
       - evil_user
       msg_blacklist:
       - "evil word"
+      user_whitelist:
+      - trusted_user
+      msg_whitelist:
+      - $BOTNAME:\s*fortune
       # simple spam protection
       buffer_length: 6 # default 5
       repeat_count: 3 # default 3

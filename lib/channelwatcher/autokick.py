@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2018>  <Sebastian Schmidt>
+# Copyright (C) <2017-2020>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,18 +18,29 @@
 
 import re
 from collections import deque, defaultdict
+from twisted.logger import Logger
 from twisted.words.protocols import irc
 
 from . import abstract
 
 
 class Autokick(abstract.ChannelWatcher):
+    logger = Logger()
+
     def __init__(self, bot, channel, config):
         super(Autokick, self).__init__(bot, channel, config)
         self.user_blacklist = config.get("user_blacklist", [])
         self.user_whitelist = [user.lower() for user in
                                config.get("user_whitelist", [])]
         self.msg_blacklist = config.get("msg_blacklist", [])
+        self.msg_whitelist = []
+        for pattern in config.get("msg_whitelist", []):
+            try:
+                self.msg_whitelist.append(re.compile(pattern, re.IGNORECASE))
+            except Exception as e:
+                Autokick.logger.warn("Can't add pattern '{pattern}' to "
+                                     "Autokick message whitelist: {error}",
+                                     pattern=pattern, error=e)
         buffer_len = config.get("buffer_length", 5)
         # number of repeating messages until a user is kicked
         self.repeat_count = config.get("repeat_count", 3)
@@ -75,6 +86,10 @@ class Autokick(abstract.ChannelWatcher):
         if user == self.bot.nickname.lower() or user in self.user_whitelist:
             return False
         message = irc.stripFormatting(message)
+        temp = re.sub(self.bot.nickname, "BOTNAME", message,
+                      flags=re.IGNORECASE)
+        if any(pattern.search(temp) for pattern in self.msg_whitelist):
+            return False
         return (self.check_msg_content(message) or
                 self.check_spam(user, message) or
                 self.check_mass_highlight(message))

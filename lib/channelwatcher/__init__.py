@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2018>  <Sebastian Schmidt>
+# Copyright (C) <2017-2020>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ from .autokick import Autokick
 from .autovoice import Autovoice
 from .greeter import Greeter
 from .markov import MarkovChat
+from .vote import Vote
 
 
-__all__ = [ChannelLogger, Autokick, Autovoice, Greeter, MarkovChat]
+__all__ = [ChannelLogger, Autokick, Autovoice, Greeter, MarkovChat, Vote]

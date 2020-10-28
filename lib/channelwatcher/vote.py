@@ -20,6 +20,8 @@ from twisted.enterprise import adbapi
 from twisted.internet import defer
 from twisted.logger import Logger
 import os
+from enum import Enum
+from threading import Lock
 
 from . import abstract
 from util import filesystem as fs
@@ -36,11 +38,11 @@ CREATE TABLE IF NOT EXISTS Users (
 """
 CREATE TABLE IF NOT EXISTS Polls (
     id INTEGER PRIMARY KEY,
-    message TEXT NOT NULL,
+    description TEXT NOT NULL,
     creator INTEGER NOT NULL,
-    time_start INTEGER, -- unix time
+    time_start DATETIME DEFAULT CURRENT_TIMESTAMP, -- unix time
     duration INTEGER DEFAULT 604800, -- default duration: 1 week
-    status TEXT CHECK(status in ("RUNNING", "CANCELED", "PASSED", "TIED", "FAILED", "VETOED")),
+    status TEXT CHECK(status in ("RUNNING", "CANCELED", "PASSED", "TIED", "FAILED", "VETOED")) DEFAULT "RUNNING",
     FOREIGN KEY (creator) REFERENCES Users(id)
 )""",
 """
@@ -58,6 +60,8 @@ CREATE TABLE IF NOT EXISTS VoteResults (
 """]
 
 
+UserPrivilege = Enum("UserPrivilege", "REVOKED USER ADMIN INVALID")
+
 class Vote(abstract.ChannelWatcher):
     logger = Logger()
 
@@ -71,6 +75,7 @@ class Vote(abstract.ChannelWatcher):
         self.dbpool = adbapi.ConnectionPool("sqlite3", dbfile,
                                             check_same_thread=False)
         self.dbpool.runInteraction(Vote.initialize_databases)
+        self._lock = Lock()
 
     @staticmethod
     def initialize_databases(cursor):
@@ -83,16 +88,31 @@ class Vote(abstract.ChannelWatcher):
                        'VALUES ("{}", "{}", "{}");'.format(auth, user,
                                                            privilege))
 
+    @staticmethod
+    def insert_poll(cursor, user, description):
+        cursor.execute('INSERT INTO Polls (description, creator) '
+                       'VALUES  ("{}", "{}");'.format(user, description))
+
+    @defer.inlineCallbacks
+    def get_user_privilege(self, name):
+        auth = yield self.bot.get_auth(name)
+        if not auth:
+            Vote.logger.info("User {user} is not authed", user=name)
+            return UserPrivilege.INVALID
+        privilege = yield self.dbpool.runQuery('SELECT privilege FROM Users '
+                                               'WHERE ID = "{}"'.format(auth))
+        try:
+            return UserPrivilege[privilege[0][0]]
+        except Exception as e:
+            Vote.logger.debug("Error getting user privilege for {user}: {e}",
+                              user=name, e=e)
+            return UserPrivilege.INVALID
+
     @defer.inlineCallbacks
     def add_user(self, issuer, user, privilege="USER"):
         is_admin = yield self.bot.is_user_admin(issuer)
-        issuer_auth = yield self.bot.get_auth(issuer)
-        issuer_privilege = yield self.dbpool.runQuery(
-                'SELECT privilege from Users '
-                'where id = "{}"'.format(issuer_auth))
-        if issuer_privilege:
-            issuer_privilege = issuer_privilege[0][0]
-        if not (is_admin or issuer_privilege == "ADMIN"):
+        issuer_privilege = yield self.get_user_privilege(issuer)
+        if not (is_admin or issuer_privilege == UserPrivilege.ADMIN):
             self.bot.notice(issuer, "Insufficient permissions")
             return
         auth = yield self.bot.get_auth(user)
@@ -112,6 +132,28 @@ class Vote(abstract.ChannelWatcher):
             return
         self.bot.notice(issuer, "Successfully added User {} ({})".format(user,
                                                                          auth))
+
+    @defer.inlineCallbacks
+    def vote_call(self, issuer, description):
+        privilege = yield self.get_user_privilege(issuer)
+        if privilege not in [UserPrivilege.USER, UserPrivilege.ADMIN]:
+            self.bot.notice(issuer, "You are not allowed to create votes")
+            return
+        with self._lock:
+            try:
+                yield self.dbpool.runInteraction(Vote.insert_poll, issuer,
+                                                 description)
+            except Exception as e:
+                self.bot.msg(self.channel, "Could not create new poll")
+                Vote.logger.warn("Error inserting poll into DB: {error}",
+                                 error=e)
+                return
+            voteid = yield self.dbpool.runQuery('SELECT MAX(id) FROM Polls')
+            voteid = voteid[0][0]
+            self.bot.msg(self.channel, "New poll #{voteid} by {user}({url}): "
+                         "{description}".format(voteid=voteid, user=issuer,
+                                                url="URL TODO",
+                                                description=description))
 
     def topic(self, user, topic):
         pass
@@ -147,6 +189,11 @@ class Vote(abstract.ChannelWatcher):
                 self.bot.notice(user, "Incorrect call for adduser")
                 return
             self.add_user(user, *tokens[1:])
+        elif task == "vcall":
+            if len(tokens) < 2:
+                self.bot.notice(user, "Please add a description")
+                return
+            self.vote_call(user, " ".join(tokens[1:]))
 
     def connectionLost(self, reason):
         pass

@@ -87,10 +87,17 @@ class Vote(abstract.ChannelWatcher):
             cursor.execute(statement)
 
     @staticmethod
-    def insert_user(cursor, auth, user, privilege="USER"):
+    def insert_user(cursor, auth, user, privilege):
         cursor.execute('INSERT INTO Users (id, name, privilege) '
                        'VALUES ("{}", "{}", "{}");'.format(auth, user,
                                                            privilege.name))
+
+    @staticmethod
+    def update_user(cursor, auth, privilege):
+        cursor.execute('UPDATE Users '
+                       'SET privilege = "{privilege}" '
+                       'WHERE id = "{auth}";'.format(auth=auth,
+                                                     privilege=privilege.name))
 
     @staticmethod
     def insert_poll(cursor, user, description):
@@ -152,6 +159,30 @@ class Vote(abstract.ChannelWatcher):
             return
         self.bot.notice(issuer, "Successfully added User {} ({})".format(user,
                                                                          auth))
+
+    @defer.inlineCallbacks
+    def mod_user(self, issuer, user, privilege):
+        is_admin = yield self.bot.is_user_admin(issuer)
+        issuer_privilege = yield self.get_user_privilege(issuer)
+        if not (is_admin or issuer_privilege == UserPrivilege.ADMIN):
+            self.bot.notice(issuer, "Insufficient permissions")
+            return
+        auth = yield self.bot.get_auth(user)
+        if not auth:
+            self.bot.notice(issuer, "Couldn't query user's AUTH, aborting...")
+            return
+        try:
+            yield self.dbpool.runInteraction(Vote.update_user, auth,
+                                             privilege)
+        except Exception as e:
+            self.bot.notice(issuer, "Couldn't modify user {} ({}). "
+                            "Reason: {}".format(user, auth, e))
+            Vote.logger.warn("Error modifying user {user} ({auth}) for vote "
+                             "system for channel {channel}: {error}",
+                             user=user, auth=auth, channel=self.channel,
+                             error=e)
+            return
+        self.bot.notice(issuer, "Successfully modified User {}".format(user))
 
     @defer.inlineCallbacks
     def vote_call(self, issuer, description):
@@ -264,9 +295,9 @@ class Vote(abstract.ChannelWatcher):
             return
         tokens = message.lstrip(self.prefix).split()
         task = tokens[0]
-        if task == "adduser":
+        if task == "useradd":
             if not (len(tokens) in (2, 3)):
-                self.bot.notice(user, "Incorrect call for adduser")
+                self.bot.notice(user, "Incorrect call for useradd")
                 return
             if len(tokens) == 3:
                 if tokens[2].upper() not in UserPrivilege.__members__:
@@ -276,6 +307,15 @@ class Vote(abstract.ChannelWatcher):
             else:
                 privilege = UserPrivilege.USER
             self.add_user(user, tokens[1], privilege)
+        elif task == "usermod":
+            if len(tokens) != 3:
+                self.bot.notice(user, "Incorrect call for usermod")
+                return
+            if tokens[2].upper() not in UserPrivilege.__members__:
+                self.bot.notice(user, "Unknown privilege, aborting...")
+                return
+            privilege = UserPrivilege[tokens[2].upper()]
+            self.mod_user(user, tokens[1], privilege)
         elif task == "vcall":
             if len(tokens) < 2:
                 self.bot.notice(user, "Please add a description")

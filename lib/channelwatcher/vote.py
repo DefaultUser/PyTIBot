@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS Polls (
     FOREIGN KEY (creator) REFERENCES Users(id)
 )""",
 """
-CREATE TABLE IF NOT EXISTS VoteResults (
+CREATE TABLE IF NOT EXISTS Votes (
     poll_id INTEGER,
     user TEXT,
     vote TEXT CHECK(vote in ("NONE", "ABSTAIN", "YES", "NO")),
@@ -99,14 +99,14 @@ class Vote(abstract.ChannelWatcher):
 
     @staticmethod
     def insert_voteresult(cursor, pollid, user, decision, comment):
-        cursor.execute('INSERT INTO VoteResults (poll_id, user, vote, comment) '
+        cursor.execute('INSERT INTO Votes (poll_id, user, vote, comment) '
                        'VALUES ("{}", "{}", "{}", "{}");'.format(pollid, user,
                                                                  decision.name,
                                                                  comment))
 
     @staticmethod
-    def update_voteresult(cursor, pollid, user, decision, comment):
-        cursor.execute('UPDATE VoteResults '
+    def update_votedecision(cursor, pollid, user, decision, comment):
+        cursor.execute('UPDATE Votes '
                        'SET vote = "{decision}", comment = "{comment}" '
                        'WHERE poll_id = "{pollid}" '
                        'AND user = "{user}";'.format(pollid=pollid, user=user,
@@ -194,7 +194,7 @@ class Vote(abstract.ChannelWatcher):
             return
         try:
             query = yield self.dbpool.runQuery(
-                    'SELECT vote, comment FROM VoteResults '
+                    'SELECT vote, comment FROM Votes '
                     'WHERE poll_id = "{}" AND user = "{}";'.format(pollid,
                                                                    voterid))
             if query:
@@ -213,7 +213,7 @@ class Vote(abstract.ChannelWatcher):
                 try:
                     confirmed = yield self._pending_confirmations[voterid]
                     if confirmed:
-                        self.dbpool.runInteraction(Vote.update_voteresult,
+                        self.dbpool.runInteraction(Vote.update_votedecision,
                                                    pollid, voterid, decision,
                                                    comment)
                         self.bot.msg(self.channel, "{} changed vote from {} "

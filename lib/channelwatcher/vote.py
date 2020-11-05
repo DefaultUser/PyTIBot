@@ -41,10 +41,13 @@ CREATE TABLE IF NOT EXISTS Polls (
     id INTEGER PRIMARY KEY,
     description TEXT NOT NULL,
     creator TEXT NOT NULL,
+    vetoed_by TEXT,
+    veto_reason TEXT,
     time_start DATETIME DEFAULT CURRENT_TIMESTAMP, -- unix time
     duration INTEGER DEFAULT 604800, -- default duration: 1 week
     status TEXT CHECK(status in ("RUNNING", "CANCELED", "PASSED", "TIED", "FAILED", "VETOED")) DEFAULT "RUNNING",
-    FOREIGN KEY (creator) REFERENCES Users(id)
+    FOREIGN KEY (creator) REFERENCES Users(id),
+    FOREIGN KEY (vetoed_by) REFERENCES Users(id)
 )""",
 """
 CREATE TABLE IF NOT EXISTS Votes (
@@ -102,7 +105,23 @@ class Vote(abstract.ChannelWatcher):
     @staticmethod
     def insert_poll(cursor, user, description):
         cursor.execute('INSERT INTO Polls (description, creator) '
-                       'VALUES  ("{}", "{}");'.format(user, description))
+                       'VALUES  ("{}", "{}");'.format(description, user))
+
+    @staticmethod
+    def update_pollstatus(cursor, pollid, status):
+        cursor.execute('UPDATE Polls '
+                       'SET status = "{status}" '
+                       'WHERE id = "{pollid}";'.format(pollid=pollid,
+                                                       status=status.name))
+
+    @staticmethod
+    def update_poll_veto(cursor, pollid, vetoed_by, reason):
+        cursor.execute('UPDATE Polls '
+                       'SET status = "VETOED", vetoed_by = "{vetoed_by}", '
+                       'veto_reason = "{reason}" '
+                       'WHERE id = "{pollid}";'.format(pollid=pollid,
+                                                       vetoed_by=vetoed_by,
+                                                       reason=reason))
 
     @staticmethod
     def insert_voteresult(cursor, pollid, user, decision, comment):
@@ -187,12 +206,13 @@ class Vote(abstract.ChannelWatcher):
     @defer.inlineCallbacks
     def vote_call(self, issuer, description):
         privilege = yield self.get_user_privilege(issuer)
+        issuer_auth = yield self.bot.get_auth(issuer)
         if privilege not in [UserPrivilege.USER, UserPrivilege.ADMIN]:
             self.bot.notice(issuer, "You are not allowed to create votes")
             return
         with self._lock:
             try:
-                yield self.dbpool.runInteraction(Vote.insert_poll, issuer,
+                yield self.dbpool.runInteraction(Vote.insert_poll, issuer_auth,
                                                  description)
             except Exception as e:
                 self.bot.msg(self.channel, "Could not create new poll")
@@ -205,6 +225,71 @@ class Vote(abstract.ChannelWatcher):
                          "{description}".format(voteid=voteid, user=issuer,
                                                 url="URL TODO",
                                                 description=description))
+
+    @defer.inlineCallbacks
+    def vote_veto(self, issuer, pollid, reason):
+        issuer_privilege = yield self.get_user_privilege(issuer)
+        if issuer_privilege != UserPrivilege.ADMIN:
+            self.bot.notice(issuer, "Only admins can VETO polls")
+            return
+        issuer_auth = yield self.bot.get_auth(issuer)
+        with self._lock:
+            status = yield self.dbpool.runQuery(
+                    'SELECT status FROM Polls '
+                    'WHERE id = "{}";'.format(pollid))
+            if not status:
+                self.bot.notice(issuer, "No Poll with given ID found, "
+                                "aborting...")
+                return
+            status = PollStatus[status[0][0]]
+            if status != PollStatus.RUNNING:
+                self.bot.notice(issuer, "Poll #{} isn't running ({})".format(
+                    pollid, status.name))
+                return
+            try:
+                yield self.dbpool.runInteraction(Vote.update_poll_veto, pollid,
+                                                 issuer_auth, reason)
+            except Exception as e:
+                self.bot.notice(issuer, "Error vetoing poll, contact the "
+                                "admin")
+                Vote.logger.warn("Error vetoing poll #{id}: {error}",
+                                 id=pollid, error=e)
+                return
+            # TODO: remove poll from (future) list of running polls and cancel its Deferred
+            self.bot.msg(self.channel, "Poll #{} vetoed".format(pollid))
+
+    @defer.inlineCallbacks
+    def vote_cancel(self, issuer, pollid):
+        with self._lock:
+            temp = yield self.dbpool.runQuery(
+                    'SELECT creator, status FROM Polls '
+                    'WHERE id = "{}";'.format(pollid))
+            if not temp:
+                self.bot.notice(issuer, "No Poll with given ID found, "
+                                "aborting...")
+                return
+            poll_creator, status = temp[0]
+            status = PollStatus[status]
+            issuer_auth = yield self.bot.get_auth(issuer)
+            if poll_creator.casefold() != issuer_auth.casefold():
+                self.bot.notice(issuer, "Only the creator of a poll can "
+                                "cancel it")
+                return
+            if status != PollStatus.RUNNING:
+                self.bot.notice(issuer, "Poll #{} isn't running ({})".format(
+                    pollid, status.name))
+                return
+            try:
+                yield self.dbpool.runInteraction(Vote.update_pollstatus, pollid,
+                                                 PollStatus.CANCELED)
+            except Exception as e:
+                self.bot.notice(issuer, "Error cancelling poll, contact the "
+                                "admin")
+                Vote.logger.warn("Error cancelling poll #{id}: {error}",
+                                 id=pollid, error=e)
+                return
+            # TODO: remove poll from (future) list of running polls and cancel its Deferred
+            self.bot.msg(self.channel, "Poll #{} cancelled".format(pollid))
 
     @defer.inlineCallbacks
     def vote(self, voter, pollid, decision, comment):
@@ -327,6 +412,16 @@ class Vote(abstract.ChannelWatcher):
                 return
             decision = VoteDecision[task[1:].upper()]
             self.vote(user, tokens[1], decision, " ".join(tokens[2:]))
+        elif task == "vveto":
+            if len(tokens) < 2:
+                self.bot.notice(user, "No poll ID given")
+                return
+            self.vote_veto(user, tokens[1], " ".join(tokens[2:]))
+        elif task == "vcancel":
+            if len(tokens) < 2:
+                self.bot.notice(user, "No poll ID given")
+                return
+            self.vote_cancel(user, tokens[1])
         elif task in ("yes", "no"):
             userid = self.bot.get_auth(user)
             if not userid in self._pending_confirmations:

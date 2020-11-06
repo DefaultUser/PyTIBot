@@ -83,6 +83,8 @@ class Vote(abstract.ChannelWatcher):
         self.dbpool.runInteraction(Vote.initialize_databases)
         self._lock = Lock()
         self._pending_confirmations = {}
+        self._num_active_users = 0
+        self.query_active_user_count()
 
     @staticmethod
     def initialize_databases(cursor):
@@ -155,6 +157,12 @@ class Vote(abstract.ChannelWatcher):
             return UserPrivilege.INVALID
 
     @defer.inlineCallbacks
+    def query_active_user_count(self):
+        self._num_active_users = (yield self.dbpool.runQuery(
+            'SELECT COUNT() FROM Users '
+            'WHERE privilege="ADMIN" OR privilege="USER";'))[0][0]
+
+    @defer.inlineCallbacks
     def add_user(self, issuer, user, privilege):
         is_admin = yield self.bot.is_user_admin(issuer)
         issuer_privilege = yield self.get_user_privilege(issuer)
@@ -176,6 +184,7 @@ class Vote(abstract.ChannelWatcher):
                              user=user, auth=auth, channel=self.channel,
                              error=e)
             return
+        self._num_active_users += 1
         self.bot.notice(issuer, "Successfully added User {} ({})".format(user,
                                                                          auth))
 
@@ -201,6 +210,9 @@ class Vote(abstract.ChannelWatcher):
                              user=user, auth=auth, channel=self.channel,
                              error=e)
             return
+        # query DB instead of modifying remembered count directly
+        # a DB query is required anyways (for the current permissions
+        self.query_active_user_count()
         self.bot.notice(issuer, "Successfully modified User {}".format(user))
 
     @defer.inlineCallbacks

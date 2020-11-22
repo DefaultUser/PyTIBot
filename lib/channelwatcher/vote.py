@@ -80,10 +80,14 @@ class Vote(abstract.ChannelWatcher):
                               "{}.db".format(self.channel.lstrip("#")))
         self.dbpool = adbapi.ConnectionPool("sqlite3", dbfile,
                                             check_same_thread=False)
-        self.dbpool.runInteraction(Vote.initialize_databases)
         self._lock = Lock()
         self._pending_confirmations = {}
         self._num_active_users = 0
+        self._setup()
+
+    @defer.inlineCallbacks
+    def _setup(self):
+        yield self.dbpool.runInteraction(Vote.initialize_databases)
         self.query_active_user_count()
 
     @staticmethod

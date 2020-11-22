@@ -455,11 +455,11 @@ class Vote(abstract.ChannelWatcher):
         pollstatus = yield self.dbpool.runQuery('SELECT status FROM Polls '
                 'WHERE id = "{}";'.format(pollid))
         if not pollstatus:
-            self.bot.msg(voter, "Poll #{} doesn't exist".format(pollid))
+            self.bot.notice(voter, "Poll #{} doesn't exist".format(pollid))
             return
         pollstatus = PollStatus[pollstatus[0][0]]
         if pollstatus != PollStatus.RUNNING:
-            self.bot.msg(voter, "Poll #{} is not running ({})".format(pollid,
+            self.bot.notice(voter, "Poll #{} is not running ({})".format(pollid,
                 pollstatus.name))
             return
         try:

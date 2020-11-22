@@ -19,6 +19,7 @@
 from twisted.enterprise import adbapi
 from twisted.internet import defer, reactor
 from twisted.logger import Logger
+from twisted.python import usage
 import os
 from enum import Enum
 from threading import Lock
@@ -67,6 +68,140 @@ CREATE TABLE IF NOT EXISTS Votes (
 UserPrivilege = Enum("UserPrivilege", "REVOKED USER ADMIN INVALID")
 PollStatus = Enum("PollStatus", "RUNNING CANCELED PASSED TIED FAILED VETOED")
 VoteDecision = Enum("VoteDecision", "NONE ABSTAIN YES NO")
+
+
+class OptionsWithoutHandlers(usage.Options):
+    def _gather_handlers(self):
+        return [], '', {}, {}, {}, {}
+
+
+class UserAddOptions(OptionsWithoutHandlers):
+    def parseArgs(self, name, privilege=None):
+        self["user"] = name
+        if privilege:
+            try:
+                self["privilege"] = UserPrivilege[privilege.upper()]
+            except KeyError:
+                raise usage.UsageError("Invalid privilege specified")
+        else:
+            self["privilege"] = UserPrivilege.USER
+
+
+class UserModifyOptions(OptionsWithoutHandlers):
+    optFlags = [
+        ['auth', 'a', "Use auth of the user directly"],
+    ]
+
+    def parseArgs(self, name, privilege):
+        self["user"] = name
+        try:
+            self["privilege"] = UserPrivilege[privilege.upper()]
+        except KeyError:
+            raise usage.UsageError("Invalid privilege specified")
+
+
+class UserOptions(OptionsWithoutHandlers):
+    subCommands = [
+        ['add', None, UserAddOptions, "Add a new user"],
+        ['modify', 'mod', UserModifyOptions, "Modify user rights"]
+    ]
+
+
+class VoteOptions(OptionsWithoutHandlers):
+    optFlags = [
+        ['yes', 'y', "autoconfirm changes"],
+    ]
+
+    def parseArgs(self, pollid, decision, *args):
+        try:
+            self["pollid"] = int(pollid)
+        except ValueError:
+            raise usage.UsageError("PollID has to be an integer")
+        try:
+            self["decision"] = VoteDecision[decision.upper()]
+        except KeyError:
+            raise usage.UsageError("Invalid decision specified")
+        self["comment"] = " ".join(args)
+
+
+class PollCreateOptions(OptionsWithoutHandlers):
+    optFlags = [
+        ['yes', 'y', "Automatically vote yes"],
+        ['no', 'n', "Automatically vote no"],
+        ['abstain', 'a', "Automatically abstain"],
+    ]
+
+    def parseArgs(self, *args):
+        if len(args) < 5:
+            raise usage.UsageError("Description is required")
+        self["description"] = " ".join(args)
+
+    def postOptions(self):
+        if sum([self["yes"], self["no"], self["abstain"]]) >= 2:
+            raise usage.UsageError("'yes', 'no' and 'abstain' flags are exclusive")
+
+
+class PollCancelOptions(OptionsWithoutHandlers):
+    def parseArgs(self, pollid):
+        try:
+            self["pollid"] = int(pollid)
+        except ValueError:
+            raise usage.UsageError("PollID has to be an integer")
+
+
+class PollVetoOptions(OptionsWithoutHandlers):
+    def parseArgs(self, pollid, *args):
+        try:
+            self["pollid"] = int(pollid)
+        except ValueError:
+            raise usage.UsageError("PollID has to be an integer")
+        self["reason"] = " ".join(args)
+
+
+class PollExpireOptions(OptionsWithoutHandlers):
+    def parseArgs(self, pollid, change):
+        try:
+            self["pollid"] = int(pollid)
+        except ValueError:
+            raise usage.UsageError("PollID has to be an integer")
+        self["change"] = change # should accept (now)?(+|-)?(\d+d)?(\d+h)?
+
+
+class PollListOptions(OptionsWithoutHandlers):
+    optParameters = [
+        ['status', 's', PollStatus.RUNNING, "Filter with this status",
+            lambda x: PollStatus[x.upper()]],
+        ['count', 'c', 0, "Limit list to the first <n> items", int],
+    ]
+
+
+class PollOptions(OptionsWithoutHandlers):
+    subCommands = [
+        ['create', 'call', PollCreateOptions, "Create a new poll"],
+        ['cancel', None, PollCancelOptions, "Cancel a poll (vote caller only)"],
+        ['veto', None, PollVetoOptions, "Veto a poll (admin only)"],
+        ['expire', None, PollExpireOptions,
+            "Change Duration of a poll (admin only)"],
+        ['list', 'ls', PollListOptions, "List polls"],
+        ['url', None, OptionsWithoutHandlers, "Display address of poll website"]
+    ]
+
+
+class HelpOptions(OptionsWithoutHandlers):
+    def parseArgs(self, topic=None):
+        self.topic = topic
+
+
+class CommandOptions(OptionsWithoutHandlers):
+    subCommands = [
+        ['user', None, UserOptions, "Add/modify users"],
+        ['vote', None, VoteOptions, "Vote for a poll"],
+        ['poll', None, PollOptions, "Create/modify polls"],
+        ['yes', None, OptionsWithoutHandlers, "Confirm previous action"],
+        ['no', None, OptionsWithoutHandlers, "Abort previous action"],
+        ['help', None, HelpOptions, "help"]
+    ]
+
 
 class Vote(abstract.ChannelWatcher):
     logger = Logger()
@@ -167,7 +302,7 @@ class Vote(abstract.ChannelWatcher):
             'WHERE privilege="ADMIN" OR privilege="USER";'))[0][0]
 
     @defer.inlineCallbacks
-    def add_user(self, issuer, user, privilege):
+    def cmd_user_add(self, issuer, user, privilege):
         is_admin = yield self.bot.is_user_admin(issuer)
         issuer_privilege = yield self.get_user_privilege(issuer)
         if not (is_admin or issuer_privilege == UserPrivilege.ADMIN):
@@ -193,7 +328,8 @@ class Vote(abstract.ChannelWatcher):
                                                                          auth))
 
     @defer.inlineCallbacks
-    def mod_user(self, issuer, user, privilege):
+    def cmd_user_modify(self, issuer, user, privilege, **kwargs):
+        # TODO: interpret "user" as auth if kwargs["auth"]
         is_admin = yield self.bot.is_user_admin(issuer)
         issuer_privilege = yield self.get_user_privilege(issuer)
         if not (is_admin or issuer_privilege == UserPrivilege.ADMIN):
@@ -220,7 +356,8 @@ class Vote(abstract.ChannelWatcher):
         self.bot.notice(issuer, "Successfully modified User {}".format(user))
 
     @defer.inlineCallbacks
-    def vote_call(self, issuer, description):
+    def cmd_poll_create(self, issuer, description, **kwargs):
+        # TODO: automatically vote if kwargs contains decision
         privilege = yield self.get_user_privilege(issuer)
         issuer_auth = yield self.bot.get_auth(issuer)
         if privilege not in [UserPrivilege.USER, UserPrivilege.ADMIN]:
@@ -243,13 +380,13 @@ class Vote(abstract.ChannelWatcher):
                                                 description=description))
 
     @defer.inlineCallbacks
-    def vote_veto(self, issuer, pollid, reason):
+    def cmd_poll_veto(self, issuer, pollid, reason):
         issuer_privilege = yield self.get_user_privilege(issuer)
         if issuer_privilege != UserPrivilege.ADMIN:
             self.bot.notice(issuer, "Only admins can VETO polls")
             return
         issuer_auth = yield self.bot.get_auth(issuer)
-        with self._lock:
+        with self._lock: # TODO: is this needed?
             status = yield self.dbpool.runQuery(
                     'SELECT status FROM Polls '
                     'WHERE id = "{}";'.format(pollid))
@@ -263,6 +400,7 @@ class Vote(abstract.ChannelWatcher):
                     pollid, status.name))
                 return
             try:
+                # TODO: confirmation?
                 yield self.dbpool.runInteraction(Vote.update_poll_veto, pollid,
                                                  issuer_auth, reason)
             except Exception as e:
@@ -275,8 +413,8 @@ class Vote(abstract.ChannelWatcher):
             self.bot.msg(self.channel, "Poll #{} vetoed".format(pollid))
 
     @defer.inlineCallbacks
-    def vote_cancel(self, issuer, pollid):
-        with self._lock:
+    def cmd_poll_cancel(self, issuer, pollid):
+        with self._lock: # TODO: needed?
             temp = yield self.dbpool.runQuery(
                     'SELECT creator, status FROM Polls '
                     'WHERE id = "{}";'.format(pollid))
@@ -308,7 +446,7 @@ class Vote(abstract.ChannelWatcher):
             self.bot.msg(self.channel, "Poll #{} cancelled".format(pollid))
 
     @defer.inlineCallbacks
-    def vote(self, voter, pollid, decision, comment):
+    def cmd_vote(self, voter, pollid, decision, comment, **kwargs):
         privilege = yield self.get_user_privilege(voter)
         if privilege not in [UserPrivilege.USER, UserPrivilege.ADMIN]:
             self.bot.notice(voter, "You are not allowed to vote")
@@ -340,6 +478,7 @@ class Vote(abstract.ChannelWatcher):
                                                              50),
                                     prefix=self.prefix))
                 # require confirmation, override pending confirmations
+                # TODO: split to function
                 self._pending_confirmations[voterid] = defer.Deferred()
                 self._pending_confirmations[voterid].addTimeout(60, reactor)
                 try:
@@ -366,6 +505,21 @@ class Vote(abstract.ChannelWatcher):
                                  textwrap.shorten(comment, 50) or "No comment given"))
         except Exception as e:
             Vote.logger.warn("Encountered error during vote: {}".format(e))
+        # TODO: check if poll is decided
+
+    def cmd_yes(self, issuer):
+        self.confirm_command(issuer, True)
+
+    def cmd_no(self, issuer):
+        self.confirm_command(issuer, False)
+
+    @defer.inlineCallbacks
+    def confirm_command(self, issuer, decision):
+        userid = yield self.bot.get_auth(issuer)
+        if not userid in self._pending_confirmations:
+            self.bot.notice(issuer, "Nothing to confirm")
+            return
+        self._pending_confirmations[userid].callback(decision)
 
     def topic(self, user, topic):
         pass
@@ -396,54 +550,26 @@ class Vote(abstract.ChannelWatcher):
             return
         tokens = message.lstrip(self.prefix).split()
         task = tokens[0]
-        if task == "useradd":
-            if not (len(tokens) in (2, 3)):
-                self.bot.notice(user, "Incorrect call for useradd")
-                return
-            if len(tokens) == 3:
-                if tokens[2].upper() not in UserPrivilege.__members__:
-                    self.bot.notice(user, "Unknown privilege, aborting...")
-                    return
-                privilege = UserPrivilege[tokens[2].upper()]
-            else:
-                privilege = UserPrivilege.USER
-            self.add_user(user, tokens[1], privilege)
-        elif task == "usermod":
-            if len(tokens) != 3:
-                self.bot.notice(user, "Incorrect call for usermod")
-                return
-            if tokens[2].upper() not in UserPrivilege.__members__:
-                self.bot.notice(user, "Unknown privilege, aborting...")
-                return
-            privilege = UserPrivilege[tokens[2].upper()]
-            self.mod_user(user, tokens[1], privilege)
-        elif task == "vcall":
-            if len(tokens) < 2:
-                self.bot.notice(user, "Please add a description")
-                return
-            self.vote_call(user, " ".join(tokens[1:]))
-        elif task in ("vyes", "vno", "vabstain"):
-            if len(tokens) < 2:
-                self.bot.notice(user, "No poll ID given")
-                return
-            decision = VoteDecision[task[1:].upper()]
-            self.vote(user, tokens[1], decision, " ".join(tokens[2:]))
-        elif task == "vveto":
-            if len(tokens) < 2:
-                self.bot.notice(user, "No poll ID given")
-                return
-            self.vote_veto(user, tokens[1], " ".join(tokens[2:]))
-        elif task == "vcancel":
-            if len(tokens) < 2:
-                self.bot.notice(user, "No poll ID given")
-                return
-            self.vote_cancel(user, tokens[1])
-        elif task in ("yes", "no"):
-            userid = self.bot.get_auth(user)
-            if not userid in self._pending_confirmations:
-                self.bot.notice(user, "Nothing to confirm")
-                return
-            self._pending_confirmations[userid].callback(task=="yes")
+        if not message.startswith(self.prefix):
+            return
+        tokens = message.lstrip(self.prefix).split()
+        options = CommandOptions()
+        try:
+            options.parseOptions(tokens)
+        except usage.UsageError as e:
+            self.bot.notice(user, str(e))
+            return
+        command = options.subCommand
+        if options.subOptions.subCommand:
+            commandstr = "cmd_" + command + "_" + options.subOptions.subCommand
+            subOptions = options.subOptions.subOptions
+        else:
+            commandstr = "cmd_" + str(command)
+            subOptions = options.subOptions
+        try:
+            getattr(self, commandstr)(user, **subOptions)
+        except Exception as e:
+            print(e)
 
     def connectionLost(self, reason):
         pass

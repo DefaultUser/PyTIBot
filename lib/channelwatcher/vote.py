@@ -329,15 +329,22 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def cmd_user_modify(self, issuer, user, privilege, **kwargs):
-        # TODO: interpret "user" as auth if kwargs["auth"]
         is_admin = yield self.bot.is_user_admin(issuer)
         issuer_privilege = yield self.get_user_privilege(issuer)
         if not (is_admin or issuer_privilege == UserPrivilege.ADMIN):
             self.bot.notice(issuer, "Insufficient permissions")
             return
-        auth = yield self.bot.get_auth(user)
+        if kwargs["auth"]:
+            auth = user
+        else:
+            auth = yield self.bot.get_auth(user)
         if not auth:
             self.bot.notice(issuer, "Couldn't query user's AUTH, aborting...")
+            return
+        entry = yield self.dbpool.runQuery('SELECT * FROM Users '
+                                           'WHERE id = "{}";'.format(auth))
+        if not entry:
+            self.bot.notice(issuer, "No such user found in the database")
             return
         try:
             yield self.dbpool.runInteraction(Vote.update_user, auth,

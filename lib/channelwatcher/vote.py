@@ -364,7 +364,6 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def cmd_poll_create(self, issuer, description, **kwargs):
-        # TODO: automatically vote if kwargs contains decision
         privilege = yield self.get_user_privilege(issuer)
         issuer_auth = yield self.bot.get_auth(issuer)
         if privilege not in [UserPrivilege.USER, UserPrivilege.ADMIN]:
@@ -385,6 +384,12 @@ class Vote(abstract.ChannelWatcher):
                          "{description}".format(voteid=voteid, user=issuer,
                                                 url="URL TODO",
                                                 description=description))
+        if kwargs["yes"]:
+            self.cmd_vote(issuer, voteid, VoteDecision.YES, "")
+        elif kwargs["no"]:
+            self.cmd_vote(issuer, voteid, VoteDecision.NO, "")
+        elif kwargs["abstain"]:
+            self.cmd_vote(issuer, voteid, VoteDecision.ABSTAIN, "")
 
     @defer.inlineCallbacks
     def cmd_poll_veto(self, issuer, pollid, reason):

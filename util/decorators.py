@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015>  <Sebastian Schmidt>
+# Copyright (C) <2015-2020>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,6 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import functools
+from twisted.internet import defer
 
 
 def memoize(f):
@@ -50,3 +51,10 @@ def memoize_deferred(f):
             return d.addCallback(save_to_cache, key)
         return f.cache[key]
     return inner
+
+def maybe_deferred(f):
+    @functools.wraps(f)
+    def inner(*args, **kwargs):
+        return defer.maybeDeferred(f, *args, **kwargs)
+    return inner
+

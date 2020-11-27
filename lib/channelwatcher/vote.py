@@ -27,6 +27,7 @@ import textwrap
 
 from . import abstract
 from util import filesystem as fs
+from util.decorators import maybe_deferred
 
 
 _INIT_DB_STATEMENTS = ["""
@@ -482,32 +483,28 @@ class Vote(abstract.ChannelWatcher):
             if query:
                 previous_decision = VoteDecision[query[0][0]]
                 previous_comment = query[0][1]
-                self.bot.notice(voter, "You already voted for this poll "
-                                "({vote}: {comment}), please confirm with "
-                                "'{prefix}yes' or '{prefix}no".format(
-                                    vote=previous_decision.name,
-                                    comment=textwrap.shorten(previous_comment,
-                                                             50),
-                                    prefix=self.prefix))
-                # require confirmation, override pending confirmations
-                # TODO: split to function
-                self._pending_confirmations[voterid] = defer.Deferred()
-                self._pending_confirmations[voterid].addTimeout(60, reactor)
+                # require confirmation
                 try:
-                    confirmed = yield self._pending_confirmations[voterid]
-                    if confirmed:
-                        self.dbpool.runInteraction(Vote.update_votedecision,
-                                                   pollid, voterid, decision,
-                                                   comment)
-                        self.bot.msg(self.channel, "{} changed vote from {} "
-                                     "to {} for poll #{}: {}".format(voter,
-                                         previous_decision.name, decision.name,
-                                         pollid, textwrap.shorten(comment, 50)
-                                         or "No comment given"))
+                    confirmed = yield self.require_confirmation(voter, voterid,
+                            "You already voted for this poll "
+                            "({vote}: {comment}), please confirm with "
+                            "'{prefix}yes' or '{prefix}no".format(
+                                vote=previous_decision.name,
+                                comment=textwrap.shorten(previous_comment,
+                                                         50) or "No comment",
+                                prefix=self.prefix))
                 except defer.TimeoutError as e:
                     self.bot.notice(voter, "Confirmation timed out")
-                finally:
-                    self._pending_confirmations.pop(voterid)
+                    return
+                if confirmed:
+                    self.dbpool.runInteraction(Vote.update_votedecision,
+                                               pollid, voterid, decision,
+                                               comment)
+                    self.bot.msg(self.channel, "{} changed vote from {} "
+                                 "to {} for poll #{}: {}".format(voter,
+                                     previous_decision.name, decision.name,
+                                     pollid, textwrap.shorten(comment, 50)
+                                     or "No comment given"))
             else:
                 yield self.dbpool.runInteraction(Vote.insert_voteresult, pollid,
                                                  voterid, decision, comment)
@@ -518,6 +515,22 @@ class Vote(abstract.ChannelWatcher):
         except Exception as e:
             Vote.logger.warn("Encountered error during vote: {}".format(e))
         # TODO: check if poll is decided
+
+    @maybe_deferred
+    def require_confirmation(self, user, userid, message):
+        if userid in self._pending_confirmations:
+            self.bot.notice(user, "Another confirmation is already "
+                            "pending")
+            return False
+        self.bot.notice(user, message)
+        d = defer.Deferred().addTimeout(60, reactor)
+        d.addBoth(self._confirmation_finalize, userid)
+        self._pending_confirmations[userid] = d
+        return d
+
+    def _confirmation_finalize(self, result, userid):
+        self._pending_confirmations.pop(userid)
+        return result
 
     def cmd_yes(self, issuer):
         self.confirm_command(issuer, True)

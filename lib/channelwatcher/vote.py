@@ -484,18 +484,21 @@ class Vote(abstract.ChannelWatcher):
                 previous_decision = VoteDecision[query[0][0]]
                 previous_comment = query[0][1]
                 # require confirmation
-                try:
-                    confirmed = yield self.require_confirmation(voter, voterid,
-                            "You already voted for this poll "
-                            "({vote}: {comment}), please confirm with "
-                            "'{prefix}yes' or '{prefix}no".format(
-                                vote=previous_decision.name,
-                                comment=textwrap.shorten(previous_comment,
-                                                         50) or "No comment",
-                                prefix=self.prefix))
-                except defer.TimeoutError as e:
-                    self.bot.notice(voter, "Confirmation timed out")
-                    return
+                if kwargs['yes']:
+                    confirmed = True
+                else:
+                    try:
+                        confirmed = yield self.require_confirmation(voter, voterid,
+                                "You already voted for this poll "
+                                "({vote}: {comment}), please confirm with "
+                                "'{prefix}yes' or '{prefix}no".format(
+                                    vote=previous_decision.name,
+                                    comment=textwrap.shorten(previous_comment,
+                                                             50) or "No comment",
+                                    prefix=self.prefix))
+                    except defer.TimeoutError as e:
+                        self.bot.notice(voter, "Confirmation timed out")
+                        return
                 if confirmed:
                     self.dbpool.runInteraction(Vote.update_votedecision,
                                                pollid, voterid, decision,

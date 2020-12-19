@@ -46,6 +46,9 @@ class MarkovChat(abstract.ChannelWatcher):
         self.bot.msg(self.channel, message)
 
     def connectionLost(self, reason):
+        self.stop()
+
+    def stop(self):
         for unit in self.units:
             unit.save_corpus()
 

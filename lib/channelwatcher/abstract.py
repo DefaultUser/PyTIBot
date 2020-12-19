@@ -66,5 +66,9 @@ class ChannelWatcher(object):
         pass
 
     @abstractmethod
+    def stop(self):
+        pass
+
+    @abstractmethod
     def connectionLost(self, reason):
         pass

@@ -120,29 +120,8 @@ class PyTIBot(irc.IRCClient, object):
         for trigger in trgs:
             self.enable_trigger(trigger)
 
-        # channel specific modules
-        self.setup_channelwatchers()
-
         # github webhook
         self.setup_webhook()
-
-    def setup_channelwatchers(self):
-        if self.config["Channelmodules"]:
-            for channel, watchers in self.config["Channelmodules"].items():
-                for watcher in watchers:
-                    if isinstance(watcher, dict):
-                        name = list(watcher.keys())[0]
-                        config = watcher[name]
-                    else:
-                        name = watcher
-                        config = {}
-                    if not hasattr(channelwatcher, name):
-                        self.log.warn("No channelwatcher called {name}, "
-                                      "ignoring", name=name)
-                        continue
-                    instance = getattr(channelwatcher, name)(self, channel,
-                                                             config)
-                    self.install_channelwatcher(channel, instance)
 
     def install_channelwatcher(self, channel, watcher):
         if not channel.startswith("#"):
@@ -153,6 +132,18 @@ class PyTIBot(irc.IRCClient, object):
             self.channelwatchers[channel].append(watcher)
         else:
             self.channelwatchers[channel] = [watcher]
+
+    def clear_channelwatchers(self, channel):
+        if not channel.startswith("#"):
+            channel = "#" + channel
+        # make all channels lowercase
+        channel = channel.lower()
+        try:
+            watchers = self.channelwatchers.pop(channel)
+        except KeyError:
+            return
+        for watcher in watchers:
+            watcher.stop()
 
     def setup_webhook(self):
         # HTTP(s) server for github/gitlab webhooks
@@ -310,19 +301,32 @@ class PyTIBot(irc.IRCClient, object):
         """Triggered when joining a channel"""
         self.log.info("Joined channel: {channel}", channel=channel)
         channel = channel.lower()
-        if channel in self.channelwatchers:
-            for watcher in self.channelwatchers[channel]:
-                watcher.join(self.nickname)
+        if self.config["Channelmodules"]:
+            for watcher in self.config["Channelmodules"].get(channel, []):
+                if isinstance(watcher, dict):
+                    name = list(watcher.keys())[0]
+                    config = watcher[name]
+                else:
+                    name = watcher
+                    config = {}
+                if not hasattr(channelwatcher, name):
+                    self.log.warn("No channelwatcher called {name}, "
+                                  "ignoring", name=name)
+                    continue
+                instance = getattr(channelwatcher, name)(self, channel,
+                                                         config)
+                self.install_channelwatcher(channel, instance)
+                instance.join(self.nickname)
 
     def left(self, channel):
         """Triggered when leaving a channel"""
         channel = channel.lower()
         self.userlist.pop(channel)
         self.log.info("Left channel: {channel}", channel=channel)
-        channel = channel.lower()
         if channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:
                 watcher.part(self.nickname)
+        self.clear_channelwatchers(channel)
 
     def privmsg(self, user, channel, msg):
         """Triggered by messages"""

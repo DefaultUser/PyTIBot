@@ -107,5 +107,8 @@ class Greeter(abstract.ChannelWatcher):
         return os.path.join(greeted_path, self.channel.lstrip("#"))
 
     def connectionLost(self, reason):
+        self.stop()
+
+    def stop(self):
         with open(self.get_greeted_file(), "w") as f:
             f.write("\n".join(self.already_greeted))

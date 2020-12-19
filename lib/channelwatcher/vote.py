@@ -114,9 +114,9 @@ class VoteOptions(OptionsWithoutHandlers):
         ['yes', 'y', "autoconfirm changes"],
     ]
 
-    def parseArgs(self, pollid, decision, *args):
+    def parseArgs(self, poll_id, decision, *args):
         try:
-            self["pollid"] = int(pollid)
+            self["poll_id"] = int(poll_id)
         except ValueError:
             raise usage.UsageError("PollID has to be an integer")
         try:
@@ -152,9 +152,9 @@ class PollCancelOptions(OptionsWithoutHandlers):
 
 
 class PollVetoOptions(OptionsWithoutHandlers):
-    def parseArgs(self, pollid, *args):
+    def parseArgs(self, poll_id, *args):
         try:
-            self["pollid"] = int(pollid)
+            self["poll_id"] = int(poll_id)
         except ValueError:
             raise usage.UsageError("PollID has to be an integer")
         self["reason"] = " ".join(args)
@@ -256,34 +256,34 @@ class Vote(abstract.ChannelWatcher):
                        'VALUES  ("{}", "{}");'.format(description, user))
 
     @staticmethod
-    def update_pollstatus(cursor, pollid, status):
+    def update_pollstatus(cursor, poll_id, status):
         cursor.execute('UPDATE Polls '
                        'SET status = "{status}" '
-                       'WHERE id = "{pollid}";'.format(pollid=pollid,
+                       'WHERE id = "{poll_id}";'.format(poll_id=poll_id,
                                                        status=status.name))
 
     @staticmethod
-    def update_poll_veto(cursor, pollid, vetoed_by, reason):
+    def update_poll_veto(cursor, poll_id, vetoed_by, reason):
         cursor.execute('UPDATE Polls '
                        'SET status = "VETOED", vetoed_by = "{vetoed_by}", '
                        'veto_reason = "{reason}" '
-                       'WHERE id = "{pollid}";'.format(pollid=pollid,
+                       'WHERE id = "{poll_id}";'.format(poll_id=poll_id,
                                                        vetoed_by=vetoed_by,
                                                        reason=reason))
 
     @staticmethod
-    def insert_voteresult(cursor, pollid, user, decision, comment):
+    def insert_voteresult(cursor, poll_id, user, decision, comment):
         cursor.execute('INSERT INTO Votes (poll_id, user, vote, comment) '
-                       'VALUES ("{}", "{}", "{}", "{}");'.format(pollid, user,
+                       'VALUES ("{}", "{}", "{}", "{}");'.format(poll_id, user,
                                                                  decision.name,
                                                                  comment))
 
     @staticmethod
-    def update_votedecision(cursor, pollid, user, decision, comment):
+    def update_votedecision(cursor, poll_id, user, decision, comment):
         cursor.execute('UPDATE Votes '
                        'SET vote = "{decision}", comment = "{comment}" '
-                       'WHERE poll_id = "{pollid}" '
-                       'AND user = "{user}";'.format(pollid=pollid, user=user,
+                       'WHERE poll_id = "{poll_id}" '
+                       'AND user = "{user}";'.format(poll_id=poll_id, user=user,
                                                      decision=decision.name,
                                                      comment=comment))
 
@@ -569,26 +569,26 @@ class Vote(abstract.ChannelWatcher):
         self._poll_delayed_call_cancel(poll_id)
 
     @defer.inlineCallbacks
-    def cmd_vote(self, voter, pollid, decision, comment, **kwargs):
+    def cmd_vote(self, voter, poll_id, decision, comment, **kwargs):
         privilege = yield self.get_user_privilege(voter)
         if privilege not in [UserPrivilege.USER, UserPrivilege.ADMIN]:
             self.bot.notice(voter, "You are not allowed to vote")
             return
         voterid = yield self.bot.get_auth(voter)
         pollstatus = yield self.dbpool.runQuery('SELECT status FROM Polls '
-                'WHERE id = "{}";'.format(pollid))
+                'WHERE id = "{}";'.format(poll_id))
         if not pollstatus:
-            self.bot.notice(voter, "Poll #{} doesn't exist".format(pollid))
+            self.bot.notice(voter, "Poll #{} doesn't exist".format(poll_id))
             return
         pollstatus = PollStatus[pollstatus[0][0]]
         if pollstatus != PollStatus.RUNNING:
-            self.bot.notice(voter, "Poll #{} is not running ({})".format(pollid,
+            self.bot.notice(voter, "Poll #{} is not running ({})".format(poll_id,
                 pollstatus.name))
             return
         try:
             query = yield self.dbpool.runQuery(
                     'SELECT vote, comment FROM Votes '
-                    'WHERE poll_id = "{}" AND user = "{}";'.format(pollid,
+                    'WHERE poll_id = "{}" AND user = "{}";'.format(poll_id,
                                                                    voterid))
             if query:
                 previous_decision = VoteDecision[query[0][0]]
@@ -611,26 +611,26 @@ class Vote(abstract.ChannelWatcher):
                         return
                 if confirmed:
                     self.dbpool.runInteraction(Vote.update_votedecision,
-                                               pollid, voterid, decision,
+                                               poll_id, voterid, decision,
                                                comment)
                     self.bot.msg(self.channel, "{} changed vote from {} "
                                  "to {} for poll #{}: {}".format(voter,
                                      previous_decision.name, decision.name,
-                                     pollid, textwrap.shorten(comment, 50)
+                                     poll_id, textwrap.shorten(comment, 50)
                                      or "No comment given"))
             else:
-                yield self.dbpool.runInteraction(Vote.insert_voteresult, pollid,
+                yield self.dbpool.runInteraction(Vote.insert_voteresult, poll_id,
                                                  voterid, decision, comment)
                 self.bot.msg(self.channel,
                              "{} voted {} for poll #{}: {}".format(voter,
-                                 decision.name, pollid,
+                                 decision.name, poll_id,
                                  textwrap.shorten(comment, 50) or "No comment given"))
         except Exception as e:
             Vote.logger.warn("Encountered error during vote: {}".format(e))
-        vote_count = yield self.count_votes(pollid)
+        vote_count = yield self.count_votes(poll_id)
         if abs(vote_count.yes - vote_count.no) > vote_count.not_voted:
-            self._poll_delayed_call_cancel(pollid)
-            self.end_poll(pollid)
+            self._poll_delayed_call_cancel(poll_id)
+            self.end_poll(poll_id)
 
     @maybe_deferred
     def require_confirmation(self, user, userid, message):

@@ -22,8 +22,10 @@ from twisted.logger import Logger
 from twisted.python import usage
 import os
 from collections import namedtuple, defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+import dateparser
 from enum import Enum
+import re
 from threading import Lock
 import textwrap
 
@@ -161,12 +163,14 @@ class PollVetoOptions(OptionsWithoutHandlers):
 
 
 class PollExpireOptions(OptionsWithoutHandlers):
-    def parseArgs(self, poll_id, change):
+    def parseArgs(self, poll_id, *args):
         try:
             self["poll_id"] = int(poll_id)
         except ValueError:
             raise usage.UsageError("PollID has to be an integer")
-        self["change"] = change # should accept (now)?(+|-)?(\d+d)?(\d+h)?
+        if not args:
+            raise usage.UsageError("No new end time specified")
+        self["change"] = " ".join(args) # will be parsed by the command
 
 
 class PollListOptions(OptionsWithoutHandlers):
@@ -210,6 +214,7 @@ class Vote(abstract.ChannelWatcher):
     logger = Logger()
     PollEndWarningTime = timedelta(days=2)
     PollDefaultDuration = timedelta(days=15)
+    expireTimeRegex = re.compile(r"(extend|reduce)\s+(?:(\d+)\s*d(?:ays?)?)?\s*(?:(\d+)\s*h(?:ours?)?)?$")
 
     def __init__(self, bot, channel, config):
         super(Vote, self).__init__(bot, channel, config)
@@ -263,6 +268,14 @@ class Vote(abstract.ChannelWatcher):
                                                        status=status.name))
 
     @staticmethod
+    def update_poll_time_end(cursor, poll_id, time_end):
+        timestr = time_end.strftime("%Y-%m-%d %H:%M:%S")
+        cursor.execute('UPDATE Polls '
+                       'SET time_end = "{time}" '
+                       'WHERE id = "{poll_id}";'.format(poll_id=poll_id,
+                                                        time=timestr))
+
+    @staticmethod
     def update_poll_veto(cursor, poll_id, vetoed_by, reason):
         cursor.execute('UPDATE Polls '
                        'SET status = "VETOED", vetoed_by = "{vetoed_by}", '
@@ -294,6 +307,10 @@ class Vote(abstract.ChannelWatcher):
                        'WHERE privilege="USER" OR privilege="ADMIN";'.format(
                            poll_id=poll_id))
 
+    @staticmethod
+    def parse_db_timeentry(time):
+        return datetime.strptime(time, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+
     @defer.inlineCallbacks
     def get_user_privilege(self, name):
         auth = yield self.bot.get_auth(name)
@@ -321,11 +338,11 @@ class Vote(abstract.ChannelWatcher):
                 'WHERE status="RUNNING";')
         for row in res:
             poll_id = int(row[0])
-            time_end = datetime.strptime(row[1], "%Y-%m-%d %H:%M:%S")
+            time_end = Vote.parse_db_timeentry(row[1])
             self._poll_delay_call(poll_id, time_end)
 
     def _poll_delay_call(self, poll_id, time_end):
-        utcnow = datetime.utcnow()
+        utcnow = datetime.now(tz=timezone.utc)
         if time_end < utcnow:
             # already ended while bot was down
             self.end_poll(poll_id)
@@ -349,7 +366,12 @@ class Vote(abstract.ChannelWatcher):
                 end_warning=end_warning_call)
 
     def _poll_delayed_call_cancel(self, poll_id):
-        delayed_calls = self._poll_delayed_calls.pop(poll_id)
+        try:
+            delayed_calls = self._poll_delayed_calls.pop(poll_id)
+        except KeyError:
+            Vote.logger.warn("Trying to cancel delayed calls for poll #{poll_id}, "
+                             "but no delayed calls found", poll_id=poll_id)
+            return
         delayed_calls.end.cancel()
         if delayed_calls.end_warning:
             delayed_calls.end_warning.cancel()
@@ -382,7 +404,6 @@ class Vote(abstract.ChannelWatcher):
                 "ABSTAINED:{vote_count.abstained} | OPEN:{vote_count.not_voted}".format(
                     poll_id=poll_id, desc=textwrap.shorten(desc, 50),
                     creator=creator, vote_count=vote_count))
-
 
     @defer.inlineCallbacks
     def end_poll(self, poll_id):
@@ -493,7 +514,7 @@ class Vote(abstract.ChannelWatcher):
                          "{description}".format(poll_id=poll_id, user=issuer,
                                                 url="URL TODO",
                                                 description=description))
-        self._poll_delay_call(poll_id, datetime.utcnow() + Vote.PollDefaultDuration)
+        self._poll_delay_call(poll_id, datetime.now(tz=timezone.utc) + Vote.PollDefaultDuration)
         if kwargs["yes"]:
             self.cmd_vote(issuer, poll_id, VoteDecision.YES, "")
         elif kwargs["no"]:
@@ -567,6 +588,56 @@ class Vote(abstract.ChannelWatcher):
                 return
             self.bot.msg(self.channel, "Poll #{} cancelled".format(poll_id))
         self._poll_delayed_call_cancel(poll_id)
+
+    @defer.inlineCallbacks
+    def cmd_poll_expire(self, issuer, poll_id, change):
+        res = yield self.dbpool.runQuery('SELECT status, time_end FROM Polls '
+                'WHERE id={};'.format(poll_id))
+        if not res:
+            self.bot.notice(issuer, "Poll #{} doesn't exist".format(poll_id))
+            return
+        status = PollStatus[res[0][0]]
+        current_time_end = res[0][1]
+        if status != PollStatus.RUNNING:
+            self.bot.notice(issuer, "Poll #{} isn't running".format(poll_id))
+            return
+        issuer_privilege = yield self.get_user_privilege(issuer)
+        if issuer_privilege != UserPrivilege.ADMIN:
+            self.bot.notice(issuer, "Only admins can change poll duration")
+            return
+        utcnow = datetime.now(tz=timezone.utc)
+        match = Vote.expireTimeRegex.match(change)
+        if match:
+            days = match.group(2) or 0
+            hours = match.group(3) or 0
+            delta = timedelta(days=int(days), hours=int(hours))
+            if match.group(1) == "reduce":
+                delta *= -1
+            time_end = Vote.parse_db_timeentry(current_time_end) + delta
+        else:
+            time_end = dateparser.parse(change).astimezone(timezone.utc)
+            if time_end is None:
+                self.bot.notice(issuer, "Invalid new end time specified")
+                return
+        issuer_id = yield self.bot.get_auth(issuer)
+        try:
+            confirmation = yield self.require_confirmation(issuer, issuer_id,
+                    "Please confirm new expiration date {}".format(time_end.isoformat()))
+        except defer.TimeoutError as e:
+            self.bot.notice(issuer, "Confirmation timed out")
+            return
+        if not confirmation:
+            return
+        self._poll_delayed_call_cancel(poll_id)
+        if time_end <= utcnow:
+            self.end_poll(poll_id)
+            time_end = utcnow
+        else:
+            self._poll_delay_call(poll_id, time_end)
+            self.bot.msg(self.channel, "Poll #{} will end at {}".format(
+                poll_id, time_end.isoformat()))
+        self.dbpool.runInteraction(Vote.update_poll_time_end, poll_id,
+                                   time_end)
 
     @defer.inlineCallbacks
     def cmd_vote(self, voter, poll_id, decision, comment, **kwargs):

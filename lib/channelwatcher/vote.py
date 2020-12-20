@@ -73,6 +73,8 @@ VoteDecision = Enum("VoteDecision", "NONE ABSTAIN YES NO")
 PollDelayedCalls = namedtuple("PollDelayedCalls", "end_warning end")
 VoteCount = namedtuple("VoteCount", "not_voted abstained yes no")
 
+PollListStatusFilter = Enum("PollListStatusFilter", "RUNNING ENDED ALL")
+
 
 class OptionsWithoutHandlers(usage.Options):
     def _gather_handlers(self):
@@ -175,9 +177,8 @@ class PollExpireOptions(OptionsWithoutHandlers):
 
 class PollListOptions(OptionsWithoutHandlers):
     optParameters = [
-        ['status', 's', PollStatus.RUNNING, "Filter with this status",
-            lambda x: PollStatus[x.upper()]],
-        ['count', 'c', 0, "Limit list to the first <n> items", int],
+        ['status', 's', PollListStatusFilter.RUNNING, "Filter with this status",
+            lambda x: PollListStatusFilter[x.upper()]],
     ]
 
 
@@ -207,7 +208,6 @@ class CommandOptions(OptionsWithoutHandlers):
         ['no', None, OptionsWithoutHandlers, "Abort previous action"],
         ['help', None, HelpOptions, "help"]
     ]
-
 
 
 class Vote(abstract.ChannelWatcher):
@@ -620,12 +620,8 @@ class Vote(abstract.ChannelWatcher):
                 self.bot.notice(issuer, "Invalid new end time specified")
                 return
         issuer_id = yield self.bot.get_auth(issuer)
-        try:
-            confirmation = yield self.require_confirmation(issuer, issuer_id,
-                    "Please confirm new expiration date {}".format(time_end.isoformat()))
-        except defer.TimeoutError as e:
-            self.bot.notice(issuer, "Confirmation timed out")
-            return
+        confirmation = yield self.require_confirmation(issuer, issuer_id,
+                "Please confirm new expiration date {}".format(time_end.isoformat()))
         if not confirmation:
             return
         self._poll_delayed_call_cancel(poll_id)
@@ -638,6 +634,32 @@ class Vote(abstract.ChannelWatcher):
                 poll_id, time_end.isoformat()))
         self.dbpool.runInteraction(Vote.update_poll_time_end, poll_id,
                                    time_end)
+
+    @defer.inlineCallbacks
+    def cmd_poll_list(self, issuer, status):
+        if status == PollListStatusFilter.RUNNING:
+            where = 'WHERE status="RUNNING" '
+        elif status == PollListStatusFilter.ENDED:
+            where = 'WHERE NOT status="RUNNING" '
+        else:
+            where = ''
+        result = yield self.dbpool.runQuery('SELECT id, status, description FROM Polls ' +
+                where + 'ORDER BY id DESC;')
+        if not result:
+            self.bot.notice(issuer, "No Polls found")
+            return
+        issuer_id = yield self.bot.get_auth(issuer)
+        if not issuer_id:
+            issuer_id = issuer
+        for i, row in enumerate(result):
+            if (i!=0 and i%5==0):
+                confirm = yield self.require_confirmation(issuer, issuer_id,
+                        "Continue? (confirm with {prefix}yes)".format(
+                            prefix=self.prefix))
+                if not confirm:
+                    return
+            self.bot.notice(issuer, "#{poll_id} ({status}): {description}".format(
+                poll_id=row[0], status=row[1], description=textwrap.shorten(row[2], 50)))
 
     @defer.inlineCallbacks
     def cmd_vote(self, voter, poll_id, decision, comment, **kwargs):
@@ -668,27 +690,24 @@ class Vote(abstract.ChannelWatcher):
                 if kwargs['yes']:
                     confirmed = True
                 else:
-                    try:
-                        confirmed = yield self.require_confirmation(voter, voterid,
-                                "You already voted for this poll "
-                                "({vote}: {comment}), please confirm with "
-                                "'{prefix}yes' or '{prefix}no".format(
-                                    vote=previous_decision.name,
-                                    comment=textwrap.shorten(previous_comment,
-                                                             50) or "No comment",
-                                    prefix=self.prefix))
-                    except defer.TimeoutError as e:
-                        self.bot.notice(voter, "Confirmation timed out")
-                        return
-                if confirmed:
-                    self.dbpool.runInteraction(Vote.update_votedecision,
-                                               poll_id, voterid, decision,
-                                               comment)
-                    self.bot.msg(self.channel, "{} changed vote from {} "
-                                 "to {} for poll #{}: {}".format(voter,
-                                     previous_decision.name, decision.name,
-                                     poll_id, textwrap.shorten(comment, 50)
-                                     or "No comment given"))
+                    confirmed = yield self.require_confirmation(voter, voterid,
+                            "You already voted for this poll "
+                            "({vote}: {comment}), please confirm with "
+                            "'{prefix}yes' or '{prefix}no".format(
+                                vote=previous_decision.name,
+                                comment=textwrap.shorten(previous_comment,
+                                                         50) or "No comment",
+                                prefix=self.prefix))
+                if not confirmed:
+                    return
+                self.dbpool.runInteraction(Vote.update_votedecision,
+                                           poll_id, voterid, decision,
+                                           comment)
+                self.bot.msg(self.channel, "{} changed vote from {} "
+                             "to {} for poll #{}: {}".format(voter,
+                                 previous_decision.name, decision.name,
+                                 poll_id, textwrap.shorten(comment, 50)
+                                 or "No comment given"))
             else:
                 yield self.dbpool.runInteraction(Vote.insert_voteresult, poll_id,
                                                  voterid, decision, comment)
@@ -710,7 +729,11 @@ class Vote(abstract.ChannelWatcher):
                             "pending")
             return False
         self.bot.notice(user, message)
-        d = defer.Deferred().addTimeout(60, reactor)
+        d = defer.Deferred()
+        def onTimeout(*args):
+            self.bot.notice(user, "Confirmation timed out")
+            d.callback(False)
+        d.addTimeout(60, reactor, onTimeoutCancel=onTimeout)
         d.addBoth(self._confirmation_finalize, userid)
         self._pending_confirmations[userid] = d
         return d

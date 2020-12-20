@@ -25,6 +25,7 @@ from collections import namedtuple, defaultdict
 from datetime import datetime, timedelta, timezone
 import dateparser
 from enum import Enum
+import itertools
 import re
 from threading import Lock
 import textwrap
@@ -762,8 +763,31 @@ class Vote(abstract.ChannelWatcher):
     def nick(self, oldnick, newnick):
         pass
 
+    @defer.inlineCallbacks
     def join(self, user):
-        pass
+        privilege = yield self.get_user_privilege(user)
+        if privilege not in (UserPrivilege.USER, UserPrivilege.ADMIN):
+            return
+        result = yield self.dbpool.runQuery('SELECT id FROM Polls '
+                'WHERE status="RUNNING";')
+        if not result:
+            return
+        num_running_polls = len(result)
+        poll_id_list = set(itertools.chain(*result))
+        user_id = yield self.bot.get_auth(user)
+        result = yield self.dbpool.runQuery('SELECT poll_id FROM Votes '
+                'WHERE user="{user_id}" AND poll_id IN ({poll_ids});'.format(
+                    user_id=user_id, poll_ids=",".join(map(str, poll_id_list))))
+        if not result:
+            num_already_voted = 0
+        else:
+            num_already_voted = len(result)
+        remaining = num_running_polls - num_already_voted
+        if remaining:
+            not_voted = poll_id_list - set(itertools.chain(*result))
+            self.bot.notice(user, "There are {} open polls without your "
+                            "vote ({})".format(remaining, ", ".join(
+                                map(str, not_voted))))
 
     def part(self, user):
         pass

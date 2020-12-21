@@ -183,6 +183,14 @@ class PollListOptions(OptionsWithoutHandlers):
     ]
 
 
+class PollInfoOptions(OptionsWithoutHandlers):
+    def parseArgs(self, poll_id):
+        try:
+            self["poll_id"] = int(poll_id)
+        except ValueError:
+            raise usage.UsageError("PollID has to be an integer")
+
+
 class PollOptions(OptionsWithoutHandlers):
     subCommands = [
         ['create', 'call', PollCreateOptions, "Create a new poll"],
@@ -191,6 +199,7 @@ class PollOptions(OptionsWithoutHandlers):
         ['expire', None, PollExpireOptions,
             "Change Duration of a poll (admin only)"],
         ['list', 'ls', PollListOptions, "List polls"],
+        ['info', None, PollInfoOptions, "Info about poll"],
         ['url', None, OptionsWithoutHandlers, "Display address of poll website"]
     ]
 
@@ -378,7 +387,7 @@ class Vote(abstract.ChannelWatcher):
             delayed_calls.end_warning.cancel()
 
     @defer.inlineCallbacks
-    def count_votes(self, poll_id):
+    def count_votes(self, poll_id, is_running):
         res = yield self.dbpool.runQuery('SELECT vote, COUNT(vote) FROM Votes '
                 'WHERE poll_id="{}" GROUP BY vote;'.format(poll_id))
         if not res:
@@ -386,9 +395,11 @@ class Vote(abstract.ChannelWatcher):
         c = defaultdict(int)
         for decision, count in res:
             c[VoteDecision[decision]] = int(count)
-        sum_votes = sum(c.values())
+        if is_running:
+            sum_votes = sum(c.values())
+            c[VoteDecision.NONE] += self._num_active_users-sum_votes
         return VoteCount(abstained=c[VoteDecision.ABSTAIN], yes=c[VoteDecision.YES],
-                         no=c[VoteDecision.NO], not_voted=self._num_active_users-sum_votes)
+                         no=c[VoteDecision.NO], not_voted=c[VoteDecision.NONE])
 
     @defer.inlineCallbacks
     def warn_end_poll(self, poll_id):
@@ -399,7 +410,7 @@ class Vote(abstract.ChannelWatcher):
                     "was running", poll_id=poll_id)
             return
         desc, creator = res[0]
-        vote_count = yield self.count_votes(poll_id)
+        vote_count = yield self.count_votes(poll_id, True)
         self.bot.msg(self.channel, "Poll #{poll_id} is running out soon: {desc} "
                 "by {creator}: YES:{vote_count.yes} | NO:{vote_count.no} | "
                 "ABSTAINED:{vote_count.abstained} | OPEN:{vote_count.not_voted}".format(
@@ -415,7 +426,7 @@ class Vote(abstract.ChannelWatcher):
                     "was running", poll_id=poll_id)
             return
         desc, creator = res[0]
-        vote_count = yield self.count_votes(poll_id)
+        vote_count = yield self.count_votes(poll_id, True)
         if vote_count.yes > vote_count.no:
             result = PollStatus.PASSED
         elif vote_count.yes == vote_count.no:
@@ -663,6 +674,24 @@ class Vote(abstract.ChannelWatcher):
                 poll_id=row[0], status=row[1], description=textwrap.shorten(row[2], 50)))
 
     @defer.inlineCallbacks
+    def cmd_poll_info(self, issuer, poll_id):
+        result = yield self.dbpool.runQuery(
+                'SELECT status, description, creator FROM Polls '
+                'WHERE id={poll_id};'.format(poll_id=poll_id))
+        if not result:
+            self.bot.notice(issuer, "No Poll with ID #{} found".format(poll_id))
+            return
+        status, desc, creator = result[0]
+        status = PollStatus[status]
+        vote_count = yield self.count_votes(poll_id, status==PollStatus.RUNNING)
+        self.bot.notice(issuer, "Poll #{poll_id} {status.name}: {desc} "
+                "by {creator}: YES:{vote_count.yes} | NO:{vote_count.no} | "
+                "ABSTAINED:{vote_count.abstained} | "
+                "NOT VOTED:{vote_count.not_voted}".format(
+                    poll_id=poll_id, status=status, desc=textwrap.shorten(desc, 50),
+                    creator=creator, vote_count=vote_count))
+
+    @defer.inlineCallbacks
     def cmd_vote(self, voter, poll_id, decision, comment, **kwargs):
         privilege = yield self.get_user_privilege(voter)
         if privilege not in [UserPrivilege.USER, UserPrivilege.ADMIN]:
@@ -718,7 +747,7 @@ class Vote(abstract.ChannelWatcher):
                                  textwrap.shorten(comment, 50) or "No comment given"))
         except Exception as e:
             Vote.logger.warn("Encountered error during vote: {}".format(e))
-        vote_count = yield self.count_votes(poll_id)
+        vote_count = yield self.count_votes(poll_id, True)
         if abs(vote_count.yes - vote_count.no) > vote_count.not_voted:
             self._poll_delayed_call_cancel(poll_id)
             self.end_poll(poll_id)

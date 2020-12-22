@@ -75,7 +75,7 @@ PRAGMA foreign_keys = ON;""",
     name TEXT UNIQUE NOT NULL,
     description TEXT,
     color TEXT CHECK(color in ("white", "black", "dark_blue", "dark_green", "red", "dark_red", "dark_magenta", "dark_yellow", "yellow", "green", "dark_cyan", "cyan", "blue", "magenta", "dark_gray", "gray", "")), -- IRC colors
-    confidential BOOLEAN DEFAULT false -- only for filtering on website
+    confidential BOOLEAN DEFAULT false CHECK(confidential in (true, false)) -- only for filtering on website
 );"""]
 
 
@@ -296,35 +296,34 @@ class Vote(abstract.ChannelWatcher):
     @staticmethod
     def insert_user(cursor, auth, user, privilege):
         cursor.execute('INSERT INTO Users (id, name, privilege) '
-                       'VALUES ("{}", "{}", "{}");'.format(auth, user,
-                                                           privilege.name))
+                       'VALUES (:auth, :user, :priv);',
+                       {"auth": auth, "user": user,
+                        "priv": privilege.name})
 
     @staticmethod
     def update_user(cursor, auth, privilege):
         cursor.execute('UPDATE Users '
-                       'SET privilege = "{privilege}" '
-                       'WHERE id = "{auth}";'.format(auth=auth,
-                                                     privilege=privilege.name))
+                       'SET privilege=:priv '
+                       'WHERE id=:auth;', {"auth": auth, "priv": privilege.name})
 
     @staticmethod
     def insert_poll(cursor, user, description):
         cursor.execute('INSERT INTO Polls (description, creator) '
-                       'VALUES  ("{}", "{}");'.format(description, user))
+                       'VALUES  (:desc, :creator);', {"desc": description,
+                                                      "creator": user})
 
     @staticmethod
     def update_pollstatus(cursor, poll_id, status):
         cursor.execute('UPDATE Polls '
-                       'SET status = "{status}" '
-                       'WHERE id = "{poll_id}";'.format(poll_id=poll_id,
-                                                       status=status.name))
+                       'SET status=:status '
+                       'WHERE id=:id;', {"id": poll_id, "status": status.name})
 
     @staticmethod
     def update_poll_time_end(cursor, poll_id, time_end):
         timestr = time_end.strftime("%Y-%m-%d %H:%M:%S")
         cursor.execute('UPDATE Polls '
-                       'SET time_end = "{time}" '
-                       'WHERE id = "{poll_id}";'.format(poll_id=poll_id,
-                                                        time=timestr))
+                       'SET time_end=:time '
+                       'WHERE id=:id;', {"id": poll_id, "time": timestr})
 
     @staticmethod
     def update_poll_veto(cursor, poll_id, vetoed_by, reason):
@@ -338,37 +337,38 @@ class Vote(abstract.ChannelWatcher):
     @staticmethod
     def insert_voteresult(cursor, poll_id, user, decision, comment):
         cursor.execute('INSERT INTO Votes (poll_id, user, vote, comment) '
-                       'VALUES ("{}", "{}", "{}", "{}");'.format(poll_id, user,
-                                                                 decision.name,
-                                                                 comment))
+                       'VALUES (:id, :user, :decision, :comment);',
+                       {"id": poll_id, "user": user, "decision": decision.name,
+                        "comment": comment})
 
     @staticmethod
     def update_votedecision(cursor, poll_id, user, decision, comment):
         cursor.execute('UPDATE Votes '
-                       'SET vote = "{decision}", comment = "{comment}" '
-                       'WHERE poll_id = "{poll_id}" '
-                       'AND user = "{user}";'.format(poll_id=poll_id, user=user,
-                                                     decision=decision.name,
-                                                     comment=comment))
+                       'SET vote=:decision, comment=:comment '
+                       'WHERE poll_id=:id AND user=:user;',
+                       {"id": poll_id, "user": user, "decision": decision.name,
+                        "comment": comment})
 
     @staticmethod
     def add_not_voted(cursor, poll_id):
         cursor.execute('INSERT OR IGNORE INTO Votes (poll_id, user, vote) '
                        'SELECT {poll_id}, id, "NONE" FROM Users '
                        'WHERE privilege="USER" OR privilege="ADMIN";'.format(
-                           poll_id=poll_id))
+                           poll_id=poll_id)) # don't use sqlite named params here
 
     @staticmethod
     def insert_category(cursor, name, description, color, confidential):
         cursor.execute('INSERT INTO Categories (name, description, color, confidential) '
-                       'VALUES ("{}", "{}", "{}", "{}");'.format(name, description,
-                           color, confidential))
+                       'VALUES (:name, :description, :color, :confidential);',
+                       {"name": name, "description": description, "color": color,
+                        "confidential": confidential})
 
     @staticmethod
     def update_category_field(cursor, name, field, value):
         cursor.execute('UPDATE Categories '
-                       'SET {field}="{value}" '
-                       'WHERE name="{name}";'.format(name=name, field=field, value=value))
+                       'SET {field}=:value '
+                       'WHERE name=:name;'.format(field=field),
+                       {"name": name, "value": value})
 
     @staticmethod
     def parse_db_timeentry(time):
@@ -754,7 +754,7 @@ class Vote(abstract.ChannelWatcher):
             return
         try:
             yield self.dbpool.runInteraction(Vote.insert_category, name, description,
-                                             color or "", confidential)
+                                             color or "", confidential!=0)
         except Exception as e:
             Vote.logger.info("Failed to add category: {error}", error=e)
             self.bot.notice(issuer, "Failed to add category: {}".format(e))
@@ -775,6 +775,14 @@ class Vote(abstract.ChannelWatcher):
         if field not in ["description", "color", "confidential"]:
             self.bot.notice(issuer, "Invalid column name specified")
             return
+        if field == "confidential":
+            if value.lower() in ["true", "yes", "1"]:
+                value = True
+            elif value.lower() in ["false", "no", "0"]:
+                value = False
+            else:
+                self.bot.notice(issuer, "Invalid value given")
+                return
         try:
             yield self.dbpool.runInteraction(Vote.update_category_field, name,
                                              field, value)

@@ -74,7 +74,7 @@ PRAGMA foreign_keys = ON;""",
     id INTEGER PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
     description TEXT,
-    color TEXT, -- IRC colors
+    color TEXT CHECK(color in ("white", "black", "dark_blue", "dark_green", "red", "dark_red", "dark_magenta", "dark_yellow", "yellow", "green", "dark_cyan", "cyan", "blue", "magenta", "dark_gray", "gray", "")), -- IRC colors
     confidential BOOLEAN DEFAULT false -- only for filtering on website
 );"""]
 
@@ -751,9 +751,6 @@ class Vote(abstract.ChannelWatcher):
         issuer_privilege = yield self.get_user_privilege(issuer)
         if issuer_privilege != UserPrivilege.ADMIN:
             self.bot.notice(issuer, "Only Admins can add categories")
-            return
-        if color and color not in formatting.color_code:
-            self.bot.notice(issuer, "Invalid color specified")
             return
         try:
             yield self.dbpool.runInteraction(Vote.insert_category, name, description,

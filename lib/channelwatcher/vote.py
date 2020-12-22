@@ -27,12 +27,15 @@ import dateparser
 from enum import Enum
 import itertools
 import re
+import shlex
+import sqlite3 # for exceptions
 from threading import Lock
 import textwrap
 
 from . import abstract
 from util import filesystem as fs
 from util.decorators import maybe_deferred
+from util import formatting
 
 
 _INIT_DB_STATEMENTS = ["""
@@ -51,8 +54,10 @@ PRAGMA foreign_keys = ON;""",
     time_start DATETIME DEFAULT (DATETIME('now', 'UTC')), -- always use UTC
     time_end DATETIME DEFAULT (DATETIME('now', 'UTC', '+15 days')), -- always use UTC
     status TEXT CHECK(status in ("RUNNING", "CANCELED", "PASSED", "TIED", "FAILED", "VETOED")) DEFAULT "RUNNING",
+    category INTEGER,
     FOREIGN KEY (creator) REFERENCES Users(id),
-    FOREIGN KEY (vetoed_by) REFERENCES Users(id)
+    FOREIGN KEY (vetoed_by) REFERENCES Users(id),
+    FOREIGN KEY (category) REFERENCES Categories(id) ON DELETE SET NULL
 );""",
 """CREATE TABLE IF NOT EXISTS Votes (
     poll_id INTEGER,
@@ -64,6 +69,13 @@ PRAGMA foreign_keys = ON;""",
     FOREIGN KEY (poll_id) REFERENCES Polls(id),
     FOREIGN KEY (user) REFERENCES Users(id)
     -- TODO: check that user currently has privileges to vote
+);""",
+"""CREATE TABLE IF NOT EXISTS Categories (
+    id INTEGER PRIMARY KEY,
+    name TEXT UNIQUE NOT NULL,
+    description TEXT,
+    color TEXT, -- IRC colors
+    confidential BOOLEAN DEFAULT false -- only for filtering on website
 );"""]
 
 
@@ -194,6 +206,7 @@ class PollInfoOptions(OptionsWithoutHandlers):
 class PollOptions(OptionsWithoutHandlers):
     subCommands = [
         ['create', 'call', PollCreateOptions, "Create a new poll"],
+        # TODO: modify subCommand
         ['cancel', None, PollCancelOptions, "Cancel a poll (vote caller only)"],
         ['veto', None, PollVetoOptions, "Veto a poll (admin only)"],
         ['expire', None, PollExpireOptions,
@@ -201,6 +214,33 @@ class PollOptions(OptionsWithoutHandlers):
         ['list', 'ls', PollListOptions, "List polls"],
         ['info', None, PollInfoOptions, "Info about poll"],
         ['url', None, OptionsWithoutHandlers, "Display address of poll website"]
+    ]
+
+
+class CategoryAddOptions(OptionsWithoutHandlers):
+    optFlags = [
+        ['confidential', 's', "Hide this category on the website"]
+    ]
+    optParameters = [
+        ['color', 'c', None, "Color for the category"]
+    ]
+
+    def parseArgs(self, name, *args):
+        self["name"] = name
+        self["description"] = " ".join(args)
+
+
+class CategoryModifyOptions(OptionsWithoutHandlers):
+    def parseArgs(self, name, field, *args):
+        self["name"] = name
+        self["field"] = field
+        self["value"] = " ".join(args)
+
+
+class CategoryOptions(OptionsWithoutHandlers):
+    subCommands = [
+        ['add', None, CategoryAddOptions, "Create a new category"],
+        ['modify', 'mod', CategoryModifyOptions, "Modify a category"]
     ]
 
 
@@ -214,6 +254,7 @@ class CommandOptions(OptionsWithoutHandlers):
         ['user', None, UserOptions, "Add/modify users"],
         ['vote', None, VoteOptions, "Vote for a poll"],
         ['poll', None, PollOptions, "Create/modify polls"],
+        ['category', None, CategoryOptions, "Create/modify categories"],
         ['yes', None, OptionsWithoutHandlers, "Confirm previous action"],
         ['no', None, OptionsWithoutHandlers, "Abort previous action"],
         ['help', None, HelpOptions, "help"]
@@ -316,6 +357,12 @@ class Vote(abstract.ChannelWatcher):
                        'SELECT {poll_id}, id, "NONE" FROM Users '
                        'WHERE privilege="USER" OR privilege="ADMIN";'.format(
                            poll_id=poll_id))
+
+    @staticmethod
+    def insert_category(cursor, name, description, color, confidential):
+        cursor.execute('INSERT INTO Categories (name, description, color, confidential) '
+                       'VALUES ("{}", "{}", "{}", "{}");'.format(name, description,
+                           color, confidential))
 
     @staticmethod
     def parse_db_timeentry(time):
@@ -506,6 +553,7 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def cmd_poll_create(self, issuer, description, **kwargs):
+        # TODO: assign category
         privilege = yield self.get_user_privilege(issuer)
         issuer_auth = yield self.bot.get_auth(issuer)
         if privilege not in [UserPrivilege.USER, UserPrivilege.ADMIN]:
@@ -649,6 +697,7 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def cmd_poll_list(self, issuer, status):
+        # TODO: filter by category
         if status == PollListStatusFilter.RUNNING:
             where = 'WHERE status="RUNNING" '
         elif status == PollListStatusFilter.ENDED:
@@ -690,6 +739,28 @@ class Vote(abstract.ChannelWatcher):
                 "NOT VOTED:{vote_count.not_voted}".format(
                     poll_id=poll_id, status=status, desc=textwrap.shorten(desc, 50),
                     creator=creator, vote_count=vote_count))
+
+    @defer.inlineCallbacks
+    def cmd_category_add(self, issuer, name, description, color, confidential):
+        issuer_privilege = yield self.get_user_privilege(issuer)
+        if issuer_privilege != UserPrivilege.ADMIN:
+            self.bot.notice(issuer, "Only Admins can add categories")
+            return
+        if color and color not in formatting.color_code:
+            self.bot.notice(issuer, "Invalid color specified")
+            return
+        try:
+            yield self.dbpool.runInteraction(Vote.insert_category, name, description,
+                                             color or "", confidential)
+        except sqlite3.IntegrityError as e:
+            Vote.logger.info("Failed to add category: {error}", error=e)
+            self.bot.notice(issuer, "Failed to add category: {}".format(e))
+            return
+        except Exception as e:
+            Vote.logger.info("Failed to add category: {error}", error=e)
+            self.bot.notice(issuer, "Failed to add category")
+            return
+        self.bot.msg(self.channel, "Added category {}".format(name))
 
     @defer.inlineCallbacks
     def cmd_vote(self, voter, poll_id, decision, comment, **kwargs):
@@ -836,11 +907,7 @@ class Vote(abstract.ChannelWatcher):
     def msg(self, user, message):
         if not message.startswith(self.prefix):
             return
-        tokens = message.lstrip(self.prefix).split()
-        task = tokens[0]
-        if not message.startswith(self.prefix):
-            return
-        tokens = message.lstrip(self.prefix).split()
+        tokens = shlex.split(message.lstrip(self.prefix))
         options = CommandOptions()
         try:
             options.parseOptions(tokens)

@@ -365,6 +365,12 @@ class Vote(abstract.ChannelWatcher):
                            color, confidential))
 
     @staticmethod
+    def update_category_field(cursor, name, field, value):
+        cursor.execute('UPDATE Categories '
+                       'SET {field}="{value}" '
+                       'WHERE name="{name}";'.format(name=name, field=field, value=value))
+
+    @staticmethod
     def parse_db_timeentry(time):
         return datetime.strptime(time, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
 
@@ -752,15 +758,34 @@ class Vote(abstract.ChannelWatcher):
         try:
             yield self.dbpool.runInteraction(Vote.insert_category, name, description,
                                              color or "", confidential)
-        except sqlite3.IntegrityError as e:
+        except Exception as e:
             Vote.logger.info("Failed to add category: {error}", error=e)
             self.bot.notice(issuer, "Failed to add category: {}".format(e))
             return
-        except Exception as e:
-            Vote.logger.info("Failed to add category: {error}", error=e)
-            self.bot.notice(issuer, "Failed to add category")
-            return
         self.bot.msg(self.channel, "Added category {}".format(name))
+
+    @defer.inlineCallbacks
+    def cmd_category_modify(self, issuer, name, field, value):
+        issuer_privilege = yield self.get_user_privilege(issuer)
+        if issuer_privilege != UserPrivilege.ADMIN:
+            self.bot.notice(issuer, "Only Admins can modify categories")
+            return
+        res = yield self.dbpool.runQuery('SELECT id FROM Categories '
+                'WHERE name="{}";'.format(name))
+        if not res:
+            self.bot.notice(issuer, "Category {} not found".format(name))
+            return
+        if field not in ["description", "color", "confidential"]:
+            self.bot.notice(issuer, "Invalid column name specified")
+            return
+        try:
+            yield self.dbpool.runInteraction(Vote.update_category_field, name,
+                                             field, value)
+        except Exception as e:
+            Vote.logger.info("Failed to modify category: {error}", error=e)
+            self.bot.notice(issuer, "Failed to modify category: {}".format(e))
+            return
+        self.bot.notice(issuer, "Successfully modified category")
 
     @defer.inlineCallbacks
     def cmd_vote(self, voter, poll_id, decision, comment, **kwargs):

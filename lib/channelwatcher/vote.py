@@ -27,8 +27,6 @@ import dateparser
 from enum import Enum
 import itertools
 import re
-import shlex
-import sqlite3 # for exceptions
 from threading import Lock
 import textwrap
 
@@ -86,7 +84,7 @@ VoteDecision = Enum("VoteDecision", "NONE ABSTAIN YES NO")
 PollDelayedCalls = namedtuple("PollDelayedCalls", "end_warning end")
 VoteCount = namedtuple("VoteCount", "not_voted abstained yes no")
 
-PollListStatusFilter = Enum("PollListStatusFilter", "RUNNING ENDED ALL")
+PollListStatusFilter = Enum("PollListStatusFilter", "RUNNING CANCELED PASSED TIED FAILED VETOED ENDED ALL")
 
 
 class OptionsWithoutHandlers(usage.Options):
@@ -195,6 +193,7 @@ class PollListOptions(OptionsWithoutHandlers):
     optParameters = [
         ['status', 's', PollListStatusFilter.RUNNING, "Filter with this status",
             lambda x: PollListStatusFilter[x.upper()]],
+        ['category', 'c', None, "Filter with this category"]
     ]
 
 
@@ -736,31 +735,50 @@ class Vote(abstract.ChannelWatcher):
                                    time_end)
 
     @defer.inlineCallbacks
-    def cmd_poll_list(self, issuer, status):
-        # TODO: filter by category
-        if status == PollListStatusFilter.RUNNING:
-            where = 'WHERE status="RUNNING" '
-        elif status == PollListStatusFilter.ENDED:
-            where = 'WHERE NOT status="RUNNING" '
+    def cmd_poll_list(self, issuer, status, category):
+        if status == PollListStatusFilter.ENDED:
+            statusfilter = 'NOT Polls.status="RUNNING"'
+        elif status == PollListStatusFilter.ALL:
+            statusfilter = ''
         else:
-            where = ''
-        result = yield self.dbpool.runQuery('SELECT id, status, description FROM Polls ' +
-                where + 'ORDER BY id DESC;')
+            statusfilter = 'Polls.status=:status'
+        if not category or category=="all":
+            categoryfilter = ''
+        else:
+            categoryfilter = 'Categories.name=:category'
+        where = ''
+        if statusfilter:
+            where = 'WHERE ' + statusfilter
+        if categoryfilter:
+            if where:
+                where += ' AND ' + categoryfilter
+            else:
+                where = 'WHERE ' + categoryfilter
+        result = yield self.dbpool.runQuery(
+                'SELECT Polls.id, Polls.status, Polls.description, Categories.name, '
+                'Categories.color FROM Polls LEFT JOIN Categories ON Polls.category = Categories.id ' +
+                where + ' ORDER BY Polls.id DESC;', {"status": status.name, "category": category})
         if not result:
             self.bot.notice(issuer, "No Polls found")
             return
         issuer_id = yield self.bot.get_auth(issuer)
         if not issuer_id:
             issuer_id = issuer
-        for i, row in enumerate(result):
+        for i, (poll_id, poll_status, desc, category, color) in enumerate(result):
             if (i!=0 and i%5==0):
                 confirm = yield self.require_confirmation(issuer, issuer_id,
                         "Continue? (confirm with {prefix}yes)".format(
                             prefix=self.prefix))
                 if not confirm:
                     return
-            self.bot.notice(issuer, "#{poll_id} ({status}): {description}".format(
-                poll_id=row[0], status=row[1], description=textwrap.shorten(row[2], 50)))
+            if category:
+                category_str = Vote.colored_category_name(category, color) + " "
+            else:
+                category_str = ""
+            self.bot.notice(issuer, "{category}#{poll_id} ({status}): "
+                            "{description}".format(poll_id=poll_id, status=poll_status,
+                                                   description=textwrap.shorten(desc, 50),
+                                                   category=category_str))
 
     @defer.inlineCallbacks
     def cmd_poll_info(self, issuer, poll_id):
@@ -1000,7 +1018,7 @@ class Vote(abstract.ChannelWatcher):
     def msg(self, user, message):
         if not message.startswith(self.prefix):
             return
-        tokens = shlex.split(message.lstrip(self.prefix))
+        tokens = message.lstrip(self.prefix).split()
         options = CommandOptions()
         try:
             options.parseOptions(tokens)

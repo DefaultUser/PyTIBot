@@ -149,6 +149,9 @@ class PollCreateOptions(OptionsWithoutHandlers):
         ['no', 'n', "Automatically vote no"],
         ['abstain', 'a', "Automatically abstain"],
     ]
+    optParameters = [
+        ['category', 'c', None, "Category for the poll"]
+    ]
 
     def parseArgs(self, *args):
         if len(args) < 5:
@@ -314,10 +317,10 @@ class Vote(abstract.ChannelWatcher):
                        'WHERE id=:auth;', {"auth": auth, "priv": privilege.name})
 
     @staticmethod
-    def insert_poll(cursor, user, description):
-        cursor.execute('INSERT INTO Polls (description, creator) '
-                       'VALUES  (:desc, :creator);', {"desc": description,
-                                                      "creator": user})
+    def insert_poll(cursor, user, description, category):
+        cursor.execute('INSERT INTO Polls (description, creator, category) '
+                       'VALUES  (:desc, :creator, :category);',
+                       {"desc": description, "creator": user, "category": category})
 
     @staticmethod
     def update_pollstatus(cursor, poll_id, status):
@@ -380,6 +383,16 @@ class Vote(abstract.ChannelWatcher):
     @staticmethod
     def parse_db_timeentry(time):
         return datetime.strptime(time, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
+
+    @staticmethod
+    def colored_category_name(name, color):
+        if color:
+            if formatting.good_contrast_with_black[color]:
+                fg = "black"
+            else:
+                fg = "white"
+            return formatting.colored(name, fg, color, endtoken=True)
+        return name
 
     @defer.inlineCallbacks
     def get_user_privilege(self, name):
@@ -565,17 +578,26 @@ class Vote(abstract.ChannelWatcher):
         self.bot.notice(issuer, "Successfully modified User {}".format(user))
 
     @defer.inlineCallbacks
-    def cmd_poll_create(self, issuer, description, **kwargs):
-        # TODO: assign category
+    def cmd_poll_create(self, issuer, description, category, **kwargs):
         privilege = yield self.get_user_privilege(issuer)
         issuer_auth = yield self.bot.get_auth(issuer)
         if privilege not in [UserPrivilege.USER, UserPrivilege.ADMIN]:
             self.bot.notice(issuer, "You are not allowed to create votes")
             return
+        if category:
+            res = yield self.dbpool.runQuery('SELECT id, color FROM Categories '
+                    'WHERE name=:name;', {"name": category})
+            if not res:
+                self.bot.notice(issuer, "Invalid category specified")
+                return
+            category_id, category_color = res[0]
+        else:
+            category_id = None
+            category_color = None
         with self._lock:
             try:
                 yield self.dbpool.runInteraction(Vote.insert_poll, issuer_auth,
-                                                 description)
+                                                 description, category_id)
             except Exception as e:
                 self.bot.msg(self.channel, "Could not create new poll")
                 Vote.logger.warn("Error inserting poll into DB: {error}",
@@ -583,10 +605,15 @@ class Vote(abstract.ChannelWatcher):
                 return
             poll_id = yield self.dbpool.runQuery('SELECT MAX(id) FROM Polls')
             poll_id = poll_id[0][0]
-            self.bot.msg(self.channel, "New poll #{poll_id} by {user}({url}): "
+            if category:
+                category_str = Vote.colored_category_name(category, category_color) + " "
+            else:
+                category_str = ""
+            self.bot.msg(self.channel, "{category}New poll #{poll_id} by {user}({url}): "
                          "{description}".format(poll_id=poll_id, user=issuer,
                                                 url="URL TODO",
-                                                description=description))
+                                                description=description,
+                                                category=category_str))
         self._poll_delay_call(poll_id, datetime.now(tz=timezone.utc) + Vote.PollDefaultDuration)
         if kwargs["yes"]:
             self.cmd_vote(issuer, poll_id, VoteDecision.YES, "")
@@ -766,7 +793,8 @@ class Vote(abstract.ChannelWatcher):
             Vote.logger.info("Failed to add category: {error}", error=e)
             self.bot.notice(issuer, "Failed to add category: {}".format(e))
             return
-        self.bot.msg(self.channel, "Added category {}".format(name))
+        self.bot.msg(self.channel, "Added category {}".format(
+            Vote.colored_category_name(name, color)))
 
     @defer.inlineCallbacks
     def cmd_category_modify(self, issuer, name, field, value):
@@ -801,15 +829,6 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def cmd_category_list(self, issuer, verbose):
-        def colorize_name(name, color):
-            if color:
-                if formatting.good_contrast_with_black[color]:
-                    fg = "black"
-                else:
-                    fg = "white"
-                return formatting.colored(name, fg, color, endtoken=True)
-            return name
-
         issuer_privilege = yield self.get_user_privilege(issuer)
         if issuer_privilege not in (UserPrivilege.ADMIN, UserPrivilege.USER):
             self.bot.notice(issuer, "Insufficient permissions")
@@ -828,12 +847,12 @@ class Vote(abstract.ChannelWatcher):
                     if not confirm:
                         return
                 self.bot.notice(issuer, "{}{}: {}".format("*" if confidential else " ",
-                                                          colorize_name(name, color),
+                                                          Vote.colored_category_name(name, color),
                                                           desc or "No description"))
         else:
             self.bot.notice(issuer, ", ".join(
                 itertools.starmap(lambda n, _, c, s: "{}{}".format(
-                                    "*" if s else "", colorize_name(n, c)),
+                                    "*" if s else "", Vote.colored_category_name(n, c)),
                                   res)))
 
     @defer.inlineCallbacks

@@ -310,7 +310,7 @@ class Vote(abstract.ChannelWatcher):
                         "priv": privilege.name})
 
     @staticmethod
-    def update_user(cursor, auth, privilege):
+    def update_user_privilege(cursor, auth, privilege):
         cursor.execute('UPDATE Users '
                        'SET privilege=:priv '
                        'WHERE id=:auth;', {"auth": auth, "priv": privilege.name})
@@ -322,7 +322,7 @@ class Vote(abstract.ChannelWatcher):
                        {"desc": description, "creator": user, "category": category})
 
     @staticmethod
-    def update_pollstatus(cursor, poll_id, status):
+    def update_poll_status(cursor, poll_id, status):
         cursor.execute('UPDATE Polls '
                        'SET status=:status '
                        'WHERE id=:id;', {"id": poll_id, "status": status.name})
@@ -344,14 +344,14 @@ class Vote(abstract.ChannelWatcher):
                                                        reason=reason))
 
     @staticmethod
-    def insert_voteresult(cursor, poll_id, user, decision, comment):
+    def insert_vote(cursor, poll_id, user, decision, comment):
         cursor.execute('INSERT INTO Votes (poll_id, user, vote, comment) '
                        'VALUES (:id, :user, :decision, :comment);',
                        {"id": poll_id, "user": user, "decision": decision.name,
                         "comment": comment})
 
     @staticmethod
-    def update_votedecision(cursor, poll_id, user, decision, comment):
+    def update_vote_decision(cursor, poll_id, user, decision, comment):
         cursor.execute('UPDATE Votes '
                        'SET vote=:decision, comment=:comment '
                        'WHERE poll_id=:id AND user=:user;',
@@ -505,7 +505,7 @@ class Vote(abstract.ChannelWatcher):
             result = PollStatus.TIED
         else:
             result = PollStatus.FAILED
-        self.dbpool.runInteraction(Vote.update_pollstatus, poll_id, result)
+        self.dbpool.runInteraction(Vote.update_poll_status, poll_id, result)
         self.bot.msg(self.channel, "Poll #{poll_id} {result.name}: {desc} "
                 "by {creator}: YES:{vote_count.yes} | NO:{vote_count.no} | "
                 "ABSTAINED:{vote_count.abstained} | "
@@ -561,7 +561,7 @@ class Vote(abstract.ChannelWatcher):
             self.bot.notice(issuer, "No such user found in the database")
             return
         try:
-            yield self.dbpool.runInteraction(Vote.update_user, auth,
+            yield self.dbpool.runInteraction(Vote.update_user_privilege, auth,
                                              privilege)
         except Exception as e:
             self.bot.notice(issuer, "Couldn't modify user {} ({}). "
@@ -651,7 +651,6 @@ class Vote(abstract.ChannelWatcher):
                 Vote.logger.warn("Error vetoing poll #{id}: {error}",
                                  id=poll_id, error=e)
                 return
-            # TODO: remove poll from (future) list of running polls and cancel its Deferred
             self.bot.msg(self.channel, "Poll #{} vetoed".format(poll_id))
         self._poll_delayed_call_cancel(poll_id)
 
@@ -677,7 +676,7 @@ class Vote(abstract.ChannelWatcher):
                     poll_id, status.name))
                 return
             try:
-                yield self.dbpool.runInteraction(Vote.update_pollstatus, poll_id,
+                yield self.dbpool.runInteraction(Vote.update_poll_status, poll_id,
                                                  PollStatus.CANCELED)
             except Exception as e:
                 self.bot.notice(issuer, "Error cancelling poll, contact the "
@@ -918,7 +917,7 @@ class Vote(abstract.ChannelWatcher):
                                 prefix=self.prefix))
                 if not confirmed:
                     return
-                self.dbpool.runInteraction(Vote.update_votedecision,
+                self.dbpool.runInteraction(Vote.update_vote_decision,
                                            poll_id, voterid, decision,
                                            comment)
                 self.bot.msg(self.channel, "{} changed vote from {} "
@@ -927,7 +926,7 @@ class Vote(abstract.ChannelWatcher):
                                  poll_id, textwrap.shorten(comment, 50)
                                  or "No comment given"))
             else:
-                yield self.dbpool.runInteraction(Vote.insert_voteresult, poll_id,
+                yield self.dbpool.runInteraction(Vote.insert_vote, poll_id,
                                                  voterid, decision, comment)
                 self.bot.msg(self.channel,
                              "{} voted {} for poll #{}: {}".format(voter,

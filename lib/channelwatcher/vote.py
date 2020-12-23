@@ -783,20 +783,26 @@ class Vote(abstract.ChannelWatcher):
     @defer.inlineCallbacks
     def cmd_poll_info(self, issuer, poll_id):
         result = yield self.dbpool.runQuery(
-                'SELECT status, description, creator FROM Polls '
-                'WHERE id={poll_id};'.format(poll_id=poll_id))
+                'SELECT Polls.status, Polls.description, Polls.creator, Categories.name, '
+                'Categories.color FROM Polls LEFT JOIN Categories ON Polls.category = Categories.id '
+                'WHERE Polls.id=:poll_id;', {"poll_id": poll_id})
         if not result:
             self.bot.notice(issuer, "No Poll with ID #{} found".format(poll_id))
             return
-        status, desc, creator = result[0]
+        status, desc, creator, category, color = result[0]
         status = PollStatus[status]
+        if category:
+            category_str = Vote.colored_category_name(category, color) + " "
+        else:
+            category_str = ""
         vote_count = yield self.count_votes(poll_id, status==PollStatus.RUNNING)
-        self.bot.notice(issuer, "Poll #{poll_id} {status.name}: {desc} "
+        self.bot.notice(issuer, "{category}Poll #{poll_id} {status.name}: {desc} "
                 "by {creator}: YES:{vote_count.yes} | NO:{vote_count.no} | "
                 "ABSTAINED:{vote_count.abstained} | "
                 "NOT VOTED:{vote_count.not_voted}".format(
                     poll_id=poll_id, status=status, desc=textwrap.shorten(desc, 50),
-                    creator=creator, vote_count=vote_count))
+                    creator=creator, vote_count=vote_count,
+                    category=category_str))
 
     @defer.inlineCallbacks
     def cmd_category_add(self, issuer, name, description, color, confidential):

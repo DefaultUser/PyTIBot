@@ -34,6 +34,7 @@ from . import abstract
 from util import filesystem as fs
 from util.decorators import maybe_deferred
 from util import formatting
+from util.formatting import IRCColorCodes
 
 
 _INIT_DB_STATEMENTS = ["""
@@ -384,12 +385,13 @@ class Vote(abstract.ChannelWatcher):
         return datetime.strptime(time, "%Y-%m-%d %H:%M:%S").replace(tzinfo=timezone.utc)
 
     @staticmethod
-    def colored_category_name(name, color):
-        if color:
+    def colored_category_name(name, colorname):
+        if colorname:
+            color = IRCColorCodes[colorname]
             if formatting.good_contrast_with_black[color]:
-                fg = "black"
+                fg = IRCColorCodes.black
             else:
-                fg = "white"
+                fg = IRCColorCodes.white
             return formatting.colored(name, fg, color, endtoken=True)
         return name
 

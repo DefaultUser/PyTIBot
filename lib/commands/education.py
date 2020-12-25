@@ -42,6 +42,9 @@ list of choices"""
             else:
                 result = random.choice(args)
         except (IndexError, ValueError):
-            result = formatting.colored("Invalid call - check the help", "red")
+            result = formatting.colored("Invalid call - check the help",
+                                        formatting.IRCColorCodes.red)
         bot.msg(channel, result)
+
+
 

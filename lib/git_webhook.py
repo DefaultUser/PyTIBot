@@ -28,7 +28,7 @@ import sys
 from unidecode import unidecode
 
 from util.formatting import colored, closest_irc_color, split_rgb_string,\
-    good_contrast_with_black
+    good_contrast_with_black, IRCColorCodes
 from util.misc import str_to_bytes, bytes_to_str, filter_dict
 from util.internet import shorten_github_url
 from lib import webhook_actions
@@ -128,13 +128,13 @@ class GitWebhookServer(Resource):
         color = label["color"]
         try:
             bg = closest_irc_color(*split_rgb_string(color))
-            fg = "black" if good_contrast_with_black[bg] else "white"
+            fg = IRCColorCodes.black if good_contrast_with_black[bg] else IRCColorCodes.white
         except Exception as e:
             self.log.error("Issue label: could not find a closest IRC "
                            "color for colorcode '{color}' ({error})",
                            color=color, error=e)
             bg = None
-            fg = "dark_green"
+            fg = IRCColorCodes.dark_green
         return fg, bg
 
     def report_hook_success_msg(self, success, actionname):
@@ -142,11 +142,11 @@ class GitWebhookServer(Resource):
         Send a success or fail message to the 'hook_report_users'
         """
         if isinstance(success, Failure):
-            message = "Hook {} failed: {}".format(colored(actionname, "blue"),
+            message = "Hook {} failed: {}".format(colored(actionname, IRCColorCodes.blue),
                                                   success.getErrorMessage())
         else:
             message = "Hook {} finished without errors".format(
-                colored(actionname, "blue"))
+                colored(actionname, IRCColorCodes.blue))
         for user in self.hook_report_users:
             self.bot.msg(user, message)
 
@@ -242,7 +242,7 @@ class GitWebhookServer(Resource):
                 message = message[:100] + "..."
             self.report_to_irc(repo_name, "{author}: {message} ({url})".format(
                 author=colored(unidecode(commit["author"]["name"]),
-                               "dark_cyan"),
+                               IRCColorCodes.dark_cyan),
                 message=message,
                 url=url))
 
@@ -250,20 +250,20 @@ class GitWebhookServer(Resource):
     def on_github_push(self, data):
         action = "pushed"
         if data["deleted"]:
-            action = colored("deleted", "red")
+            action = colored("deleted", IRCColorCodes.red)
         elif data["forced"]:
-            action = colored("force pushed", "red")
+            action = colored("force pushed", IRCColorCodes.red)
         url = yield shorten_github_url(data["compare"])
         repo_name = data["repository"]["name"]
         branch = data["ref"].split("/", 2)[-1]
         msg = ("[{repo_name}] {pusher} {action} {num_commits} commit(s) to "
                "{branch}: {compare}".format(
-                   repo_name=colored(repo_name, "blue"),
+                   repo_name=colored(repo_name, IRCColorCodes.blue),
                    pusher=colored(unidecode(data["pusher"]["name"]),
-                                  "dark_cyan"),
+                                  IRCColorCodes.dark_cyan),
                    action=action,
                    num_commits=len(data["commits"]),
-                   branch=colored(branch, "dark_green"),
+                   branch=colored(branch, IRCColorCodes.dark_green),
                    compare=url))
         self.report_to_irc(repo_name, msg)
         self.commits_to_irc(repo_name, data["commits"], github=True)
@@ -297,20 +297,20 @@ class GitWebhookServer(Resource):
         elif action == "milestoned":
             payload = data["issue"]["milestone"]["title"]
         elif action == "opened":
-            action = colored(action, "red")
+            action = colored(action, IRCColorCodes.red)
         elif action == "reopened":
-            action = colored(action, "red")
+            action = colored(action, IRCColorCodes.red)
         elif action == "closed":
-            action = colored(action, "dark_green")
+            action = colored(action, IRCColorCodes.dark_green)
         if not payload:
             payload = yield shorten_github_url(data["issue"]["html_url"])
         msg = ("[{repo_name}] {user} {action} Issue #{number} {title}: "
-               "{payload}".format(repo_name=colored(repo_name, "blue"),
+               "{payload}".format(repo_name=colored(repo_name, IRCColorCodes.blue),
                                   user=colored(data["sender"]["login"],
-                                               "dark_cyan"),
+                                               IRCColorCodes.dark_cyan),
                                   action=action,
                                   number=colored(str(data["issue"]["number"]),
-                                                 "dark_yellow"),
+                                                 IRCColorCodes.dark_yellow),
                                   title=unidecode(data["issue"]["title"]),
                                   payload=payload))
         self.report_to_irc(repo_name, msg)
@@ -321,10 +321,12 @@ class GitWebhookServer(Resource):
         repo_name = data["repository"]["name"]
         msg = ("[{repo_name}] {user} {action} comment on Issue #{number} "
                "{title} {url}".format(
-                   repo_name=colored(repo_name, "blue"),
-                   user=colored(data["comment"]["user"]["login"], "dark_cyan"),
+                   repo_name=colored(repo_name, IRCColorCodes.blue),
+                   user=colored(data["comment"]["user"]["login"],
+                                IRCColorCodes.dark_cyan),
                    action=data["action"],
-                   number=colored(str(data["issue"]["number"]), "dark_yellow"),
+                   number=colored(str(data["issue"]["number"]),
+                                  IRCColorCodes.dark_yellow),
                    title=unidecode(data["issue"]["title"]),
                    url=url))
         self.report_to_irc(repo_name, msg)
@@ -332,19 +334,19 @@ class GitWebhookServer(Resource):
     def on_github_create(self, data):
         repo_name = data["repository"]["name"]
         msg = "[{repo_name}] {user} created {ref_type} {ref}".format(
-            repo_name=colored(repo_name, "blue"),
-            user=colored(data["sender"]["login"], "dark_cyan"),
+            repo_name=colored(repo_name, IRCColorCodes.blue),
+            user=colored(data["sender"]["login"], IRCColorCodes.dark_cyan),
             ref_type=data["ref_type"],
-            ref=colored(data["ref"], "dark_magenta"))
+            ref=colored(data["ref"], IRCColorCodes.dark_magenta))
         self.report_to_irc(repo_name, msg)
 
     def on_github_delete(self, data):
         repo_name = data["repository"]["name"]
         msg = "[{repo_name}] {user} deleted {ref_type} {ref}".format(
-            repo_name=colored(repo_name, "blue"),
-            user=colored(data["sender"]["login"], "dark_cyan"),
+            repo_name=colored(repo_name, IRCColorCodes.blue),
+            user=colored(data["sender"]["login"], IRCColorCodes.dark_cyan),
             ref_type=data["ref_type"],
-            ref=colored(data["ref"], "dark_magenta"))
+            ref=colored(data["ref"], IRCColorCodes.dark_magenta))
         self.report_to_irc(repo_name, msg)
 
     @defer.inlineCallbacks
@@ -352,8 +354,8 @@ class GitWebhookServer(Resource):
         repo_name = data["repository"]["name"]
         url = yield shorten_github_url(data["forkee"]["html_url"])
         msg = "[{repo_name}] {user} created fork {url}".format(
-            repo_name=colored(repo_name, "blue"),
-            user=colored(data["forkee"]["owner"]["login"], "dark_cyan"),
+            repo_name=colored(repo_name, IRCColorCodes.blue),
+            user=colored(data["forkee"]["owner"]["login"], IRCColorCodes.dark_cyan),
             url=url)
         self.report_to_irc(repo_name, msg)
 
@@ -362,8 +364,8 @@ class GitWebhookServer(Resource):
         repo_name = data["repository"]["name"]
         url = yield shorten_github_url(data["comment"]["html_url"])
         msg = "[{repo_name}] {user} commented on commit {url}".format(
-            repo_name=colored(repo_name, "blue"),
-            user=colored(data["comment"]["user"]["login"], "dark_cyan"),
+            repo_name=colored(repo_name, IRCColorCodes.blue),
+            user=colored(data["comment"]["user"]["login"], IRCColorCodes.dark_cyan),
             url=url)
         self.report_to_irc(repo_name, msg)
 
@@ -372,7 +374,7 @@ class GitWebhookServer(Resource):
         repo_name = data["repository"]["name"]
         url = yield shorten_github_url(data["release"]["html_url"])
         msg = "[{repo_name}] New release {url}".format(
-            repo_name=colored(data["repository"]["name"], "blue"),
+            repo_name=colored(data["repository"]["name"], IRCColorCodes.blue),
             url=url)
         self.report_to_irc(repo_name, msg)
 
@@ -398,15 +400,15 @@ class GitWebhookServer(Resource):
             action = "removed review request for"
             payload = data["requested_reviewer"]["login"]
         elif action == "opened":
-            action = colored(action, "dark_green")
+            action = colored(action, IRCColorCodes.dark_green)
         elif action == "reopened":
-            action = colored(action, "dark_green")
+            action = colored(action, IRCColorCodes.dark_green)
         elif action == "closed":
             if data["pull_request"]["merged"]:
-                action = colored("merged", "dark_green")
+                action = colored("merged", IRCColorCodes.dark_green)
                 user = data["pull_request"]["merged_by"]["login"]
             else:
-                action = colored(action, "red")
+                action = colored(action, IRCColorCodes.red)
         elif action == "synchronize":
             action = "synchronized"
         elif action == "ready_for_review":
@@ -416,16 +418,16 @@ class GitWebhookServer(Resource):
                 data["pull_request"]["html_url"])
         msg = ("[{repo_name}] {user} {action} Pull Request #{number} {title} "
                "({head} -> {base}): {payload}".format(
-                   repo_name=colored(repo_name, "blue"),
-                   user=colored(user, "dark_cyan"),
+                   repo_name=colored(repo_name, IRCColorCodes.blue),
+                   user=colored(user, IRCColorCodes.dark_cyan),
                    action=action,
                    number=colored(str(data["pull_request"]["number"]),
-                                  "dark_yellow"),
+                                  IRCColorCodes.dark_yellow),
                    title=unidecode(data["pull_request"]["title"]),
                    head=colored(data["pull_request"]["head"]["ref"],
-                                "dark_blue"),
+                                IRCColorCodes.dark_blue),
                    base=colored(data["pull_request"]["base"]["ref"],
-                                "dark_red"),
+                                IRCColorCodes.dark_red),
                    payload=payload))
         self.report_to_irc(repo_name, msg)
 
@@ -434,14 +436,14 @@ class GitWebhookServer(Resource):
         type_ = "Review Comment" if is_comment else "Review"
         msg = ("[{repo_name}] {user} {action} {type_} for Pull Request "
                "#{number} {title} ({head} -> {base}): {url}".format(
-                   repo_name=colored(repo_name, "blue"),
-                   user=colored(user, "dark_cyan"),
+                   repo_name=colored(repo_name, IRCColorCodes.blue),
+                   user=colored(user, IRCColorCodes.dark_cyan),
                    action=action,
                    type_=type_,
-                   number=colored(pr_number, "dark_yellow"),
+                   number=colored(pr_number, IRCColorCodes.dark_yellow),
                    title=unidecode(title),
-                   head=colored(head, "dark_blue"),
-                   base=colored(base, "dark_red"),
+                   head=colored(head, IRCColorCodes.dark_blue),
+                   base=colored(base, IRCColorCodes.dark_red),
                    url=", ".join(urls)))
         self.report_to_irc(repo_name, msg)
 
@@ -532,11 +534,11 @@ class GitWebhookServer(Resource):
         repo_name = data["project"]["name"]
         branch = data["ref"].split("/", 2)[-1]
         msg = ("[{repo_name}] {pusher} pushed {num_commits} commit(s) to "
-               "{branch}".format(repo_name=colored(repo_name, "blue"),
+               "{branch}".format(repo_name=colored(repo_name, IRCColorCodes.blue),
                                  pusher=colored(data["user_name"],
-                                                "dark_cyan"),
+                                                IRCColorCodes.dark_cyan),
                                  num_commits=len(data["commits"]),
-                                 branch=colored(branch, "dark_green")))
+                                 branch=colored(branch, IRCColorCodes.dark_green)))
         self.report_to_irc(repo_name, msg)
         self.commits_to_irc(repo_name, data["commits"])
         # subset of information that is common for both GitHUb and GitLab
@@ -556,9 +558,9 @@ class GitWebhookServer(Resource):
     def on_gitlab_tag_push(self, data):
         repo_name = data["project"]["name"]
         msg = ("[{repo_name}] {pusher} added tag {tag}".format(
-            repo_name=colored(repo_name, "blue"),
-            pusher=colored(data["user_name"], "dark_cyan"),
-            tag=colored(data["ref"].split("/", 2)[-1], "dark_green")))
+            repo_name=colored(repo_name, IRCColorCodes.blue),
+            pusher=colored(data["user_name"], IRCColorCodes.dark_cyan),
+            tag=colored(data["ref"].split("/", 2)[-1], IRCColorCodes.dark_green)))
         self.report_to_irc(repo_name, msg)
         self.commits_to_irc(repo_name, data["commits"])
 
@@ -567,19 +569,20 @@ class GitWebhookServer(Resource):
         attribs = data["object_attributes"]
         action = attribs["action"]
         if action == "open":
-            action = colored("opened", "red")
+            action = colored("opened", IRCColorCodes.red)
         elif action == "reopen":
-            action = colored("reopened", "red")
+            action = colored("reopened", IRCColorCodes.red)
         elif action == "close":
-            action = colored("closed", "dark_green")
+            action = colored("closed", IRCColorCodes.dark_green)
         elif action == "update":
             action = "updated"
         msg = ("[{repo_name}] {user} {action} Issue #{number} {title} "
-               "{url}".format(repo_name=colored(repo_name, "blue"),
-                              user=colored(data["user"]["name"], "dark_cyan"),
+               "{url}".format(repo_name=colored(repo_name, IRCColorCodes.blue),
+                              user=colored(data["user"]["name"],
+                                           IRCColorCodes.dark_cyan),
                               action=action,
                               number=colored(str(attribs["iid"]),
-                                             "dark_yellow"),
+                                             IRCColorCodes.dark_yellow),
                               title=unidecode(attribs["title"]),
                               url=attribs["url"]))
         self.report_to_irc(repo_name, msg)
@@ -607,10 +610,10 @@ class GitWebhookServer(Resource):
             return
         msg = ("[{repo_name}] {user} commented on {noteable_type} {number} "
                "{title} {url}".format(
-                   repo_name=colored(repo_name, "blue"),
-                   user=colored(data["user"]["name"], "dark_cyan"),
+                   repo_name=colored(repo_name, IRCColorCodes.blue),
+                   user=colored(data["user"]["name"], IRCColorCodes.dark_cyan),
                    noteable_type=noteable_type,
-                   number=colored(str(id), "dark_yellow"),
+                   number=colored(str(id), IRCColorCodes.dark_yellow),
                    title=unidecode(title),
                    url=attribs["url"]))
         self.report_to_irc(repo_name, msg)
@@ -620,25 +623,25 @@ class GitWebhookServer(Resource):
         repo_name = attribs["target"]["name"]
         action = attribs["action"]
         if action == "open":
-            action = colored("opened", "dark_green")
+            action = colored("opened", IRCColorCodes.dark_green)
         elif action == "reopen":
-            action = colored("reopened", "dark_green")
+            action = colored("reopened", IRCColorCodes.dark_green)
         elif action == "close":
-            action = colored("closed", "red")
+            action = colored("closed", IRCColorCodes.red)
         elif action == "merge":
-            action = colored("merged", "dark_green")
+            action = colored("merged", IRCColorCodes.dark_green)
         elif action == "update":
             action = "updated"
         elif action == "approved":
-            action = colored("approved", "dark_green")
+            action = colored("approved", IRCColorCodes.dark_green)
         msg = ("[{repo_name}] {user} {action} Merge Request #{number} "
                "{title} ({source} -> {target}): {url}".format(
-                   repo_name=colored(repo_name, "blue"),
-                   user=colored(data["user"]["name"], "dark_cyan"),
+                   repo_name=colored(repo_name, IRCColorCodes.blue),
+                   user=colored(data["user"]["name"], IRCColorCodes.dark_cyan),
                    action=action,
-                   number=colored(str(attribs["iid"]), "dark_yellow"),
+                   number=colored(str(attribs["iid"]), IRCColorCodes.dark_yellow),
                    title=unidecode(attribs["title"]),
-                   source=colored(attribs["source_branch"], "dark_blue"),
-                   target=colored(attribs["target_branch"], "dark_red"),
+                   source=colored(attribs["source_branch"], IRCColorCodes.dark_blue),
+                   target=colored(attribs["target_branch"], IRCColorCodes.dark_red),
                    url=attribs["url"]))
         self.report_to_irc(repo_name, msg)

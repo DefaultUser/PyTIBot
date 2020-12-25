@@ -19,6 +19,7 @@
 from twisted.protocols.basic import LineOnlyReceiver
 
 from util import formatting
+from util.formatting import ANSIColors
 from util.misc import str_to_bytes, bytes_to_str
 
 
@@ -49,11 +50,11 @@ class STDIOInterface(LineOnlyReceiver, object):
                 method(data)
             except Exception as e:
                 self.sendLine(formatting.ansi_colored("Error: {}".format(e),
-                                                      fg="red"))
+                                                      fg=ANSIColors.red))
         else:
             self.sendLine(formatting.ansi_colored("Error: no such command "
                                                   "{}.".format(command),
-                                                  fg="red"))
+                                                  fg=ANSIColors.red))
 
     def irc_help(self, command=None):
         """Show help
@@ -62,13 +63,14 @@ class STDIOInterface(LineOnlyReceiver, object):
             method = getattr(self, "irc_{}".format(command), None)
             if method:
                 self.sendLine(formatting.ansi_colored(method.__doc__,
-                              fg="cyan"))
+                                                      fg=ANSIColors.cyan))
             else:
                 self.sendLine(formatting.ansi_colored(
-                    "No such command {}".format(command), fg="yellow"))
+                    "No such command {}".format(command),
+                    fg=ANSIColors.yellow))
         else:
             self.sendLine(formatting.ansi_colored("Available commands: ",
-                                                  fg="blue") +
+                                                  fg=ANSIColors.blue) +
                           ", ".join([member[4:] for member in dir(self)
                                      if member.startswith("irc_")]))
 

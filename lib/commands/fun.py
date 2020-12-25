@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2018>  <Sebastian Schmidt>
+# Copyright (C) <2015-2020>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -153,7 +153,7 @@ allow long fortunes, -o to allow offensive fortunes"""
             log.warn("Fortune: Unknown options: {options}",
                      options=unknown_options)
             bot.msg(channel, formatting.colored("Invalid input for fortune",
-                                                "red"))
+                                                formatting.IRCColorCodes.red))
             continue
         if options.list:
             fortunes = []

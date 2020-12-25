@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2016>  <Sebastian Schmidt>
+# Copyright (C) <2015-2020>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -70,7 +70,7 @@ to remove from the list, 'ls' or 'list' to show the list"""
                 else:
                     bot.notice(sender,
                                formatting.colored("Invalid call - check the"
-                                                  " help", "red"))
+                                                  " help", formatting.IRCColorCodes.red))
 
     while True:
         args, sender, senderhost, channel = yield

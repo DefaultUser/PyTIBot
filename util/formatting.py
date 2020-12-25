@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - Formatting Helper
-# Copyright (C) <2015-2019>  <Sebastian Schmidt, Mattia Basaglia>
+# Copyright (C) <2015-2020>  <Sebastian Schmidt, Mattia Basaglia>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,9 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from enum import IntEnum, Enum
 import re
 from collections import namedtuple
-from bidict import bidict
 from colormath.color_objects import sRGBColor, LabColor
 from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
@@ -39,7 +39,7 @@ url_pat = re.compile(r"(((https?)|(ftps?)|(sftp))://[^\s\"\')]+)")
 
 ## \brief Maps color names to the corresponding mIRC numerical values
 ## (as a two-digit strings)
-color_code = bidict({
+IRCColorCodes = Enum("IRCColorCodes", {
     "white": "00",
     "black": "01",
     "dark_blue": "02",
@@ -59,55 +59,65 @@ color_code = bidict({
 })
 
 ## \brief hex color codes for mIRC numerical values
-hex_colors = ["#FFFFFF", "#000000", "#00007F", "#009300", "#FF0000",
-              "#7F0000", "#9C009C", "#FC7F00", "#FFFF00", "#00FC00",
-              "#009393", "#00FFFF", "#0000FC", "#FF00FF", "#7F7F7F",
-              "#D2D2D2"]
+IRCColorsHex = {
+    IRCColorCodes.white: "#FFFFFF",
+    IRCColorCodes.black: "#000000",
+    IRCColorCodes.dark_blue: "#00007F",
+    IRCColorCodes.dark_green: "#009300",
+    IRCColorCodes.red: "#FF0000",
+    IRCColorCodes.dark_red: "#7F0000",
+    IRCColorCodes.dark_magenta: "#9C009C",
+    IRCColorCodes.dark_yellow: "#FC7F00",
+    IRCColorCodes.yellow: "#FFFF00",
+    IRCColorCodes.green: "#00FC00",
+    IRCColorCodes.dark_cyan: "#009393",
+    IRCColorCodes.cyan: "#00FFFF",
+    IRCColorCodes.blue: "#0000FC",
+    IRCColorCodes.magenta: "#FF00FF",
+    IRCColorCodes.dark_gray: "#7F7F7F",
+    IRCColorCodes.gray: "#D2D2D2"}
 
 # dict that indicates if a color is a good background for black text
 good_contrast_with_black = {
-    "white": True,
-    "black": False,
-    "dark_blue": False,
-    "dark_green": True,
-    "red": True,
-    "dark_red": True,
-    "dark_magenta": True,
-    "dark_yellow": True,
-    "yellow": True,
-    "green": True,
-    "dark_cyan": True,
-    "cyan": True,
-    "blue": True,
-    "magenta": True,
-    "dark_gray": True,
-    "gray": True
+    IRCColorCodes.white: True,
+    IRCColorCodes.black: False,
+    IRCColorCodes.dark_blue: False,
+    IRCColorCodes.dark_green: True,
+    IRCColorCodes.red: True,
+    IRCColorCodes.dark_red: True,
+    IRCColorCodes.dark_magenta: True,
+    IRCColorCodes.dark_yellow: True,
+    IRCColorCodes.yellow: True,
+    IRCColorCodes.green: True,
+    IRCColorCodes.dark_cyan: True,
+    IRCColorCodes.cyan: True,
+    IRCColorCodes.blue: True,
+    IRCColorCodes.magenta: True,
+    IRCColorCodes.dark_gray: True,
+    IRCColorCodes.gray: True
 }
 
 ANSI_CSI = "\x1b["
 ANSI_FG_START = 30
 ANSI_BG_START = 40
-ansi_colors = {"black": 0, "red": 1, "green": 2, "yellow": 3,
-               "blue": 4, "magenta": 5, "cyan": 6, "white": 7}
+ANSIColors = IntEnum("ANSIColors", "black red green yellow blue magenta cyan white",
+                     start=0)
 
 
 def colored(text, fgcolor, bgcolor=None, endtoken=True):
     """
     \brief Colorize a string
-    \param fgcolor Color name to be used as text color
-    \param bgcolor Color name to be used as background color, can be None
+    \param fgcolor IRCColorCodes color to be used as text color
+    \param bgcolor IRCColorCodes color to be used as background color, can be None
     \param endtoken Send the colortoken at the end to end colored text
     \returns A string with IRC colors if color is valid
     """
     if not isinstance(text, str):
         text = str(text)
-    if fgcolor not in color_code:
-        print("Color {} not valid, no color added".format(fgcolor))
-        return text
-    if bgcolor and bgcolor in color_code:
-        colorinfo = "{},{}".format(color_code[fgcolor], color_code[bgcolor])
+    if bgcolor:
+        colorinfo = "{},{}".format(fgcolor.value, bgcolor.value)
     else:
-        colorinfo = color_code[fgcolor]
+        colorinfo = fgcolor.value
     if endtoken:
         return _COLOR + colorinfo + text + _COLOR
     return _COLOR + colorinfo + text
@@ -120,11 +130,11 @@ def rainbow_color(factor, colors):
     \param colors        Color names to be featured in the rainbow
     \returns The numerical value of the selected color
     """
-    return color_code[colors[int(factor*len(colors))]]
+    return colors[int(factor*len(colors))]
 
 
-def rainbow(text, colors=["red", "dark_yellow", "green", "cyan", "blue",
-                          "magenta"]):
+def rainbow(text, colors=[IRCColorCodes.red, IRCColorCodes.dark_yellow, IRCColorCodes.green,
+                          IRCColorCodes.cyan, IRCColorCodes.blue, IRCColorCodes.magenta]):
     """
     \brief Colorize a string as a rainbow
     \param text          Input text
@@ -140,7 +150,7 @@ def rainbow(text, colors=["red", "dark_yellow", "green", "cyan", "blue",
         newcolor = rainbow_color(float(index)/len(text), colors)
         if newcolor != color:
             color = newcolor
-            ret += _COLOR + color
+            ret += _COLOR + color.value
         ret += char
     return ret + _COLOR
 
@@ -301,7 +311,9 @@ def to_tags(text, link_urls=True):
 
 
 colorpat = re.compile(r"\$COLOR(\((\d{{1,2}}|{colors})(,(\d{{1,2}}|{colors}))?\))?".format(
-    colors="|".join(color_code.keys())))
+    colors="|".join(["white", "black", "dark_blue", "dark_green", "red", "dark_red",
+                     "dark_magenta", "dark_yellow", "yellow", "green", "dark_cyan",
+                     "cyan", "blue", "magenta", "dark_gray", "gray"])))
 rainbowpat = re.compile(r"\$RAINBOW\(([^)]+)\)")
 def from_human_readable(text):
     """
@@ -309,13 +321,21 @@ def from_human_readable(text):
     """
     def colorname_sub(match):
         fg = match.group(2)
-        fg = color_code.get(fg, fg)
+        if fg is not None:
+            if fg.isdecimal():
+                fg = IRCColorCodes(fg)
+            else:
+                fg = IRCColorCodes[fg]
         bg = match.group(4)
-        bg = color_code.get(bg, bg)
+        if bg is not None:
+            if bg.isdecimal():
+                bg = IRCColorCodes(bg)
+            else:
+                bg = IRCColorCodes[bg]
         if fg and bg:
-            col_code = fg + "," + bg
+            col_code = fg.value + "," + bg.value
         elif fg:
-            col_code = fg
+            col_code = fg.value
         else:
             col_code = ""
         return _COLOR + col_code
@@ -334,15 +354,9 @@ def from_human_readable(text):
 def ansi_colored(text, fg=None, bg=None):
     infocodes = []
     if fg is not None:
-        if fg not in ansi_colors:
-            raise ValueError("Invalid foreground color")
-        else:
-            infocodes.append(str(ansi_colors[fg] + ANSI_FG_START))
+        infocodes.append(str(fg.value + ANSI_FG_START))
     if bg is not None:
-        if bg not in ansi_colors:
-            raise ValueError("Invalid background color")
-        else:
-            infocodes.append(str(ansi_colors[bg] + ANSI_BG_START))
+        infocodes.append(str(bg.value + ANSI_BG_START))
     return ANSI_CSI + ";".join(infocodes) + "m" + text + ANSI_CSI + "0m"
 
 
@@ -378,6 +392,6 @@ def closest_irc_color(r, g, b):
         col = convert_color(sRGBColor(*split_rgb_string(val[1]),
                                       is_upscaled=True), LabColor)
         return delta_e_cie2000(color_lab1, col)
-    closest_index, closest_distance = min(enumerate(hex_colors),
+    closest_color, closest_distance = min(IRCColorsHex.items(),
                                           key=sort_function)
-    return color_code.inv["{:02}".format(closest_index)]
+    return closest_color

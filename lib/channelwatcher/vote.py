@@ -843,6 +843,9 @@ class Vote(abstract.ChannelWatcher):
             else:
                 self.bot.notice(issuer, "Invalid value given")
                 return
+        elif field == "color":
+            if value.lower() in ["none", "null"]:
+                value = None
         try:
             yield self.dbpool.runInteraction(Vote.update_category_field, name,
                                              field, value)

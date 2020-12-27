@@ -8,3 +8,4 @@ bidict
 unidecode
 colormath
 markovify
+dateparser

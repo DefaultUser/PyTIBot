@@ -110,18 +110,22 @@ class UserModifyOptions(OptionsWithoutHandlers):
         ['auth', 'a', "Use auth of the user directly"],
     ]
 
-    def parseArgs(self, name, privilege):
-        self["user"] = name
-        try:
-            self["privilege"] = UserPrivilege[privilege.upper()]
-        except KeyError:
-            raise usage.UsageError("Invalid privilege specified")
+    def parseArgs(self, user, field, value):
+        self["user"] = user
+        self["field"] = field
+        self["value"] = value
+
+    def postOptions(self):
+        if self["field"] not in ["name", "privilege"]:
+            raise usage.UsageError("Invalid column name specified")
+        if self["field"] == "privilege":
+            self["value"] = self["value"].upper()
 
 
 class UserOptions(OptionsWithoutHandlers):
     subCommands = [
         ['add', None, UserAddOptions, "Add a new user"],
-        ['modify', 'mod', UserModifyOptions, "Modify user rights"]
+        ['modify', 'mod', UserModifyOptions, "Modify user name or rights"]
     ]
 
 
@@ -325,10 +329,11 @@ class Vote(abstract.ChannelWatcher):
                         "priv": privilege.name})
 
     @staticmethod
-    def update_user_privilege(cursor, auth, privilege):
+    def update_user_field(cursor, auth, field, value):
         cursor.execute('UPDATE Users '
-                       'SET privilege=:priv '
-                       'WHERE id=:auth;', {"auth": auth, "priv": privilege.name})
+                       'SET {field}=:value '
+                       'WHERE id=:auth;'.format(field=field),
+                       {"auth": auth, "value": value})
 
     @staticmethod
     def insert_poll(cursor, user, description, category):
@@ -564,7 +569,7 @@ class Vote(abstract.ChannelWatcher):
                                                                          auth))
 
     @defer.inlineCallbacks
-    def cmd_user_modify(self, issuer, user, privilege, **kwargs):
+    def cmd_user_modify(self, issuer, user, field, value, **kwargs):
         is_admin = yield self.bot.is_user_admin(issuer)
         issuer_privilege = yield self.get_user_privilege(issuer)
         if not (is_admin or issuer_privilege == UserPrivilege.ADMIN):
@@ -583,8 +588,8 @@ class Vote(abstract.ChannelWatcher):
             self.bot.notice(issuer, "No such user found in the database")
             return
         try:
-            yield self.dbpool.runInteraction(Vote.update_user_privilege, auth,
-                                             privilege)
+            yield self.dbpool.runInteraction(Vote.update_user_field, auth, field,
+                                             value)
         except Exception as e:
             self.bot.notice(issuer, "Couldn't modify user {} ({}). "
                             "Reason: {}".format(user, auth, e))

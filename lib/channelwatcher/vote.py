@@ -1063,7 +1063,7 @@ class Vote(abstract.ChannelWatcher):
         if not (yield self.is_vote_user(user)):
             return
         result = yield self.dbpool.runQuery(
-                'SELECT id FROM Polls WHERE status="RUNNING" ORDER BY id ASC;')
+                'SELECT id FROM Polls WHERE status="RUNNING";')
         if not result:
             return
         num_running_polls = len(result)
@@ -1079,7 +1079,7 @@ class Vote(abstract.ChannelWatcher):
             num_already_voted = len(result)
         remaining = num_running_polls - num_already_voted
         if remaining:
-            not_voted = poll_id_list - set(itertools.chain(*result))
+            not_voted = sorted(set(poll_id_list) - set(itertools.chain(*result)))
             self.bot.notice(user, "There are {} open polls without your "
                             "vote ({})".format(remaining, ", ".join(
                                 map(str, not_voted))))

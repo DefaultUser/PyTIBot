@@ -239,6 +239,20 @@ class CategoryModifyOptions(OptionsWithoutHandlers):
         self["field"] = field
         self["value"] = " ".join(args)
 
+    def postOptions(self):
+        if self["field"] not in ["description", "color", "confidential"]:
+            raise usage.UsageError("Invalid column name specified")
+        if self["field"] == "confidential":
+            if self["value"].lower() in ["true", "yes", "1"]:
+                self["value"] = True
+            elif self["value"].lower() in ["false", "no", "0"]:
+                self["value"] = False
+            else:
+                raise usage.UsageError("Invalid value given")
+        elif self["field"] == "color":
+            if self["value"].lower() in ["none", "null"]:
+                self["value"] = None
+
 
 class CategoryListOptions(OptionsWithoutHandlers):
     optFlags = [
@@ -841,20 +855,6 @@ class Vote(abstract.ChannelWatcher):
         if not res:
             self.bot.notice(issuer, "Category {} not found".format(name))
             return
-        if field not in ["description", "color", "confidential"]:
-            self.bot.notice(issuer, "Invalid column name specified")
-            return
-        if field == "confidential":
-            if value.lower() in ["true", "yes", "1"]:
-                value = True
-            elif value.lower() in ["false", "no", "0"]:
-                value = False
-            else:
-                self.bot.notice(issuer, "Invalid value given")
-                return
-        elif field == "color":
-            if value.lower() in ["none", "null"]:
-                value = None
         try:
             yield self.dbpool.runInteraction(Vote.update_category_field, name,
                                              field, value)

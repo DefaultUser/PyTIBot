@@ -456,8 +456,9 @@ class Vote(abstract.ChannelWatcher):
             Vote.logger.warn("Trying to cancel delayed calls for poll #{poll_id}, "
                              "but no delayed calls found", poll_id=poll_id)
             return
-        delayed_calls.end.cancel()
-        if delayed_calls.end_warning:
+        if delayed_calls.end.active():
+            delayed_calls.end.cancel()
+        if delayed_calls.end_warning and delayed_calls.end_warning.active():
             delayed_calls.end_warning.cancel()
 
     @defer.inlineCallbacks

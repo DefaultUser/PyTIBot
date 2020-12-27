@@ -402,7 +402,7 @@ class Vote(abstract.ChannelWatcher):
             Vote.logger.info("User {user} is not authed", user=name)
             return UserPrivilege.INVALID
         privilege = yield self.dbpool.runQuery('SELECT privilege FROM Users '
-                                               'WHERE ID = "{}"'.format(auth))
+                                               'WHERE ID=:auth;', {"auth": auth})
         try:
             return UserPrivilege[privilege[0][0]]
         except Exception as e:
@@ -419,7 +419,7 @@ class Vote(abstract.ChannelWatcher):
     @defer.inlineCallbacks
     def setup_poll_delayed_calls(self):
         res = yield self.dbpool.runQuery('SELECT id, time_end FROM Polls '
-                'WHERE status="RUNNING";')
+                                         'WHERE status="RUNNING";')
         for row in res:
             poll_id = int(row[0])
             time_end = Vote.parse_db_timeentry(row[1])
@@ -463,7 +463,8 @@ class Vote(abstract.ChannelWatcher):
     @defer.inlineCallbacks
     def count_votes(self, poll_id, is_running):
         res = yield self.dbpool.runQuery('SELECT vote, COUNT(vote) FROM Votes '
-                'WHERE poll_id="{}" GROUP BY vote;'.format(poll_id))
+                                         'WHERE poll_id=:poll_id GROUP BY vote;',
+                                         {"poll_id": poll_id})
         if not res:
             return VoteCount(abstained=0, yes=0, no=0, not_voted=self._num_active_users)
         c = defaultdict(int)
@@ -477,8 +478,10 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def warn_end_poll(self, poll_id):
-        res = yield self.dbpool.runQuery('SELECT description, creator FROM Polls '
-            'WHERE id="{}";'.format(poll_id))
+        res = yield self.dbpool.runQuery(
+                'SELECT Polls.description, Users.name FROM Polls, Users '
+                'WHERE Polls.id=:poll_id AND Polls.creator=Users.id;',
+                {"poll_id": poll_id})
         if not res:
             Vote.logger.warn("Poll with id {poll_id} doesn't exist, but delayed call "
                     "was running", poll_id=poll_id)
@@ -493,8 +496,10 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def end_poll(self, poll_id):
-        res = yield self.dbpool.runQuery('SELECT description, creator FROM Polls '
-            'WHERE id="{}";'.format(poll_id))
+        res = yield self.dbpool.runQuery(
+                'SELECT Polls.description, Users.name FROM Polls, Users '
+                'WHERE Polls.id=:poll_id AND Polls.creator=Users.id;',
+                {"poll_id": poll_id})
         if not res:
             Vote.logger.warn("Poll with id {poll_id} doesn't exist, but delayed call "
                     "was running", poll_id=poll_id)
@@ -558,7 +563,7 @@ class Vote(abstract.ChannelWatcher):
             self.bot.notice(issuer, "Couldn't query user's AUTH, aborting...")
             return
         entry = yield self.dbpool.runQuery('SELECT * FROM Users '
-                                           'WHERE id = "{}";'.format(auth))
+                                           'WHERE id=:auth;', {"auth": auth})
         if not entry:
             self.bot.notice(issuer, "No such user found in the database")
             return
@@ -587,7 +592,8 @@ class Vote(abstract.ChannelWatcher):
             return
         if category:
             res = yield self.dbpool.runQuery('SELECT id, color FROM Categories '
-                    'WHERE name=:name;', {"name": category})
+                                             'WHERE name=:name;',
+                                             {"name": category})
             if not res:
                 self.bot.notice(issuer, "Invalid category specified")
                 return
@@ -604,7 +610,7 @@ class Vote(abstract.ChannelWatcher):
                 Vote.logger.warn("Error inserting poll into DB: {error}",
                                  error=e)
                 return
-            poll_id = yield self.dbpool.runQuery('SELECT MAX(id) FROM Polls')
+            poll_id = yield self.dbpool.runQuery('SELECT MAX(id) FROM Polls;')
             poll_id = poll_id[0][0]
             if category:
                 category_str = Vote.colored_category_name(category, category_color) + " "
@@ -632,8 +638,8 @@ class Vote(abstract.ChannelWatcher):
         issuer_auth = yield self.bot.get_auth(issuer)
         with self._lock: # TODO: is this needed?
             status = yield self.dbpool.runQuery(
-                    'SELECT status FROM Polls '
-                    'WHERE id = "{}";'.format(poll_id))
+                    'SELECT status FROM Polls WHERE id=:id;',
+                    {"id": poll_id})
             if not status:
                 self.bot.notice(issuer, "No Poll with given ID found, "
                                 "aborting...")
@@ -661,7 +667,7 @@ class Vote(abstract.ChannelWatcher):
         with self._lock: # TODO: needed?
             temp = yield self.dbpool.runQuery(
                     'SELECT creator, status FROM Polls '
-                    'WHERE id = "{}";'.format(poll_id))
+                    'WHERE id=:id;', {"id": poll_id})
             if not temp:
                 self.bot.notice(issuer, "No Poll with given ID found, "
                                 "aborting...")
@@ -692,7 +698,7 @@ class Vote(abstract.ChannelWatcher):
     @defer.inlineCallbacks
     def cmd_poll_expire(self, issuer, poll_id, change):
         res = yield self.dbpool.runQuery('SELECT status, time_end FROM Polls '
-                'WHERE id={};'.format(poll_id))
+                                         'WHERE id=:id;', {"id": poll_id})
         if not res:
             self.bot.notice(issuer, "Poll #{} doesn't exist".format(poll_id))
             return
@@ -756,8 +762,9 @@ class Vote(abstract.ChannelWatcher):
             else:
                 where = 'WHERE ' + categoryfilter
         result = yield self.dbpool.runQuery(
-                'SELECT Polls.id, Polls.status, Polls.description, Categories.name, '
-                'Categories.color FROM Polls LEFT JOIN Categories ON Polls.category = Categories.id ' +
+                'SELECT Polls.id, Polls.status, Polls.description, Users.name, Categories.name, Categories.color '
+                'FROM Polls LEFT JOIN Categories ON Polls.category=Categories.id '
+                           'LEFT JOIN Users ON Polls.creator=Users.id ' +
                 where + ' ORDER BY Polls.id DESC;', {"status": status.name, "category": category})
         if not result:
             self.bot.notice(issuer, "No Polls found")
@@ -765,7 +772,7 @@ class Vote(abstract.ChannelWatcher):
         issuer_id = yield self.bot.get_auth(issuer)
         if not issuer_id:
             issuer_id = issuer
-        for i, (poll_id, poll_status, desc, category, color) in enumerate(result):
+        for i, (poll_id, poll_status, desc, creator, category, color) in enumerate(result):
             if (i!=0 and i%5==0):
                 confirm = yield self.require_confirmation(issuer, issuer_id,
                         "Continue? (confirm with {prefix}yes)".format(
@@ -776,16 +783,18 @@ class Vote(abstract.ChannelWatcher):
                 category_str = Vote.colored_category_name(category, color) + " "
             else:
                 category_str = ""
-            self.bot.notice(issuer, "{category}#{poll_id} ({status}): "
-                            "{description}".format(poll_id=poll_id, status=poll_status,
+            self.bot.notice(issuer, "{category}#{poll_id} by {creator} ({status}): "
+                            "{description}".format(poll_id=poll_id, creator=creator,
+                                                   status=poll_status,
                                                    description=textwrap.shorten(desc, 50),
                                                    category=category_str))
 
     @defer.inlineCallbacks
     def cmd_poll_info(self, issuer, poll_id):
         result = yield self.dbpool.runQuery(
-                'SELECT Polls.status, Polls.description, Polls.creator, Categories.name, '
-                'Categories.color FROM Polls LEFT JOIN Categories ON Polls.category = Categories.id '
+                'SELECT Polls.status, Polls.description, Users.name, Categories.name, Categories.color '
+                'FROM Polls LEFT JOIN Categories ON Polls.category=Categories.id '
+                           'LEFT JOIN Users ON Polls.creator=Users.id '
                 'WHERE Polls.id=:poll_id;', {"poll_id": poll_id})
         if not result:
             self.bot.notice(issuer, "No Poll with ID #{} found".format(poll_id))
@@ -797,10 +806,9 @@ class Vote(abstract.ChannelWatcher):
         else:
             category_str = ""
         vote_count = yield self.count_votes(poll_id, status==PollStatus.RUNNING)
-        self.bot.notice(issuer, "{category}Poll #{poll_id} {status.name}: {desc} "
-                "by {creator}: YES:{vote_count.yes} | NO:{vote_count.no} | "
-                "ABSTAINED:{vote_count.abstained} | "
-                "NOT VOTED:{vote_count.not_voted}".format(
+        self.bot.notice(issuer, "{category}Poll #{poll_id} by {creator} {status.name}: {desc}: "
+                "YES:{vote_count.yes} | NO:{vote_count.no} | "
+                "ABSTAINED:{vote_count.abstained} | NOT VOTED:{vote_count.not_voted}".format(
                     poll_id=poll_id, status=status, desc=textwrap.shorten(desc, 50),
                     creator=creator, vote_count=vote_count,
                     category=category_str))
@@ -828,7 +836,7 @@ class Vote(abstract.ChannelWatcher):
             self.bot.notice(issuer, "Only Admins can modify categories")
             return
         res = yield self.dbpool.runQuery('SELECT id FROM Categories '
-                'WHERE name="{}";'.format(name))
+                                         'WHERE name=:name;', {"name": name})
         if not res:
             self.bot.notice(issuer, "Category {} not found".format(name))
             return
@@ -890,8 +898,8 @@ class Vote(abstract.ChannelWatcher):
             self.bot.notice(voter, "You are not allowed to vote")
             return
         voterid = yield self.bot.get_auth(voter)
-        pollstatus = yield self.dbpool.runQuery('SELECT status FROM Polls '
-                'WHERE id = "{}";'.format(poll_id))
+        pollstatus = yield self.dbpool.runQuery(
+                'SELECT status FROM Polls WHERE id=:id;', {"id": poll_id})
         if not pollstatus:
             self.bot.notice(voter, "Poll #{} doesn't exist".format(poll_id))
             return
@@ -903,8 +911,8 @@ class Vote(abstract.ChannelWatcher):
         try:
             query = yield self.dbpool.runQuery(
                     'SELECT vote, comment FROM Votes '
-                    'WHERE poll_id = "{}" AND user = "{}";'.format(poll_id,
-                                                                   voterid))
+                    'WHERE poll_id=:poll_id AND user=:voter;',
+                    {"poll_id": poll_id, "voterid": voterid})
             if query:
                 previous_decision = VoteDecision[query[0][0]]
                 previous_comment = query[0][1]
@@ -989,16 +997,17 @@ class Vote(abstract.ChannelWatcher):
         privilege = yield self.get_user_privilege(user)
         if privilege not in (UserPrivilege.USER, UserPrivilege.ADMIN):
             return
-        result = yield self.dbpool.runQuery('SELECT id FROM Polls '
-                'WHERE status="RUNNING";')
+        result = yield self.dbpool.runQuery(
+                'SELECT id FROM Polls WHERE status="RUNNING" ORDER BY id ASC;')
         if not result:
             return
         num_running_polls = len(result)
         poll_id_list = set(itertools.chain(*result))
         user_id = yield self.bot.get_auth(user)
         result = yield self.dbpool.runQuery('SELECT poll_id FROM Votes '
-                'WHERE user="{user_id}" AND poll_id IN ({poll_ids});'.format(
-                    user_id=user_id, poll_ids=",".join(map(str, poll_id_list))))
+                'WHERE user=:user_id AND poll_id IN ({poll_ids});'.format(
+                    poll_ids=",".join(map(str, poll_id_list))),
+                {"user_id": user_id})
         if not result:
             num_already_voted = 0
         else:

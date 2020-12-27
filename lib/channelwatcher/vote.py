@@ -579,8 +579,7 @@ class Vote(abstract.ChannelWatcher):
     @defer.inlineCallbacks
     def cmd_user_add(self, issuer, user, privilege):
         is_admin = yield self.bot.is_user_admin(issuer)
-        issuer_privilege = yield self.get_user_privilege(issuer)
-        if not (is_admin or issuer_privilege == UserPrivilege.ADMIN):
+        if not (is_admin or (yield self.is_vote_admin(issuer))):
             self.bot.notice(issuer, "Insufficient permissions")
             return
         auth = yield self.bot.get_auth(user)
@@ -605,8 +604,7 @@ class Vote(abstract.ChannelWatcher):
     @defer.inlineCallbacks
     def cmd_user_modify(self, issuer, user, field, value, **kwargs):
         is_admin = yield self.bot.is_user_admin(issuer)
-        issuer_privilege = yield self.get_user_privilege(issuer)
-        if not (is_admin or issuer_privilege == UserPrivilege.ADMIN):
+        if not (is_admin or (yield self.is_vote_admin(issuer))):
             self.bot.notice(issuer, "Insufficient permissions")
             return
         if kwargs["auth"]:
@@ -649,15 +647,12 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def cmd_poll_create(self, issuer, description, category, **kwargs):
-        privilege = yield self.get_user_privilege(issuer)
         issuer_auth = yield self.bot.get_auth(issuer)
-        if privilege not in [UserPrivilege.USER, UserPrivilege.ADMIN]:
+        if not (yield self.is_vote_user(issuer)):
             self.bot.notice(issuer, "You are not allowed to create votes")
             return
         if category:
-            res = yield self.dbpool.runQuery('SELECT id, color FROM Categories '
-                                             'WHERE name=:name;',
-                                             {"name": category})
+            res = yield self.get_category_info(category)
             if not res:
                 self.bot.notice(issuer, "Invalid category specified")
                 return
@@ -722,23 +717,17 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def cmd_poll_veto(self, issuer, poll_id, reason):
-        issuer_privilege = yield self.get_user_privilege(issuer)
-        if issuer_privilege != UserPrivilege.ADMIN:
+        if not (yield self.is_vote_admin(issuer)):
             self.bot.notice(issuer, "Only admins can VETO polls")
             return
         issuer_auth = yield self.bot.get_auth(issuer)
         with self._lock: # TODO: is this needed?
-            status = yield self.dbpool.runQuery(
-                    'SELECT status FROM Polls WHERE id=:id;',
-                    {"id": poll_id})
-            if not status:
-                self.bot.notice(issuer, "No Poll with given ID found, "
-                                "aborting...")
-                return
-            status = PollStatus[status[0][0]]
-            if status != PollStatus.RUNNING:
-                self.bot.notice(issuer, "Poll #{} isn't running ({})".format(
-                    poll_id, status.name))
+            try:
+                if not(yield self.is_poll_running(poll_id)):
+                    self.bot.notice(issuer, "Poll isn't running")
+                    return
+            except KeyError:
+                self.bot.notice(issuer, "Poll doesn't exist")
                 return
             try:
                 # TODO: confirmation?
@@ -798,8 +787,7 @@ class Vote(abstract.ChannelWatcher):
         if status != PollStatus.RUNNING:
             self.bot.notice(issuer, "Poll #{} isn't running".format(poll_id))
             return
-        issuer_privilege = yield self.get_user_privilege(issuer)
-        if issuer_privilege != UserPrivilege.ADMIN:
+        if not (yield self.is_vote_admin(issuer)):
             self.bot.notice(issuer, "Only admins can change poll duration")
             return
         utcnow = datetime.now(tz=timezone.utc)
@@ -911,8 +899,7 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def cmd_category_add(self, issuer, name, description, color, confidential):
-        issuer_privilege = yield self.get_user_privilege(issuer)
-        if issuer_privilege != UserPrivilege.ADMIN:
+        if not (yield self.is_vote_admin(issuer)):
             self.bot.notice(issuer, "Only Admins can add categories")
             return
         try:
@@ -927,8 +914,7 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def cmd_category_modify(self, issuer, name, field, value):
-        issuer_privilege = yield self.get_user_privilege(issuer)
-        if issuer_privilege != UserPrivilege.ADMIN:
+        if not (yield self.is_vote_admin(issuer)):
             self.bot.notice(issuer, "Only Admins can modify categories")
             return
         res = yield self.dbpool.runQuery('SELECT id FROM Categories '
@@ -947,8 +933,7 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def cmd_category_list(self, issuer, verbose):
-        issuer_privilege = yield self.get_user_privilege(issuer)
-        if issuer_privilege not in (UserPrivilege.ADMIN, UserPrivilege.USER):
+        if not (yield self.is_vote_admin(issuer)):
             self.bot.notice(issuer, "Insufficient permissions")
             return
         res = yield self.dbpool.runQuery(
@@ -975,8 +960,7 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def cmd_vote(self, voter, poll_id, decision, comment, **kwargs):
-        privilege = yield self.get_user_privilege(voter)
-        if privilege not in [UserPrivilege.USER, UserPrivilege.ADMIN]:
+        if not (yield self.is_vote_user(voter)):
             self.bot.notice(voter, "You are not allowed to vote")
             return
         voterid = yield self.bot.get_auth(voter)
@@ -1076,8 +1060,7 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def join(self, user):
-        privilege = yield self.get_user_privilege(user)
-        if privilege not in (UserPrivilege.USER, UserPrivilege.ADMIN):
+        if not (yield self.is_vote_user(user)):
             return
         result = yield self.dbpool.runQuery(
                 'SELECT id FROM Polls WHERE status="RUNNING" ORDER BY id ASC;')

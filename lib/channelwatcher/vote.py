@@ -166,6 +166,25 @@ class PollCreateOptions(OptionsWithoutHandlers):
             raise usage.UsageError("'yes', 'no' and 'abstain' flags are exclusive")
 
 
+class PollModifyOptions(OptionsWithoutHandlers):
+    def parseArgs(self, poll_id, field, *args):
+        try:
+            self["poll_id"] = int(poll_id)
+        except ValueError:
+            raise usage.UsageError("PollID has to be an integer")
+        self["field"] = field
+        if not args:
+            raise usage.UsageError("No value specified")
+        self["value"] = " ".join(args)
+
+    def postOptions(self):
+        if self["field"] not in ["category", "description"]:
+            raise usage.UsageError("Invalid column specified")
+        elif self["field"] == "category":
+            if self["value"].lower() in ["none", "null"]:
+                self["value"] = None
+
+
 class PollCancelOptions(OptionsWithoutHandlers):
     def parseArgs(self, poll_id):
         try:
@@ -213,7 +232,7 @@ class PollInfoOptions(OptionsWithoutHandlers):
 class PollOptions(OptionsWithoutHandlers):
     subCommands = [
         ['create', 'call', PollCreateOptions, "Create a new poll"],
-        # TODO: modify subCommand
+        ['modify', 'mod', PollModifyOptions, "Modify a poll"],
         ['cancel', None, PollCancelOptions, "Cancel a poll (vote caller only)"],
         ['veto', None, PollVetoOptions, "Veto a poll (admin only)"],
         ['expire', None, PollExpireOptions,
@@ -362,6 +381,13 @@ class Vote(abstract.ChannelWatcher):
                        'WHERE id = "{poll_id}";'.format(poll_id=poll_id,
                                                        vetoed_by=vetoed_by,
                                                        reason=reason))
+
+    @staticmethod
+    def update_poll_field(cursor, poll_id, field, value):
+        cursor.execute('UPDATE Polls '
+                       'SET {field}=:value '
+                       'WHERE id=:poll_id;'.format(field=field),
+                       {"poll_id": poll_id, "value": value})
 
     @staticmethod
     def insert_vote(cursor, poll_id, user, decision, comment):
@@ -543,6 +569,14 @@ class Vote(abstract.ChannelWatcher):
         self.dbpool.runInteraction(Vote.add_not_voted, poll_id)
 
     @defer.inlineCallbacks
+    def is_vote_user(self, user):
+        return (yield self.get_user_privilege(user)) in (UserPrivilege.ADMIN, UserPrivilege.USER)
+
+    @defer.inlineCallbacks
+    def is_vote_admin(self, user):
+        return (yield self.get_user_privilege(user))==UserPrivilege.ADMIN
+
+    @defer.inlineCallbacks
     def cmd_user_add(self, issuer, user, privilege):
         is_admin = yield self.bot.is_user_admin(issuer)
         issuer_privilege = yield self.get_user_privilege(issuer)
@@ -604,6 +638,16 @@ class Vote(abstract.ChannelWatcher):
         self.bot.notice(issuer, "Successfully modified User {}".format(user))
 
     @defer.inlineCallbacks
+    def is_poll_running(self, poll_id):
+        status = yield self.dbpool.runQuery(
+                'SELECT status FROM Polls WHERE id=:id;',
+                {"id": poll_id})
+        if not status:
+            raise KeyError("No poll with id {poll_id} found".format(poll_id=poll_id))
+        status = PollStatus[status[0][0]]
+        return status == PollStatus.RUNNING
+
+    @defer.inlineCallbacks
     def cmd_poll_create(self, issuer, description, category, **kwargs):
         privilege = yield self.get_user_privilege(issuer)
         issuer_auth = yield self.bot.get_auth(issuer)
@@ -648,6 +692,33 @@ class Vote(abstract.ChannelWatcher):
             self.cmd_vote(issuer, poll_id, VoteDecision.NO, "")
         elif kwargs["abstain"]:
             self.cmd_vote(issuer, poll_id, VoteDecision.ABSTAIN, "")
+
+    @defer.inlineCallbacks
+    def cmd_poll_modify(self, issuer, poll_id, field, value):
+        if not(yield self.is_vote_admin(issuer)):
+            self.bot.notice(issuer, "You are not allowed to modify votes")
+            return
+        try:
+            if not(yield self.is_poll_running(poll_id)):
+                self.bot.notice(issuer, "Poll isn't running")
+                return
+        except KeyError:
+            self.bot.notice(issuer, "Poll doesn't exist")
+            return
+        if field == "category" and value:
+            res = yield self.get_category_info(value)
+            if not res:
+                self.bot.notice(issuer, "No such category")
+                return
+            value = res[0][0]
+        try:
+            yield self.dbpool.runInteraction(Vote.update_poll_field, poll_id,
+                                             field, value)
+        except Exception as e:
+            Vote.logger.warn("")
+            self.bot.notice(issuer, "Couldn't modify poll ({})".format(e))
+            return
+        self.bot.notice(issuer, "Successfully modified poll")
 
     @defer.inlineCallbacks
     def cmd_poll_veto(self, issuer, poll_id, reason):
@@ -832,6 +903,11 @@ class Vote(abstract.ChannelWatcher):
                     poll_id=poll_id, status=status, desc=textwrap.shorten(desc, 50),
                     creator=creator, vote_count=vote_count,
                     category=category_str))
+
+    def get_category_info(self, category_name):
+        return self.dbpool.runQuery('SELECT id, color FROM Categories '
+                                    'WHERE name=:name;',
+                                    {"name": category_name})
 
     @defer.inlineCallbacks
     def cmd_category_add(self, issuer, name, description, color, confidential):

@@ -229,10 +229,10 @@ def _extract_irc_style(text):
                 style_dict["fg"] = None
                 style_dict["bg"] = None
             elif "," in substrings[i+3]:
-                style_dict["fg"], style_dict["bg"] = [int(val) for val in
+                style_dict["fg"], style_dict["bg"] = [IRCColorCodes(val.zfill(2)) for val in
                                                       substrings[i+3].split(",")]
             else:
-                style_dict["fg"] = int(substrings[i+3])
+                style_dict["fg"] = IRCColorCodes(substrings[i+3].zfill(2))
         if substrings[i+5]:
             style_dict["italic"] = not style_dict["italic"]
         if substrings[i+6]:
@@ -244,16 +244,16 @@ def _extract_irc_style(text):
 def _style_html_string(style_dict):
     styles = []
     if style_dict["underline"]:
-        styles.append("text-decoration:underline")
+        styles.append("text-decoration:underline;")
     if style_dict["bold"]:
-        styles.append("font-weight:bold")
+        styles.append("font-weight:bold;")
     if style_dict["fg"]:
-        styles.append("color:{}".format(hex_colors[style_dict["fg"]]))
+        styles.append("color:{};".format(IRCColorsHex[style_dict["fg"]]))
     if style_dict["bg"]:
-        styles.append("background-color:{}".format(
-            hex_colors[style_dict["bg"]]))
+        styles.append("background-color:{};".format(
+            IRCColorsHex[style_dict["bg"]]))
     if style_dict["italic"]:
-        styles.append("font-style:italic")
+        styles.append("font-style:italic;")
     return styles
 
 def _style_dict_to_html(text, style_dict, link_urls=True):

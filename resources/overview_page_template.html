@@ -3,15 +3,15 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title t:render="title" />
-    <link href="/pytibot.css" rel="stylesheet"/>
+    <link href="/assets/pytibot.css" rel="stylesheet"/>
 </head>
 <body>
     <div id="container">
         <header t:render="header" />
         <div id="main">
-            Channel logs are available for:
+            The following children are available:
             <ul>
-                <li t:render="channel_item" />
+                <li t:render="child_link" />
             </ul>
         </div>
         <footer t:render="footer" />

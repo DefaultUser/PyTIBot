@@ -36,10 +36,10 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 from html import escape as htmlescape
 
+from .common import PageElement, webpage_error_handler, BaseResource
 from util import log, formatting
 from util import filesystem as fs
 from util.misc import str_to_bytes, bytes_to_str
-from util.internet import webpage_error_handler, BaseResource
 from util.whoosh_tag_formatter import WhooshTagFormatter
 
 
@@ -68,62 +68,6 @@ def add_resources_to_root(root):
         if not (f.endswith(".html") or f.endswith(".inc")):
             root.putChild(str_to_bytes(f), File(fs.get_abs_path(relpath),
                                                 defaultType="text/plain"))
-
-
-class HeaderElement(Element):
-    loader = XMLFile(FilePath(fs.get_abs_path("resources/header.inc")))
-
-
-class FooterElement(Element):
-    loader = XMLFile(FilePath(fs.get_abs_path("resources/footer.inc")))
-
-
-class PageElement(Element):
-    def __init__(self, page, *args, **kwargs):
-        self.page = page
-        super(PageElement, self).__init__(*args, **kwargs)
-
-    @renderer
-    def title(self, request, tag):
-        return tag(self.page.title)
-
-    @renderer
-    def header(self, request, tag):
-        yield HeaderElement()
-
-    @renderer
-    def footer(self, request, tag):
-        yield FooterElement()
-
-
-class BasePageElement(PageElement):
-    loader = XMLFile(FilePath(fs.get_abs_path("resources/base_page_template.html")))
-
-    @renderer
-    def channel_item(self, request, tag):
-        for channel in self.page.channels:
-            yield tag.clone()(tags.a(channel, href=channel.lstrip("#")))
-
-
-class BasePage(BaseResource):
-    def __init__(self, config):
-        super(BasePage, self).__init__()
-        self.title = config["HTTPLogServer"].get("title", "PyTIBot Log Server")
-        # add channel logs
-        self.channels = config["HTTPLogServer"].get("channels", [])
-        search_pagelen = config["HTTPLogServer"].get("search_pagelen", 5)
-        indexer_procs = config["HTTPLogServer"].get("indexer_procs", 1)
-        for channel in self.channels:
-            name = channel.lstrip("#")
-            self.putChild(str_to_bytes(name),
-                          LogPage(name, log.get_channellog_dir(config),
-                                  "#{} - {}".format(name, self.title),
-                                  search_pagelen, indexer_procs))
-        # add resources
-        add_resources_to_root(self)
-
-    def element(self):
-        return BasePageElement(self)
 
 
 class LogPageElement(PageElement):
@@ -158,7 +102,11 @@ class LogPageElement(PageElement):
 
     @renderer
     def search_link(self, request, tag):
-        return tag.fillSlots(channel=self.page.channel_link())
+        if self.page.crumb:
+            crumb = b"./" + self.page.crumb
+        else:
+            crumb = b""
+        return tag.fillSlots(crumb=crumb)
 
     @renderer
     def log_row(self, request, tag):
@@ -212,24 +160,15 @@ class LogPageElement(PageElement):
 
 
 class LogPage(BaseResource):
-    def __init__(self, channel, log_dir, title, search_pagelen, indexer_procs,
-                 singlechannel=False):
-        super(LogPage, self).__init__()
-        self.channel = channel.lstrip("#")
-        self.log_dir = log_dir
-        self.title = title
-        self.singlechannel = singlechannel
-        self.putChild(b"search", SearchPage(self.channel, log_dir, title,
-                                            search_pagelen, indexer_procs,
-                                            singlechannel=singlechannel))
-
-        if singlechannel:
-            add_resources_to_root(self)
-
-    def channel_link(self):
-        if self.singlechannel:
-            return ""
-        return self.channel
+    def __init__(self, crumb, config):
+        super(LogPage, self).__init__(crumb)
+        self.channel = config["channel"].lstrip("#")
+        self.log_dir = log.get_channellog_dir()
+        self.title = config.get("title", "Channel Logs for {}".format(self.channel))
+        search_pagelen = config.get("search_pagelen", 5)
+        indexer_procs = config.get("indexer_procs", 1)
+        self.putChild(b"search", SearchPage("search", self.channel, self.log_dir, self.title,
+                                            search_pagelen, indexer_procs))
 
     def log_items(self, date, level):
         filename = None
@@ -254,10 +193,6 @@ class SearchPageElement(PageElement):
     loader = XMLFile(FilePath(fs.get_abs_path("resources/search_page_template.html")))
 
     @renderer
-    def channel_page(self, request, tag):
-        return tag.fillSlots(channel=self.page.channel_link())
-
-    @renderer
     def search_item(self, request, tag):
         if b"q" not in request.args or request.args[b"q"] == ['']:
             yield tag("")
@@ -278,7 +213,7 @@ class SearchPageElement(PageElement):
                     yield tag("No Logs found containing: {}".format(querystr))
                 for hit in results["hits"]:
                     date = hit["date"].strftime("%Y-%m-%d")
-                    href = "{}?date={}".format(self.page.channel_link(), date)
+                    href = "./?date={}".format(date)
                     yield tag.clone()(tags.div(tags.label(tags.a(date,
                                                                  href=href)),
                                                hit["content"]))
@@ -288,16 +223,14 @@ class SearchPageElement(PageElement):
 
 
 class SearchPage(BaseResource):
-    def __init__(self, channel, log_dir, title, pagelen, indexer_procs,
-                 singlechannel=False):
-        super(SearchPage, self).__init__()
+    def __init__(self, crumb, channel, log_dir, title, pagelen, indexer_procs):
+        super(SearchPage, self).__init__(crumb)
         self.channel = channel
         self.log_dir = log_dir
         self.title = title
         self.last_index_update = 0
         self.pagelen = pagelen
         self.indexer_procs = indexer_procs
-        self.singlechannel = singlechannel
         self.ix = None
         threads.deferToThread(self._setup_index)
 
@@ -365,11 +298,6 @@ class SearchPage(BaseResource):
         writer.commit()
         self.last_index_update = time.time()
 
-    def channel_link(self):
-        if self.singlechannel:
-            return ".."
-        return "/{}".format(self.channel)
-
     def search_logs(self, querystr, page):
         with self.ix.searcher() as searcher:
             query = QueryParser("content", self.ix.schema).parse(querystr)
@@ -388,8 +316,3 @@ class SearchPage(BaseResource):
     def element(self):
         return SearchPageElement(self)
 
-        if self.ix is None:
-            return str_to_bytes(search_page_template.format(
-                log_data="Indexing..., Please try again later",
-                title=self.title, header=header, footer=footer,
-                channel=self.channel_link()))

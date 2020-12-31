@@ -3,7 +3,7 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title t:render="title" />
-    <link href="/pytibot.css" rel="stylesheet"/>
+    <link href="/assets/pytibot.css" rel="stylesheet"/>
 </head>
 <body>
     <div id="container">
@@ -23,7 +23,7 @@
             <!-- Needed because HTML is bad -->
             <script t:render="levelPicker_setter">  </script>
 
-            <a t:render="search_link"><t:attr name="href"><t:slot name="channel"/>/search</t:attr>Search</a>
+            <a t:render="search_link"><t:attr name="href"><t:slot name="crumb"/>/search</t:attr>Search</a>
 
             <p id="txtblock"><table>
                 <tr t:render="log_row" />

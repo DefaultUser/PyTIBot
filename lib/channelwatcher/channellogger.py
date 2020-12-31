@@ -43,7 +43,7 @@ class ChannelLogger(abstract.ChannelWatcher):
         # don't add multiple handlers for the same logger
         if not self.logger.handlers:
             # log to file
-            log_dir = log.get_channellog_dir(bot.config)
+            log_dir = log.get_channellog_dir()
             if not os.path.isdir(log_dir):
                 os.makedirs(log_dir)
             log_handler = log.TimedRotatingFileHandler(os.path.join(

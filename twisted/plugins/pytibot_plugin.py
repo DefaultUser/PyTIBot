@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2016-2018>  <Sebastian Schmidt>
+# Copyright (C) <2016-2020>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@ from yamlcfg import YamlConfig
 
 from pytibotfactory import PyTIBotFactory
 from twisted.conch import manhole_tap
-from lib.httplog import BasePage, LogPage
+from lib import http
 from util import filesystem as fs
 from util import log
 
@@ -51,6 +51,7 @@ class PyTIBotServiceMaker(object):
         Create an instance of PyTIBot
         """
         config = YamlConfig(path=fs.config_file(options["config"]))
+        log.channellog_dir_from_config(config)
         if not (config["Connection"] and all([config["Connection"].get(option,
                                                                        False)
                                               for option in
@@ -97,31 +98,18 @@ class PyTIBotServiceMaker(object):
             tn_sv = manhole_tap.makeService(options)
             tn_sv.setServiceParent(mService)
 
-        if (config["HTTPLogServer"] and ("port" in config["HTTPLogServer"] or
-                                         "sshport" in config["HTTPLogServer"])):
-            channels = config["HTTPLogServer"]["channels"]
-            if not isinstance(channels, list):
-                channels = [channels]
-            if len(channels) == 1:
-                title = config["HTTPLogServer"].get("title",
-                                                    "PyTIBot Log Server")
-                search_pagelen = config["HTTPLogServer"].get("search_pagelen",
-                                                             5)
-                indexer_procs = config["HTTPLogServer"].get("indexer_procs", 1)
-                root = LogPage(channels[0], log.get_channellog_dir(config),
-                               title, search_pagelen, indexer_procs,
-                               singlechannel=True)
-            else:
-                root = BasePage(config)
+        if (config["HTTPServer"] and ("port" in config["HTTPServer"] or
+                                      "sshport" in config["HTTPServer"])):
+            root = http.setup_http_root(config["HTTPServer"]["root"])
             httpfactory = Site(root)
-            port = config["HTTPLogServer"].get("port", None)
+            port = config["HTTPServer"].get("port", None)
             if port:
                 http_sv = internet.TCPServer(port, httpfactory)
                 http_sv.setServiceParent(mService)
 
-            sslport = config["HTTPLogServer"].get("sslport", None)
-            privkey = config["HTTPLogServer"].get("privkey", None)
-            cert = config["HTTPLogServer"].get("certificate", None)
+            sslport = config["HTTPServer"].get("sslport", None)
+            privkey = config["HTTPServer"].get("privkey", None)
+            cert = config["HTTPServer"].get("certificate", None)
             if sslport and privkey and cert:
                 sslContext = ssl.DefaultOpenSSLContextFactory(
                     privkey, cert)

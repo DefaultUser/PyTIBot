@@ -16,14 +16,7 @@
 
 from twisted.internet import defer
 from twisted.logger import Logger
-from twisted.web.resource import Resource
-from twisted.web.template import flatten
-from twisted.web.server import NOT_DONE_YET
 import treq
-
-from abc import abstractmethod
-
-from util.misc import bytes_to_str
 
 
 log = Logger()
@@ -42,32 +35,4 @@ def shorten_github_url(url):
         log.warn("Error shortening github url({url}): {error}",
                  url=url, error=e)
         defer.returnValue(url)
-
-def webpage_error_handler(failure, request, logger):
-    logger.error("Error when answering a request: {e}", e=failure)
-    if not request.finished:
-        request.setResponseCode(500)
-        request.write(b"An error occured, please contact the administrator")
-        request.finish()
-
-
-class BaseResource(Resource, object):
-    def getChild(self, name, request):
-        if name == b'':
-            return self
-        return super(BaseResource, self).getChild(name, request)
-
-    @abstractmethod
-    def element(self):
-        pass
-
-    def render_GET(self, request):
-        request.write(b'<!DOCTYPE html>\n')
-        d = flatten(request, self.element(),
-                    request.write)
-        def done(ignored):
-            request.finish()
-            return ignored
-        d.addBoth(done)
-        return NOT_DONE_YET
 

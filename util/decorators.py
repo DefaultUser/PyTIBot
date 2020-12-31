@@ -52,9 +52,22 @@ def memoize_deferred(f):
         return f.cache[key]
     return inner
 
+
 def maybe_deferred(f):
     @functools.wraps(f)
     def inner(*args, **kwargs):
         return defer.maybeDeferred(f, *args, **kwargs)
+    return inner
+
+
+def only_once(f):
+    f.already_used = False
+
+    @functools.wraps(f)
+    def inner(*args, **kwargs):
+        if f.already_used:
+            raise EnvironmentError("This function can only be run once")
+        f.already_used = True
+        return f(*args, **kwargs)
     return inner
 

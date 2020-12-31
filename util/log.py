@@ -22,7 +22,7 @@ import os
 import yaml
 import time
 
-from util import decorators
+from util.decorators import only_once
 from util import filesystem as fs
 
 
@@ -56,12 +56,15 @@ msg_templates = {TOPIC: "%(user)s changed the topic to: %(topic)s",
                  ACTION: "*%(user)20s %(data)s",
                  MSG: "%(user)20s | %(message)s"}
 
+_channellog_dir = os.path.join(fs.adirs.user_log_dir, "channellogs")
 
-@decorators.memoize
-def get_channellog_dir(config):
-    return config["Logging"].get("directory",
-                                 os.path.join(fs.adirs.user_log_dir,
-                                              "channellogs"))
+@only_once
+def channellog_dir_from_config(config):
+    global _channellog_dir
+    _channellog_dir = config["Logging"].get("directory", _channellog_dir)
+
+def get_channellog_dir():
+    return _channellog_dir
 
 
 class YAMLFormatter(object):

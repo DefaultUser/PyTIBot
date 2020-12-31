@@ -3,7 +3,7 @@
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title t:render="title"/>
-    <link href="/pytibot.css" rel="stylesheet"/>
+    <link href="/assets/pytibot.css" rel="stylesheet"/>
 </head>
 <body>
     <div id="container">
@@ -14,7 +14,7 @@
 
                 <button>Search</button>
             </form>
-            <a t:render="channel_page"><t:attr name="href"><t:slot name="channel"/></t:attr>Back to log page</a>
+            <a href=".">Back to log page</a>
 
             <p id="txtblock"><ul>
                 <t:transparent t:render="search_item" />

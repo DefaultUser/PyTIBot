@@ -18,6 +18,7 @@ from twisted.logger import Logger
 from twisted.web.static import File
 
 import sys
+import os
 
 from util import filesystem as fs
 from util.misc import str_to_bytes
@@ -41,7 +42,10 @@ def setup_http_root(config):
 def setup_http_resource(crumb, config):
     type_ = config["type"]
     try:
-        res = getattr(sys.modules[__name__], type_)(crumb, config)
+        if type_ == "Static":
+            res = File(fs.get_abs_path(os.path.join("resources", config["path"])))
+        else:
+            res = getattr(sys.modules[__name__], type_)(crumb, config)
     except Exception as e:
         log.warn("Error setting up HTTP Resource: {}".format(e))
         return None

@@ -319,6 +319,9 @@ HTTPServer:
       channel2:
         type: LogPage
         channel: '#myotherchannel'
+      static:
+        type: Static
+        path: path/to/static/content # relative to "resources" folder
 ```
 The style of the website can be customized by adding apropriate files to the "resources/assets" folder
 of your user data directory.

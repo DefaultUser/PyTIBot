@@ -17,15 +17,22 @@ Logging:
   log_minor: True
   yaml: True
 
-HTTPLogServer:
-  channels: "#mysuperchannel"
+HTTPServer:
   port: 8080
   sslport: 8081
   certificate: /path/to/cert.pem
   privkey: /path/to/privkey.pem
-  title: Awesome Log Server
-  search_pagelen: 5
-  indexer_procs: 4 # use multiple processes for indexing logs
+  root:
+    type: OverviewPage
+    title: Root Resource
+    children:
+      logs:
+        type: LogPage
+        channel: '#mysuperchannel'
+        title: Awesome Log Server
+        search_pagelen: 5
+        indexer_procs: 4 # use multiple processes for indexing logs
+      # assets is automatically added to root
 
 GitWebhook:
   channels:

@@ -13,15 +13,11 @@
                 <input name="date" type="date" id="DatePicker" t:render="date_input"><t:attr name="value"><t:slot name="date"/></t:attr></input>
 
                 <select name="level" id="LevelPicker">
-                    <option value="10">ALL</option>
-                    <option value="11">MOST</option>
-                    <option value="16">IMPORTANT</option>
+                    <option t:render="level_option"/>
                 </select>
 
                 <button>Show log</button>
             </form>
-            <!-- Needed because HTML is bad -->
-            <script t:render="levelPicker_setter">  </script>
 
             <a t:render="search_link"><t:attr name="href"><t:slot name="crumb"/>/search</t:attr>Search</a>
 

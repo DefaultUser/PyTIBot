@@ -62,7 +62,6 @@ def _prepare_yaml_element(element):
 
 class LogPageElement(PageElement):
     loader = XMLFile(FilePath(fs.get_abs_path("resources/log_page_template.html")))
-    js = 'window.onload = (function() {{document.getElementById("LevelPicker").value = "{}";}});'
 
     @staticmethod
     def get_log_level(request):
@@ -86,9 +85,17 @@ class LogPageElement(PageElement):
         return tag.fillSlots(date=LogPageElement.get_date(request))
 
     @renderer
-    def levelPicker_setter(self, request, tag):
-        level = LogPageElement.get_log_level(request)
-        return tag(LogPageElement.js.format(level))
+    def level_option(self, request, tag):
+        try:
+            level = int(request.args[b"level"][0])
+        except:
+            level = LEVEL_IMPORTANT
+        for i, s in [(LEVEL_IMPORTANT, "IMPORTANT"), (LEVEL_MOST, "MOST"),
+                     (LEVEL_ALL, "ALL")]:
+            if i == level:
+                yield tag.clone()(s, value=str(i), selected="selected")
+            else:
+                yield tag.clone()(s, value=str(i))
 
     @renderer
     def search_link(self, request, tag):

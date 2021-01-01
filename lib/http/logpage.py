@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2016-2020>  <Sebastian Schmidt>
+# Copyright (C) <2016-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,14 +14,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from twisted.web.server import Site, NOT_DONE_YET
-from twisted.web.resource import Resource
-from twisted.web.static import File
+from twisted.web.server import NOT_DONE_YET
 from twisted.words.protocols import irc
 from twisted.internet import threads, reactor
-from twisted.internet.task import LoopingCall, deferLater
+from twisted.internet.task import LoopingCall
 from twisted.logger import Logger
-from twisted.web.template import Element, XMLFile, renderer, tags, flatten, Tag
+from twisted.web.template import XMLFile, renderer, tags
 from twisted.python.filepath import FilePath
 
 from whoosh.index import create_in
@@ -39,7 +37,7 @@ from html import escape as htmlescape
 from .common import PageElement, webpage_error_handler, BaseResource
 from util import log, formatting
 from util import filesystem as fs
-from util.misc import str_to_bytes, bytes_to_str
+from util.misc import bytes_to_str
 from util.whoosh_tag_formatter import WhooshTagFormatter
 
 
@@ -60,14 +58,6 @@ def _prepare_yaml_element(element):
     if "message" in element:
         element["message"] = formatting.to_tags(element["message"],
                                                 link_urls=True)
-
-
-def add_resources_to_root(root):
-    for f in fs.listdir("resources"):
-        relpath = "/".join(["resources", f])
-        if not (f.endswith(".html") or f.endswith(".inc")):
-            root.putChild(str_to_bytes(f), File(fs.get_abs_path(relpath),
-                                                defaultType="text/plain"))
 
 
 class LogPageElement(PageElement):

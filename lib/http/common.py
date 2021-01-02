@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2016-2020>  <Sebastian Schmidt>
+# Copyright (C) <2016-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -69,6 +69,14 @@ class BaseResource(Resource, object):
 class HeaderElement(Element):
     loader = XMLFile(FilePath(fs.get_abs_path("resources/header.inc")))
 
+    def __init__(self, page):
+        super().__init__()
+        self.page = page
+
+    @renderer
+    def title(self, request, tag):
+        return tag(self.page.title)
+
 
 class FooterElement(Element):
     loader = XMLFile(FilePath(fs.get_abs_path("resources/footer.inc")))
@@ -85,7 +93,7 @@ class PageElement(Element):
 
     @renderer
     def header(self, request, tag):
-        yield HeaderElement()
+        yield HeaderElement(self.page)
 
     @renderer
     def footer(self, request, tag):

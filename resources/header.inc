@@ -1,3 +1,3 @@
-<header>
-<h1>PyTIBot Log Server</h1>
+<header xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+<h1 t:render="title" />
 </header>

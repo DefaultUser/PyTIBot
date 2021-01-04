@@ -1,0 +1,214 @@
+# PyTIBot - IRC Bot using python and the twisted library
+# Copyright (C) <2021>  <Sebastian Schmidt>
+
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# any later version.
+
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from twisted.web.template import XMLFile, renderer, tags
+from twisted.web.resource import NoResource
+from twisted.python.filepath import FilePath
+from twisted.enterprise import adbapi
+from twisted.logger import Logger
+
+import os
+from collections import defaultdict
+
+from .common import PageElement, webpage_error_handler, BaseResource
+from lib.channelwatcher.vote import PollListStatusFilter
+
+from util.misc import bytes_to_str
+from util import filesystem as fs
+from util.formatting import IRCColorCodes, IRCColorsHex, good_contrast_with_black
+
+
+log = Logger()
+
+
+class VotePageElement(PageElement):
+    loader = XMLFile(FilePath(fs.get_abs_path("resources/vote_page_template.html")))
+
+    @staticmethod
+    def category_style(color):
+        if not color:
+            return None
+        try:
+            color_code = IRCColorCodes[color]
+            if good_contrast_with_black[color_code]:
+                fg = IRCColorCodes.black
+            else:
+                fg = IRCColorCodes.white
+            return "color: {fg};background-color: {bg};".format(
+                    fg=IRCColorsHex[fg], bg=IRCColorsHex[color_code])
+        except Exception as e:
+            log.info("Category has invalid color: {color}: {e}",
+                     color=color, e=e)
+            return None
+
+    @staticmethod
+    def status_style(status):
+        if status == "RUNNING":
+            return "color: green;"
+        if status == "PASSED":
+            return "color: green;"
+        if status == "TIED":
+            return "color: orange;"
+        if status == "FAILED":
+            return "color: red;"
+        if status == "VETOED":
+            return "color: red;"
+        if status == "CANCELED":
+            return "color: red;"
+        return ""
+
+    @renderer
+    def category_option(self, request, tag):
+        def _inner(categories):
+            try:
+                requested_category = bytes_to_str(request.args[b"category"][0])
+            except:
+                requested_category = "ALL"
+            yield tag.clone()("ALL", value="ALL")
+            for name, color in categories:
+                kwargs = {"value": name}
+                if requested_category == name:
+                    kwargs["selected"] = "selected"
+                style = VotePageElement.category_style(color)
+                if style:
+                    kwargs["style"] = style
+                yield tag.clone()(name, **kwargs)
+
+        show_confidential = self.page.has_key(request)
+        return self.page.categories(show_confidential=show_confidential).addCallback(_inner)
+
+    @renderer
+    def status_option(self, request, tag):
+        try:
+            requested_status = bytes_to_str(request.args[b"status"][0])
+        except:
+            requested_status = "ALL"
+        for status in [e.name for e in PollListStatusFilter]:
+            kwargs = {"value": status}
+            if requested_status == status:
+                kwargs["selected"] = "selected"
+            yield tag.clone()(status, **kwargs)
+
+    @renderer
+    def key_option(self, request, tag):
+        if not b"key" in request.args:
+            return tag()
+        return tags.input("", style="display:none;", name="key",
+                          value=request.args[b"key"][0])
+
+    @renderer
+    def poll_row(self, request, tag):
+        def _inner(polls):
+            for (poll_id, category_name, category_color, title, creator, status,
+                    yes, no, abstain, not_voted) in polls:
+                if not category_name:
+                    category_name = ""
+                category_options = {}
+                style = VotePageElement.category_style(category_color)
+                if style:
+                    category_options["style"] = style
+                vote_count = [tags.span(str(yes), style="color:green;"), ":",
+                              tags.span(str(no), style="color:red;"),
+                              "({} abstained, {} didn't vote)".format(abstain,
+                                                                      not_voted)]
+                yield tag.clone()(tags.td(str(poll_id), class_="vote_id"),
+                                  tags.td(str(category_name), class_="vote_category",
+                                          **category_options),
+                                  tags.td(str(title), class_="vote_title"),
+                                  tags.td(str(creator), class_="vote_creator"),
+                                  tags.td(str(status), class_="vote_status",
+                                          style=VotePageElement.status_style(status)),
+                                  tags.td(vote_count, class_="vote_count"))
+
+        show_confidential = self.page.has_key(request)
+        if b"category" in request.args:
+            category = bytes_to_str(request.args[b"category"][0])
+        else:
+            category = None
+        if b"status" in request.args:
+            status = PollListStatusFilter[bytes_to_str(request.args[b"status"][0]).upper()]
+        else:
+            status = PollListStatusFilter.ALL
+        return self.page.polls(show_confidential=show_confidential,
+                               category=category, status=status).addCallback(_inner)
+
+
+class VotePage(BaseResource):
+    def __init__(self, crumb, config):
+        super().__init__(crumb)
+        self.channel = config["channel"].lstrip("#")
+        self.title = config.get("title", "Vote Page")
+        self.key = config.get("key", None) # key to show confidential and running polls
+        vote_configdir = os.path.join(fs.adirs.user_config_dir, "vote")
+        dbfile = os.path.join(vote_configdir,
+                              "{}.db".format(self.channel))
+        self.dbpool = adbapi.ConnectionPool("sqlite3", dbfile,
+                                            check_same_thread=False)
+
+    def has_key(self, request):
+        if not self.key:
+            return False
+        if not b"key" in request.args:
+            return False
+        supplied_key = bytes_to_str(request.args[b"key"][0])
+        return supplied_key == self.key
+
+    def categories(self, show_confidential=False):
+        if not show_confidential:
+            return self.dbpool.runQuery('SELECT name, color FROM Categories '
+                                        'WHERE NOT confidential IS True;')
+        return self.dbpool.runQuery('SELECT name, color FROM Categories;')
+
+    def polls(self, poll_id=None, status=PollListStatusFilter.ALL, category=None,
+              show_confidential=False):
+        filters = []
+        values = {}
+        if poll_id is not None:
+            try:
+                values["poll_id"] = int(poll_id)
+                filters.append('Polls.id=:poll_id')
+            except ValueError as e:
+                log.warn("Couldn't filter by poll_id: {e}", e=e)
+        if not show_confidential:
+            filters.append('NOT Categories.confidential IS True')
+            filters.append('Polls.status!="RUNNING"')
+        if category and category != "ALL":
+            filters.append('Categories.name=:category')
+            values["category"] = category
+        if status != PollListStatusFilter.ALL:
+            if status == PollListStatusFilter.ENDED:
+                filters.append('Polls.status!="RUNNING"')
+            else:
+                filters.append('Polls.status=:status')
+                values["status"] = status.name
+        if filters:
+            where = 'WHERE ' + ' AND '.join(filters) + ' '
+        else:
+            where = ''
+        return self.dbpool.runQuery(
+                'SELECT Polls.id, Categories.name, Categories.color, Polls.description, Users.name, Polls.status, '
+                '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="YES"), '
+                '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="NO"), '
+                '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="ABSTAIN"), '
+                '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="NONE") '
+                'FROM Polls LEFT JOIN Categories ON Polls.category=Categories.id '
+                           'LEFT JOIN Users ON Polls.creator=Users.id ' +
+                where +
+                'ORDER BY Polls.id DESC;', values)
+
+    def element(self):
+        return VotePageElement(self)
+

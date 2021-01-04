@@ -1,0 +1,42 @@
+<html xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title t:render="title" />
+    <link href="/assets/pytibot.css" rel="stylesheet"/>
+</head>
+<body>
+    <div id="container">
+        <header t:render="header" />
+        <div id="main">
+            <form method="PUT" id="VoteForm" action="#">
+                <label>Category:</label>
+                <select name="category" id="categoryPicker">
+                    <option t:render="category_option" />
+                </select>
+
+                <label>Status:</label>
+                <select name="status" id="statusPicker">
+                    <option t:render="status_option" />
+                </select>
+                <t:transparent t:render="key_option" />
+
+                <button>Filter</button>
+            </form>
+
+            <table>
+                <thead><tr>
+                    <th>ID</th>
+                    <th>Category</th>
+                    <th>Title</th>
+                    <th>Creator</th>
+                    <th>Status</th>
+                    <th>Vote count</th>
+                </tr></thead>
+                <tr t:render="poll_row" />
+            </table>
+        </div>
+        <footer t:render="footer" />
+    </div>
+</body>
+</html>

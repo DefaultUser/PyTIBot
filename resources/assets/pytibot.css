@@ -9,6 +9,12 @@ form {
     padding: 15px;
 }
 
+#VoteForm {
+    display: inline-grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+}
+
 tr:nth-child(even) {
     background-color: #eeeefc;
 }
@@ -21,40 +27,90 @@ table {
     width: 100%
 }
 
+table thead {
+    display: None;
+}
+
 table td {
     padding: 8px;
     text-align: left;
+    vertical-align: center;
     display: block;
 }
 
 table td.user {
-    text-align: left;
-    vertical-align: top;
     width: 20ch;
+}
+
+table td.vote_id {
+    width: 5ch;
+}
+
+table td.user, table td.vote_id, table td.vote_user {
+    text-align: left;
     font-weight: bold;
     display: inline-block;
 }
 
-table td.time {
+table td.time, table td.vote_decision, table td.vote_category {
     text-align: center;
-    vertical-align: top;
     width: 10ch;
     display: inline-block;
 }
 
+table td.vote_category {
+    float: right;
+}
+
+table td.vote_title:before, table td.vote_creator:before, table td.vote_status:before, table td.vote_count:before {
+    width: max(10ch, 20%);
+    display: block;
+    font-weight: bold;
+    color: initial;
+}
+
+table td.vote_title:before {
+    content: "Title: ";
+}
+
+table td.vote_creator:before {
+    content: "Creator: ";
+}
+
+table td.vote_status:before {
+    content: "Status: ";
+}
+
+table td.vote_count:before {
+    content: "Votes: ";
+}
+
 @media (min-width: 600px) {
+    table thead {
+        display: table-header-group;
+    }
+
     table td.user {
         text-align: right;
-        width: 20ch;
+    }
+
+    table td.vote_id {
+        text-align: center;
+    }
+
+    table td.user, table td.vote_id, table td.vote_user {
         font-weight: bold;
         display: table-cell;
     }
 
-    table td.time {
+    table td.time, table td.vote_decision, table td.vote_category {
         text-align: center;
-        vertical-align: top;
         width: 10ch;
         display: table-cell;
+    }
+
+    table td.vote_category {
+        float: none;
     }
 
     table td {
@@ -62,9 +118,17 @@ table td.time {
         text-align: left;
         display: table-cell;
     }
+
+    table td.vote_status, table td.vote_creator, table td.vote_count {
+        text-align: center;
+    }
+
+    table td.vote_title:before, table td.vote_creator:before, table td.vote_status:before, table td.vote_count:before {
+        display: None;
+    }
 }
 
-label{
+.search_label{
     padding: 15px;
     position: relative;
     z-index: 20;

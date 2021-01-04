@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2020>  <Sebastian Schmidt>
+# Copyright (C) <2020-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@ from util.misc import str_to_bytes
 
 from lib.http.overview import OverviewPage
 from lib.http.logpage import LogPage
+from lib.http.votepage import VotePage
 
 
 log = Logger()

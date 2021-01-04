@@ -211,8 +211,8 @@ class SearchPageElement(PageElement):
                 for hit in results["hits"]:
                     date = hit["date"].strftime("%Y-%m-%d")
                     href = "./?date={}".format(date)
-                    yield tag.clone()(tags.div(tags.label(tags.a(date,
-                                                                 href=href)),
+                    yield tag.clone()(tags.div(tags.label(tags.a(date, href=href),
+                                                          class_="search_label"),
                                                hit["content"]))
                 if not results["last_page"]:
                     yield tag.clone()(tags.a("Next",

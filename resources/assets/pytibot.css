@@ -62,6 +62,10 @@ table td.vote_category {
     float: right;
 }
 
+table td.vote_decision {
+    text-align: left;
+}
+
 table td.vote_title:before, table td.vote_creator:before, table td.vote_status:before, table td.vote_count:before {
     width: max(10ch, 20%);
     display: block;

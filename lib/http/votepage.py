@@ -112,6 +112,10 @@ class VotePageElement(PageElement):
     @renderer
     def poll_row(self, request, tag):
         def _inner(polls):
+            if not polls:
+                yield tag(tags.td("No polls available", colspan="6",
+                                  style="text-align:center;font-size:150%;"))
+                return
             for (poll_id, category_name, category_color, title, creator, status,
                     yes, no, abstain, not_voted) in polls:
                 if not category_name:

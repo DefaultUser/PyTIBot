@@ -111,6 +111,9 @@ class VotePageElement(PageElement):
 
     @renderer
     def poll_row(self, request, tag):
+        return self._poll_row(request, tag, detail_links=True)
+
+    def _poll_row(self, request, tag, detail_links=False):
         def _inner(polls):
             if not polls:
                 yield tag(tags.td("No polls available", colspan="6",
@@ -128,7 +131,14 @@ class VotePageElement(PageElement):
                               tags.span(str(no), style="color:red;"),
                               "({} abstained, {} didn't vote)".format(abstain,
                                                                       not_voted)]
-                yield tag.clone()(tags.td(str(poll_id), class_="vote_id"),
+                if detail_links:
+                    href = "{}/{}".format(bytes_to_str(self.page.crumb), poll_id)
+                    if b"key" in request.args:
+                        href += "?key=" + bytes_to_str(request.args[b"key"][0])
+                    poll_id = tags.a(str(poll_id), href=href)
+                else:
+                    poll_id = str(poll_id)
+                yield tag.clone()(tags.td(poll_id, class_="vote_id"),
                                   tags.td(str(category_name), class_="vote_category",
                                           **category_options),
                                   tags.td(str(title), class_="vote_title"),
@@ -225,7 +235,7 @@ class VotePage(BaseResource):
         except:
             return NoResource("Invalid PollID supplied")
         try:
-            return VoteDetailPage(bytes_to_str(name), self, poll_id)
+            return VoteDetailPage(name, self, poll_id)
         except Exception as e:
             log.warn("Couldn't dispatch to VoteDetailPage: {e}", e=e)
         return super().getChild(name, request)
@@ -234,14 +244,24 @@ class VotePage(BaseResource):
 class VoteDetailPageElement(PageElement):
     loader = XMLFile(FilePath(fs.get_abs_path("resources/vote_detail_page_template.html")))
 
-    poll_row = VotePageElement.poll_row
+    _poll_row = VotePageElement._poll_row
+
+    @renderer
+    def poll_row(self, request, tag):
+        return self._poll_row(request, tag, detail_links=False)
 
     @renderer
     def vote_row(self, request, tag):
         def _inner(votes):
             for voter, decision, comment in votes:
+                decision_kwargs = dict()
+                if decision == "YES":
+                    decision_kwargs["style"] = "color:green;"
+                elif decision =="NO":
+                    decision_kwargs["style"] = "color:red;"
                 yield tag.clone()(tags.td(voter, class_="vote_user"),
-                                  tags.td(decision, class_="vote_decision"),
+                                  tags.td(decision, class_="vote_decision",
+                                          **decision_kwargs),
                                   tags.td(comment or "", class_="vote_comment"))
 
         show_confidential = self.page.has_key(request)
@@ -262,14 +282,16 @@ class VoteDetailPage(BaseResource):
     def votes(self, show_confidential=False):
         if show_confidential:
             return self.parent.dbpool.runQuery(
-                    'SELECT user, vote, comment FROM Votes '
+                    'SELECT Users.name, Votes.vote, Votes.comment '
+                    'FROM Votes LEFT JOIN Users ON Votes.user=Users.id '
                     'WHERE poll_id=:poll_id;', {"poll_id": self.poll_id})
         return self.parent.dbpool.runQuery(
-                'SELECT Votes.user, Votes.vote, Votes.comment '
+                'SELECT Users.name, Votes.vote, Votes.comment '
                 'FROM Votes LEFT JOIN '
                     '(SELECT Polls.id, Polls.status, Categories.confidential '
                         'FROM Polls LEFT JOIN Categories ON Polls.category=Categories.id) AS TEMP '
                     'on Votes.poll_id=TEMP.id '
+                    'LEFT JOIN Users ON Votes.user=Users.id '
                 'WHERE TEMP.status!="RUNNING" AND NOT TEMP.confidential IS True '
                 'AND Votes.poll_id=:poll_id;',
                 {"poll_id": self.poll_id})

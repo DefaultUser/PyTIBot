@@ -38,7 +38,7 @@ table td {
     display: block;
 }
 
-table td.user {
+table td.user, table td.vote_user {
     width: 20ch;
 }
 

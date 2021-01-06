@@ -216,3 +216,66 @@ class VotePage(BaseResource):
     def element(self):
         return VotePageElement(self)
 
+    def getChild(self, name, request):
+        if name == b"":
+            # redirect to parent
+            return super().getChild(name, request)
+        try:
+            poll_id = int(name)
+        except:
+            return NoResource("Invalid PollID supplied")
+        try:
+            return VoteDetailPage(bytes_to_str(name), self, poll_id)
+        except Exception as e:
+            log.warn("Couldn't dispatch to VoteDetailPage: {e}", e=e)
+        return super().getChild(name, request)
+
+
+class VoteDetailPageElement(PageElement):
+    loader = XMLFile(FilePath(fs.get_abs_path("resources/vote_detail_page_template.html")))
+
+    poll_row = VotePageElement.poll_row
+
+    @renderer
+    def vote_row(self, request, tag):
+        def _inner(votes):
+            for voter, decision, comment in votes:
+                yield tag.clone()(tags.td(voter, class_="vote_user"),
+                                  tags.td(decision, class_="vote_decision"),
+                                  tags.td(comment or "", class_="vote_comment"))
+
+        show_confidential = self.page.has_key(request)
+        return self.page.votes(show_confidential=show_confidential).addCallback(_inner)
+
+
+class VoteDetailPage(BaseResource):
+    def __init__(self, crumb, parent, poll_id):
+        super().__init__(crumb)
+        self.parent = parent
+        self.poll_id = poll_id
+        self.title = parent.title + "(#{})".format(poll_id)
+
+    def polls(self, *args, **kwargs):
+        kwargs["poll_id"] = self.poll_id
+        return self.parent.polls(*args, **kwargs)
+
+    def votes(self, show_confidential=False):
+        if show_confidential:
+            return self.parent.dbpool.runQuery(
+                    'SELECT user, vote, comment FROM Votes '
+                    'WHERE poll_id=:poll_id;', {"poll_id": self.poll_id})
+        return self.parent.dbpool.runQuery(
+                'SELECT Votes.user, Votes.vote, Votes.comment '
+                'FROM Votes LEFT JOIN '
+                    '(SELECT Polls.id, Polls.status, Categories.confidential '
+                        'FROM Polls LEFT JOIN Categories ON Polls.category=Categories.id) AS TEMP '
+                    'on Votes.poll_id=TEMP.id '
+                'WHERE TEMP.status!="RUNNING" AND NOT TEMP.confidential IS True '
+                'AND Votes.poll_id=:poll_id;',
+                {"poll_id": self.poll_id})
+
+    def has_key(self, request):
+        return self.parent.has_key(request)
+
+    def element(self):
+        return VoteDetailPageElement(self)

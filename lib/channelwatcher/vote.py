@@ -29,6 +29,7 @@ import itertools
 import re
 from threading import Lock
 import textwrap
+from inspect import signature, Parameter
 
 from . import abstract
 from util import filesystem as fs
@@ -88,21 +89,60 @@ VoteCount = namedtuple("VoteCount", "not_voted abstained yes no")
 PollListStatusFilter = Enum("PollListStatusFilter", "RUNNING CANCELED PASSED TIED FAILED VETOED ENDED ALL")
 
 
+IRCHelp = namedtuple("IRCHelp", "subCommands flags params pos_params")
+
+
 class OptionsWithoutHandlers(usage.Options):
     def _gather_handlers(self):
         return [], '', {}, {}, {}, {}
 
+    @classmethod
+    def irc_help(cls):
+        subCommands = []
+        flags = []
+        params = []
+        pos_params = []
+        for long, short, _, desc in getattr(cls, "subCommands", []):
+            long = formatting.colored(long, formatting.IRCColorCodes.cyan)
+            if short:
+                subCommands.append("{} ({}): {}".format(long, short, desc))
+            else:
+                subCommands.append("{}: {}".format(long, desc))
+        for long, short, desc in getattr(cls, "optFlags", []):
+            if short:
+                flags.append("--{}, -{}: {}".format(long, short, desc))
+            else:
+                flags.append("--{}: {}".format(long, desc))
+        for parameter in getattr(cls, "optParameters", []):
+            long, short, default, desc = parameter[:4]
+            if isinstance(default, Enum):
+                default = default.name
+            if short:
+                params.append("--{}=, -{}: {} (default: {})".format(
+                    long, short, desc, default))
+            else:
+                params.append("--{}=: {} (default: {})".format(long, desc, default))
+        sig = signature(cls.parseArgs)
+        if len(sig.parameters) > 1:
+            for p in sig.parameters.values():
+                if p.name == "self":
+                    continue
+                if p.kind == Parameter.VAR_POSITIONAL:
+                    pos_params.append("{}...".format(p.name))
+                else:
+                    pos_params.append(p.name)
+        return IRCHelp(subCommands=subCommands, flags=flags, params=params,
+                       pos_params=pos_params)
+
 
 class UserAddOptions(OptionsWithoutHandlers):
-    def parseArgs(self, name, privilege=None):
+    optParameters = [
+        ['privilege', 'p', UserPrivilege.USER, "Privilege for the new User (USER|ADMIN)",
+            lambda x: UserPrivilege[x.upper()]]
+    ]
+
+    def parseArgs(self, name):
         self["user"] = name
-        if privilege:
-            try:
-                self["privilege"] = UserPrivilege[privilege.upper()]
-            except KeyError:
-                raise usage.UsageError("Invalid privilege specified")
-        else:
-            self["privilege"] = UserPrivilege.USER
 
 
 class UserModifyOptions(OptionsWithoutHandlers):
@@ -134,7 +174,7 @@ class VoteOptions(OptionsWithoutHandlers):
         ['yes', 'y', "autoconfirm changes"],
     ]
 
-    def parseArgs(self, poll_id, decision, *args):
+    def parseArgs(self, poll_id, decision, *comment):
         try:
             self["poll_id"] = int(poll_id)
         except ValueError:
@@ -143,7 +183,7 @@ class VoteOptions(OptionsWithoutHandlers):
             self["decision"] = VoteDecision[decision.upper()]
         except KeyError:
             raise usage.UsageError("Invalid decision specified")
-        self["comment"] = " ".join(args)
+        self["comment"] = " ".join(comment)
 
 
 class PollCreateOptions(OptionsWithoutHandlers):
@@ -156,10 +196,10 @@ class PollCreateOptions(OptionsWithoutHandlers):
         ['category', 'c', None, "Category for the poll"]
     ]
 
-    def parseArgs(self, *args):
-        if len(args) < 5:
+    def parseArgs(self, *description):
+        if len(description) < 5:
             raise usage.UsageError("Description is required")
-        self["description"] = " ".join(args)
+        self["description"] = " ".join(description)
 
     def postOptions(self):
         if sum([self["yes"], self["no"], self["abstain"]]) >= 2:
@@ -167,15 +207,15 @@ class PollCreateOptions(OptionsWithoutHandlers):
 
 
 class PollModifyOptions(OptionsWithoutHandlers):
-    def parseArgs(self, poll_id, field, *args):
+    def parseArgs(self, poll_id, field, *value):
         try:
             self["poll_id"] = int(poll_id)
         except ValueError:
             raise usage.UsageError("PollID has to be an integer")
         self["field"] = field
-        if not args:
+        if not value:
             raise usage.UsageError("No value specified")
-        self["value"] = " ".join(args)
+        self["value"] = " ".join(value)
 
     def postOptions(self):
         if self["field"] not in ["category", "description"]:
@@ -194,23 +234,23 @@ class PollCancelOptions(OptionsWithoutHandlers):
 
 
 class PollVetoOptions(OptionsWithoutHandlers):
-    def parseArgs(self, poll_id, *args):
+    def parseArgs(self, poll_id, *reason):
         try:
             self["poll_id"] = int(poll_id)
         except ValueError:
             raise usage.UsageError("PollID has to be an integer")
-        self["reason"] = " ".join(args)
+        self["reason"] = " ".join(reason)
 
 
 class PollExpireOptions(OptionsWithoutHandlers):
-    def parseArgs(self, poll_id, *args):
+    def parseArgs(self, poll_id, *value):
         try:
             self["poll_id"] = int(poll_id)
         except ValueError:
             raise usage.UsageError("PollID has to be an integer")
-        if not args:
+        if not value:
             raise usage.UsageError("No new end time specified")
-        self["change"] = " ".join(args) # will be parsed by the command
+        self["change"] = " ".join(value) # will be parsed by the command
 
 
 class PollListOptions(OptionsWithoutHandlers):
@@ -251,16 +291,16 @@ class CategoryAddOptions(OptionsWithoutHandlers):
         ['color', 'c', None, "Color for the category"]
     ]
 
-    def parseArgs(self, name, *args):
+    def parseArgs(self, name, *description):
         self["name"] = name
-        self["description"] = " ".join(args)
+        self["description"] = " ".join(description)
 
 
 class CategoryModifyOptions(OptionsWithoutHandlers):
-    def parseArgs(self, name, field, *args):
+    def parseArgs(self, name, field, *value):
         self["name"] = name
         self["field"] = field
-        self["value"] = " ".join(args)
+        self["value"] = " ".join(value)
 
     def postOptions(self):
         if self["field"] not in ["description", "color", "confidential"]:
@@ -293,7 +333,7 @@ class CategoryOptions(OptionsWithoutHandlers):
 
 class HelpOptions(OptionsWithoutHandlers):
     def parseArgs(self, topic=None):
-        self.topic = topic
+        self["topic"] = topic
 
 
 class CommandOptions(OptionsWithoutHandlers):
@@ -304,7 +344,7 @@ class CommandOptions(OptionsWithoutHandlers):
         ['category', None, CategoryOptions, "Create/modify categories"],
         ['yes', None, OptionsWithoutHandlers, "Confirm previous action"],
         ['no', None, OptionsWithoutHandlers, "Abort previous action"],
-        ['help', None, HelpOptions, "help"]
+        ['help', None, HelpOptions, "Help: Chain subcommands with '.'"]
     ]
 
 
@@ -1052,6 +1092,48 @@ class Vote(abstract.ChannelWatcher):
             return
         self._pending_confirmations[userid].callback(decision)
 
+    def cmd_help(self, user, topic):
+        def get_subOption(option_class, subCommand):
+            for long, short, option, desc in option_class.subCommands:
+                if subCommand==long or subCommand==short:
+                    return option, desc
+            raise KeyError("No such subcommand")
+
+        option_class = CommandOptions
+        desc = "Vote module"
+        if topic:
+            for frag in topic.split("."):
+                try:
+                    option_class, desc = get_subOption(option_class, frag)
+                except Exception as e:
+                    self.bot.notice(user, formatting.colored(
+                        "No such command: "+topic,
+                        formatting.IRCColorCodes.red))
+                    return
+
+        sig = option_class.irc_help()
+        if sig.subCommands:
+            self.bot.notice(user, "{}: {}".format(
+                formatting.colored("Available commands",
+                                   formatting.IRCColorCodes.blue),
+                ", ".join(sig.subCommands)))
+            return
+        self.bot.notice(user, desc)
+        if sig.flags:
+            self.bot.notice(user, "{}: {}".format(
+                formatting.colored("Flags", formatting.IRCColorCodes.yellow),
+                ", ".join(sig.flags)))
+        if sig.params:
+            self.bot.notice(user, "{}: {}".format(
+                formatting.colored("Optional parameters",
+                                   formatting.IRCColorCodes.yellow),
+                ", ".join(sig.params)))
+        if sig.pos_params:
+            self.bot.notice(user, "{}: {}".format(
+                formatting.colored("Positional parameters",
+                                   formatting.IRCColorCodes.green),
+                ", ".join(sig.pos_params)))
+
     def topic(self, user, topic):
         pass
 
@@ -1119,7 +1201,8 @@ class Vote(abstract.ChannelWatcher):
         try:
             getattr(self, commandstr)(user, **subOptions)
         except Exception as e:
-            print(e)
+            Vote.logger.info("Error while executing vote command: {error!r}",
+                             error=e)
 
     def connectionLost(self, reason):
         pass

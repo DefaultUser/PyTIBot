@@ -46,6 +46,14 @@ table td.vote_id {
     width: 5ch;
 }
 
+table td.vote_category {
+  width: auto;
+}
+
+table td.vote_count {
+  width: auto;
+}
+
 table td.user, table td.vote_id, table td.vote_user {
     text-align: left;
     font-weight: bold;
@@ -115,6 +123,15 @@ table td.vote_count:before {
 
     table td.vote_category {
         float: none;
+        width: 10ch;
+    }
+
+    table td.vote_title {
+        width: auto;
+    }
+
+    table td.vote_count {
+        width: 15ch;
     }
 
     table td {

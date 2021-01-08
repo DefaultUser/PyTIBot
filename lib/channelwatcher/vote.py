@@ -365,8 +365,8 @@ class Vote(abstract.ChannelWatcher):
     def __init__(self, bot, channel, config):
         super(Vote, self).__init__(bot, channel, config)
         self.prefix = config.get("prefix", "!")
-        self.poll_url = config.get("poll_url", None)
-        self.http_secret = config.get("http_secret", None)
+        self._poll_url = config.get("poll_url", None)
+        self._http_secret = config.get("http_secret", None)
         vote_configdir = os.path.join(fs.adirs.user_config_dir, "vote")
         os.makedirs(vote_configdir, exist_ok=True)
         dbfile = os.path.join(vote_configdir,
@@ -626,6 +626,13 @@ class Vote(abstract.ChannelWatcher):
     def is_vote_admin(self, user):
         return (yield self.get_user_privilege(user))==UserPrivilege.ADMIN
 
+    def poll_url(self, poll_id=None):
+        if self._poll_url is None:
+            return None
+        if poll_id is None:
+            return "{}?key={}".format(self._poll_url, self._http_secret)
+        return "{}/{}?key={}".format(self._poll_url, poll_id, self._http_secret)
+
     @defer.inlineCallbacks
     def cmd_user_add(self, issuer, user, privilege):
         is_admin = yield self.bot.is_user_admin(issuer)
@@ -725,9 +732,14 @@ class Vote(abstract.ChannelWatcher):
                 category_str = Vote.colored_category_name(category, category_color) + " "
             else:
                 category_str = ""
-            self.bot.msg(self.channel, "{category}New poll #{poll_id} by {user}({url}): "
+            url = self.poll_url(poll_id)
+            if url is None:
+                url = ""
+            else:
+                url = " (" + url + ")"
+            self.bot.msg(self.channel, "{category}New poll #{poll_id} by {user}{url}: "
                          "{description}".format(poll_id=poll_id, user=issuer,
-                                                url="URL TODO",
+                                                url=url,
                                                 description=description,
                                                 category=category_str))
         self._poll_delay_call(poll_id, datetime.now(tz=timezone.utc) + Vote.PollDefaultDuration)
@@ -969,13 +981,9 @@ class Vote(abstract.ChannelWatcher):
                     category=category_str))
 
     def cmd_poll_url(self, issuer):
-        if self.poll_url is None:
+        url = self.poll_url()
+        if url is None:
             url = "N/A"
-        else:
-            if self.http_secret is None:
-                url = self.poll_url
-            else:
-                url = self.poll_url + "?key=" + self.http_secret
         self.bot.notice(issuer, url)
 
     def get_category_info(self, category_name):

@@ -357,6 +357,8 @@ class Vote(abstract.ChannelWatcher):
     def __init__(self, bot, channel, config):
         super(Vote, self).__init__(bot, channel, config)
         self.prefix = config.get("prefix", "!")
+        self.poll_url = config.get("poll_url", None)
+        self.http_secret = config.get("http_secret", None)
         vote_configdir = os.path.join(fs.adirs.user_config_dir, "vote")
         os.makedirs(vote_configdir, exist_ok=True)
         dbfile = os.path.join(vote_configdir,
@@ -931,6 +933,16 @@ class Vote(abstract.ChannelWatcher):
                     poll_id=poll_id, status=status, desc=textwrap.shorten(desc, 50),
                     creator=creator, vote_count=vote_count,
                     category=category_str))
+
+    def cmd_poll_url(self, issuer):
+        if self.poll_url is None:
+            url = "N/A"
+        else:
+            if self.http_secret is None:
+                url = self.poll_url
+            else:
+                url = self.poll_url + "?key=" + self.http_secret
+        self.bot.notice(issuer, url)
 
     def get_category_info(self, category_name):
         return self.dbpool.runQuery('SELECT id, color FROM Categories '

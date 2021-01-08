@@ -298,6 +298,31 @@ On Windows:
 C:\Users\<username>\AppData\Local\PyTIBot\Logs\channellogs\
 ```
 
+Vote Module
+-----------
+The `Vote` channelmodule allows setting up an environment where IRC users can create
+and vote for polls. These users need to be registered/authed on the IRC server in order
+to be identifiable.
+
+This channelmodule has the following options:
+```
+prefix: @ # default !
+poll_url: https://my.domain/path/to/vote/page
+http_secret: mysecret
+```
+For `poll_url` and `http_secret` see section `HTTP Server`.
+
+Before voting, users have to be added to a database. This can be done by admins or users
+that have `ADMIN` privileges in the user database.
+```
+<prefix>user add [--privilege=USER|ADMIN] <nickname>
+```
+
+Polls can be created, modified etc with the `poll` command.<br/>
+Votes can be cast with the `vote` command.<br/>
+Polls can be organized in categories (`category` command).<br/>
+Help is available with the `vhelp` command.
+
 HTTP Server
 -----------
 You can also use the builtin http server to create a webpage that shows information

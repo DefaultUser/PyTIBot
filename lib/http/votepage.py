@@ -116,21 +116,26 @@ class VotePageElement(PageElement):
     def _poll_row(self, request, tag, detail_links=False):
         def _inner(polls):
             if not polls:
-                yield tag(tags.td("No polls available", colspan="6",
+                yield tag(tags.td("No such poll available", colspan="6",
                                   style="text-align:center;font-size:150%;"))
                 return
             for (poll_id, category_name, category_color, title, creator, status,
-                    yes, no, abstain, not_voted) in polls:
+                    veto_reason, vetoed_by, yes, no, abstain, not_voted,
+                    active_users) in polls:
                 if not category_name:
                     category_name = ""
                 category_options = {}
                 style = VotePageElement.category_style(category_color)
                 if style:
                     category_options["style"] = style
+                if status == "RUNNING":
+                    not_voted = active_users - yes - no - abstain
                 vote_count = [tags.span(str(yes), style="color:green;"), ":",
                               tags.span(str(no), style="color:red;"),
-                              "({} abstained, {} didn't vote)".format(abstain,
-                                                                      not_voted)]
+                              tags.span("({} abstained, {} didn't vote)".format(abstain,
+                                                                      not_voted))]
+                if status == "VETOED":
+                    vote_count = "{} (by {})".format(veto_reason, vetoed_by)
                 if detail_links:
                     href = "{}/{}".format(bytes_to_str(self.page.crumb), poll_id)
                     if b"key" in request.args:
@@ -214,10 +219,12 @@ class VotePage(BaseResource):
             where = ''
         return self.dbpool.runQuery(
                 'SELECT Polls.id, Categories.name, Categories.color, Polls.description, Users.name, Polls.status, '
-                '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="YES"), '
-                '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="NO"), '
-                '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="ABSTAIN"), '
-                '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="NONE") '
+                       'Polls.veto_reason, (SELECT Users.name WHERE Polls.vetoed_by=Users.id), '
+                       '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="YES"), '
+                       '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="NO"), '
+                       '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="ABSTAIN"), '
+                       '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="NONE"), '
+                       '(SELECT count() FROM Users WHERE Users.privilege="USER" OR Users.privilege="ADMIN") '
                 'FROM Polls LEFT JOIN Categories ON Polls.category=Categories.id '
                            'LEFT JOIN Users ON Polls.creator=Users.id ' +
                 where +

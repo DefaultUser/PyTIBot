@@ -53,7 +53,7 @@ PRAGMA foreign_keys = ON;""",
     veto_reason TEXT,
     time_start DATETIME DEFAULT (DATETIME('now', 'UTC')), -- always use UTC
     time_end DATETIME DEFAULT (DATETIME('now', 'UTC', '+15 days')), -- always use UTC
-    status TEXT CHECK(status in ("RUNNING", "CANCELED", "PASSED", "TIED", "FAILED", "VETOED")) DEFAULT "RUNNING",
+    status TEXT CHECK(status in ("RUNNING", "CANCELED", "PASSED", "TIED", "FAILED", "VETOED", "DECIDED")) DEFAULT "RUNNING",
     category INTEGER,
     FOREIGN KEY (creator) REFERENCES Users(id),
     FOREIGN KEY (vetoed_by) REFERENCES Users(id),
@@ -68,7 +68,6 @@ PRAGMA foreign_keys = ON;""",
     PRIMARY KEY (poll_id, user),
     FOREIGN KEY (poll_id) REFERENCES Polls(id),
     FOREIGN KEY (user) REFERENCES Users(id)
-    -- TODO: check that user currently has privileges to vote
 );""",
 """CREATE TABLE IF NOT EXISTS Categories (
     id INTEGER PRIMARY KEY,
@@ -80,13 +79,13 @@ PRAGMA foreign_keys = ON;""",
 
 
 UserPrivilege = Enum("UserPrivilege", "REVOKED USER ADMIN INVALID")
-PollStatus = Enum("PollStatus", "RUNNING CANCELED PASSED TIED FAILED VETOED")
+PollStatus = Enum("PollStatus", "RUNNING CANCELED PASSED TIED FAILED VETOED DECIDED")
 VoteDecision = Enum("VoteDecision", "NONE ABSTAIN YES NO")
 
 PollDelayedCalls = namedtuple("PollDelayedCalls", "end_warning end")
 VoteCount = namedtuple("VoteCount", "not_voted abstained yes no")
 
-PollListStatusFilter = Enum("PollListStatusFilter", "RUNNING CANCELED PASSED TIED FAILED VETOED ENDED ALL")
+PollListStatusFilter = Enum("PollListStatusFilter", "RUNNING CANCELED PASSED TIED FAILED VETOED DECIDED ENDED ALL")
 
 
 IRCHelp = namedtuple("IRCHelp", "subCommands flags params pos_params")
@@ -242,6 +241,14 @@ class PollVetoOptions(OptionsWithoutHandlers):
         self["reason"] = " ".join(reason)
 
 
+class PollDecideOptions(OptionsWithoutHandlers):
+    def parseArgs(self, poll_id):
+        try:
+            self["poll_id"] = int(poll_id)
+        except ValueError:
+            raise usage.UsageError("PollID has to be an integer")
+
+
 class PollExpireOptions(OptionsWithoutHandlers):
     def parseArgs(self, poll_id, *value):
         try:
@@ -275,6 +282,7 @@ class PollOptions(OptionsWithoutHandlers):
         ['modify', 'mod', PollModifyOptions, "Modify a poll"],
         ['cancel', None, PollCancelOptions, "Cancel a poll (vote caller only)"],
         ['veto', None, PollVetoOptions, "Veto a poll (admin only)"],
+        ['decide', None, PollDecideOptions, "Decide a poll (admin only)"],
         ['expire', None, PollExpireOptions,
             "Change Duration of a poll (admin only)"],
         ['list', 'ls', PollListOptions, "List polls"],
@@ -782,6 +790,32 @@ class Vote(abstract.ChannelWatcher):
                                  id=poll_id, error=e)
                 return
             self.bot.msg(self.channel, "Poll #{} vetoed".format(poll_id))
+        self._poll_delayed_call_cancel(poll_id)
+
+    @defer.inlineCallbacks
+    def cmd_poll_decide(self, issuer, poll_id):
+        if not (yield self.is_vote_admin(issuer)):
+            self.bot.notice(issuer, "Only admins can DECIDE polls")
+            return
+        issuer_auth = yield self.bot.get_auth(issuer)
+        with self._lock: # TODO: is this needed?
+            try:
+                if not(yield self.is_poll_running(poll_id)):
+                    self.bot.notice(issuer, "Poll isn't running")
+                    return
+            except KeyError:
+                self.bot.notice(issuer, "Poll doesn't exist")
+                return
+            try:
+                yield self.dbpool.runInteraction(Vote.update_poll_status, poll_id,
+                                                 PollStatus.DECIDED)
+            except Exception as e:
+                self.bot.notice(issuer, "Error deciding poll, contact the "
+                                "admin")
+                Vote.logger.warn("Error deciding poll #{id}: {error}",
+                                 id=poll_id, error=e)
+                return
+            self.bot.msg(self.channel, "Poll #{} decided".format(poll_id))
         self._poll_delayed_call_cancel(poll_id)
 
     @defer.inlineCallbacks

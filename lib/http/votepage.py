@@ -68,6 +68,8 @@ class VotePageElement(PageElement):
             return "color: red;"
         if status == "CANCELED":
             return "color: red;"
+        if status == "DECIDED":
+            return "color: darkgreen;"
         return ""
 
     @renderer

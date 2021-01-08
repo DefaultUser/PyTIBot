@@ -1148,6 +1148,7 @@ class Vote(abstract.ChannelWatcher):
         try:
             query = yield self.dbpool.runQuery(
                     'SELECT vote, comment FROM Votes '
+                    'WHERE poll_id=:poll_id AND user=:voterid;',
                     {"poll_id": poll_id, "voterid": voterid})
             if query:
                 previous_decision = VoteDecision[query[0][0]]

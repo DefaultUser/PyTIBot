@@ -344,7 +344,7 @@ class CommandOptions(OptionsWithoutHandlers):
         ['category', None, CategoryOptions, "Create/modify categories"],
         ['yes', None, OptionsWithoutHandlers, "Confirm previous action"],
         ['no', None, OptionsWithoutHandlers, "Abort previous action"],
-        ['help', None, HelpOptions, "Help: Chain subcommands with '.'"]
+        ['vhelp', None, HelpOptions, "Help: Chain subcommands with '.'"]
     ]
 
 
@@ -1104,7 +1104,7 @@ class Vote(abstract.ChannelWatcher):
             return
         self._pending_confirmations[userid].callback(decision)
 
-    def cmd_help(self, user, topic):
+    def cmd_vhelp(self, user, topic):
         def get_subOption(option_class, subCommand):
             for long, short, option, desc in option_class.subCommands:
                 if subCommand==long or subCommand==short:

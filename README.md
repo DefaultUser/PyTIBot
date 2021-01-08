@@ -274,9 +274,9 @@ Logging
 This bot can also be used to log channel activity.
 ```
 Logging:
-  directory = /tmp/log/
-  log_minor = True
-  yaml = True
+  directory: /tmp/log/
+  log_minor: true
+  yaml: true
 ```
 For every channel that should be logged, you need to add the *ChannelLogger* to the Channelmodules section (see above).<br/>
 Every channel is logged to a different file<br/>

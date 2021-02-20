@@ -93,7 +93,7 @@ allow long fortunes, -o to allow offensive fortunes"""
              r"/usr/share/fortunes/", r"/usr/share/games/fortunes/",
              fs.get_abs_path("fortunes")]
     num_lines_short = 3
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(exit_on_error=False)
     parser.add_argument("-l", action='store_true')
     parser.add_argument("-o", action='store_true')
     parser.add_argument("--list", action='store_true')
@@ -148,7 +148,13 @@ allow long fortunes, -o to allow offensive fortunes"""
 
     while True:
         args, sender, senderhost, channel = yield
-        options, unknown_options = parser.parse_known_args(args)
+        try:
+            options, unknown_options = parser.parse_known_args(args)
+        except Exception as e:
+            log.warn("Error parsing fortune arguments: {e}", e=e)
+            bot.msg(channel, formatting.colored("Invalid input for fortune",
+                                                formatting.IRCColorCodes.red))
+            continue
         if unknown_options:
             log.warn("Fortune: Unknown options: {options}",
                      options=unknown_options)

@@ -18,6 +18,7 @@
 
 import random
 import os
+import sys
 from twisted.internet import defer
 from twisted.logger import Logger
 from treq import get
@@ -86,6 +87,20 @@ def joke(bot):
         get(url).addCallback(_tell_joke, channel, " ".join(args))
 
 
+if sys.version_info.major==3 and sys.version_info.minor < 9:
+    class ArgParser(argparse.ArgumentParser):
+        def __init__(self, *args, exit_on_error=True, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.exit_on_error = exit_on_error
+
+        def error(self, message):
+            if self.exit_on_error:
+                super().error(message)
+            else:
+                raise argparse.ArgumentError(None, message)
+else:
+    ArgParser = argparse.ArgumentParser
+
 def fortune(bot):
     """Unix fortune: fortune --list for available fortunes, -l to \
 allow long fortunes, -o to allow offensive fortunes"""
@@ -93,7 +108,7 @@ allow long fortunes, -o to allow offensive fortunes"""
              r"/usr/share/fortunes/", r"/usr/share/games/fortunes/",
              fs.get_abs_path("fortunes")]
     num_lines_short = 3
-    parser = argparse.ArgumentParser(exit_on_error=False)
+    parser = ArgParser(exit_on_error=False)
     parser.add_argument("-l", action='store_true')
     parser.add_argument("-o", action='store_true')
     parser.add_argument("--list", action='store_true')
@@ -153,7 +168,7 @@ allow long fortunes, -o to allow offensive fortunes"""
         except Exception as e:
             log.warn("Error parsing fortune arguments: {e}", e=e)
             bot.msg(channel, formatting.colored("Invalid input for fortune",
-                                                formatting.IRCColorCodes.red))
+                                                "red"))
             continue
         if unknown_options:
             log.warn("Fortune: Unknown options: {options}",

@@ -19,9 +19,10 @@
 import re
 from collections import deque, defaultdict
 from string import Template
+import random
 from twisted.logger import Logger
 from twisted.words.protocols import irc
-from twisted.internet import defer
+from twisted.internet import defer, reactor
 
 from . import abstract
 
@@ -50,6 +51,9 @@ class Autokick(abstract.ChannelWatcher):
         # maximum number of highlights in one message
         self.max_highlights = config.get("max_highlights", 5)
 
+        self.min_delay = config.get("min_delay", 0)
+        self.max_delay = config.get("max_delay", 0)
+
         # ban
         self.ban = config.get("ban", False)
         self.ban_service = config.get("ban_service", None)
@@ -59,7 +63,7 @@ class Autokick(abstract.ChannelWatcher):
         self.msg_buffer.pop(user.lower(), None)
 
     @defer.inlineCallbacks
-    def kick_or_ban(self, user):
+    def _kick_or_ban(self, user):
         if self.ban and self.ban_service and self.ban_command.template:
             userinfo = yield self.bot.user_info(user)
             try:
@@ -69,10 +73,22 @@ class Autokick(abstract.ChannelWatcher):
                                                      CHANNEL=self.channel)
                 self.bot.msg(self.ban_service, bancmd)
             except Exception as e:
-                Autokick.logger.warn("Invalid ban command, kicking instead")
+                Autokick.logger.warn("Invalid ban command, kicking instead "
+                                     "({e})", e=e)
                 self.bot.kick(self.channel, user)
         else:
             self.bot.kick(self.channel, user)
+
+    def kick_or_ban(self, user):
+        if self.max_delay > 0:
+            try:
+                delay = random.randint(self.min_delay, self.max_delay)
+            except Exception as e:
+                Autokick.logger.warn("Failed to delay autokick ({e})", e=e)
+                delay=0
+        else:
+            delay=0
+        reactor.callLater(delay, self._kick_or_ban, user)
 
     def topic(self, user, topic):
         pass

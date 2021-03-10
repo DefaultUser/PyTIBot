@@ -124,6 +124,8 @@ Channelmodules:
       ban_service: Q # on Quakenet, ChanServ on Freenode etc
       ban_command: "TEMPBAN $CHANNEL $NICK!$USER@$HOST 5d" # Quakenet
       # ban_command: "BAN $CHANNEL $NICK!$USER@$HOST" # Freenode
+      min_delay: 0
+      max_delay: 0 # delay before kicking or banning to hide the fact that it's automated (0 to disable)
   -
     Greeter:
       standard_nicks: [test]

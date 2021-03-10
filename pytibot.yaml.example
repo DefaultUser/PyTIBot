@@ -120,6 +120,10 @@ Channelmodules:
       buffer_length: 6 # default 5
       repeat_count: 3 # default 3
       max_highlights: 3 # default 5
+      ban: false # ban instead of kick
+      ban_service: Q # on Quakenet, ChanServ on Freenode etc
+      ban_command: "TEMPBAN $CHANNEL $NICK!$USER@$HOST 5d" # Quakenet
+      # ban_command: "BAN $CHANNEL $NICK!$USER@$HOST" # Freenode
   -
     Greeter:
       standard_nicks: [test]

@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2020>  <Sebastian Schmidt>
+# Copyright (C) <2017-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,8 +18,10 @@
 
 import re
 from collections import deque, defaultdict
+from string import Template
 from twisted.logger import Logger
 from twisted.words.protocols import irc
+from twisted.internet import defer
 
 from . import abstract
 
@@ -48,8 +50,29 @@ class Autokick(abstract.ChannelWatcher):
         # maximum number of highlights in one message
         self.max_highlights = config.get("max_highlights", 5)
 
+        # ban
+        self.ban = config.get("ban", False)
+        self.ban_service = config.get("ban_service", None)
+        self.ban_command = Template(config.get("ban_command", ""))
+
     def remove_user_from_msgbuffer(self, user):
         self.msg_buffer.pop(user.lower(), None)
+
+    @defer.inlineCallbacks
+    def kick_or_ban(self, user):
+        if self.ban and self.ban_service and self.ban_command.template:
+            userinfo = yield self.bot.user_info(user)
+            try:
+                bancmd = self.ban_command.substitute(NICK=userinfo.nick,
+                                                     USER=userinfo.user,
+                                                     HOST=userinfo.host,
+                                                     CHANNEL=self.channel)
+                self.bot.msg(self.ban_service, bancmd)
+            except Exception as e:
+                Autokick.logger.warn("Invalid ban command, kicking instead")
+                self.bot.kick(self.channel, user)
+        else:
+            self.bot.kick(self.channel, user)
 
     def topic(self, user, topic):
         pass
@@ -66,11 +89,11 @@ class Autokick(abstract.ChannelWatcher):
 
     def nick(self, oldnick, newnick):
         if self.check_nick(newnick):
-            self.bot.kick(self.channel, newnick)
+            self.kick_or_ban(newnick)
 
     def join(self, user):
         if self.check_nick(user):
-            self.bot.kick(self.channel, user)
+            self.kick_or_ban(user)
 
     def part(self, user):
         self.remove_user_from_msgbuffer(user)
@@ -131,14 +154,14 @@ class Autokick(abstract.ChannelWatcher):
 
     def notice(self, user, message):
         if self.check_msg(user, message):
-            self.bot.kick(self.channel, user)
+            self.kick_or_ban(user)
 
     def action(self, user, data):
         pass
 
     def msg(self, user, message):
         if self.check_msg(user, message):
-            self.bot.kick(self.channel, user)
+            self.kick_or_ban(user)
 
     def connectionLost(self, reason):
         pass

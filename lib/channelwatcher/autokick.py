@@ -20,6 +20,7 @@ import re
 from collections import deque, defaultdict
 from string import Template
 import random
+from enum import Enum
 from twisted.logger import Logger
 from twisted.words.protocols import irc
 from twisted.internet import defer, reactor
@@ -29,6 +30,7 @@ from . import abstract
 
 class Autokick(abstract.ChannelWatcher):
     logger = Logger()
+    Mode = Enum("Mode", "KICK KICK_THEN_BAN BAN_CHANMODE BAN_SERVICE")
 
     def __init__(self, bot, channel, config):
         super(Autokick, self).__init__(bot, channel, config)
@@ -55,27 +57,59 @@ class Autokick(abstract.ChannelWatcher):
         self.max_delay = config.get("max_delay", 0)
 
         # ban
-        self.ban = config.get("ban", False)
+        try:
+            self.mode = Autokick.Mode[config.get("mode", "KICK").upper()]
+        except Exception as e:
+            Autokick.logger.warn("Invalid mode supplied, falling back to kick")
+            self.mode = Autokick.Mode.KICK
         self.ban_service = config.get("ban_service", None)
-        self.ban_command = Template(config.get("ban_command", ""))
+        self.ban_service_command = Template(config.get("ban_service_command",
+                                                       ""))
+        self.ban_chanmode_mask = Template(config.get("ban_chanmode_mask",
+                                                     "*!*@$HOST"))
 
     def remove_user_from_msgbuffer(self, user):
         self.msg_buffer.pop(user.lower(), None)
 
-    @defer.inlineCallbacks
-    def _kick_or_ban(self, user):
-        if self.ban and self.ban_service and self.ban_command.template:
-            userinfo = yield self.bot.user_info(user)
-            try:
-                bancmd = self.ban_command.substitute(NICK=userinfo.nick,
+    def _ban_chanmode(self, userinfo):
+        try:
+            mask = self.ban_chanmode_mask.substitute(NICK=userinfo.nick,
                                                      USER=userinfo.user,
                                                      HOST=userinfo.host,
                                                      CHANNEL=self.channel)
-                self.bot.msg(self.ban_service, bancmd)
-            except Exception as e:
-                Autokick.logger.warn("Invalid ban command, kicking instead "
-                                     "({e})", e=e)
-                self.bot.kick(self.channel, user)
+        except Exception as e:
+            Autokick.logger.warn("Invalid ban mask, kicking instead ({e})", e=e)
+            self.bot.kick(self.channel, userinfo.nick)
+            return
+        self.bot.mode(self.channel, True, "b", mask=mask)
+
+    def _ban_service(self, userinfo):
+        if not (self.ban_service and self.ban_command.template):
+            Autokick.logger.warn("Invalid setup for BAN_SERVICE, "
+                                 "trying BAN_CHANMODE instead")
+            self._ban_chanmode(userinfo)
+            return
+        try:
+            bancmd = self.ban_service_command.substitute(NICK=userinfo.nick,
+                                                         USER=userinfo.user,
+                                                         HOST=userinfo.host,
+                                                         CHANNEL=self.channel)
+            self.bot.msg(self.ban_service, bancmd)
+        except Exception as e:
+            Autokick.logger.warn("Invalid ban command, trying BAN_CHANMODE "
+                                 "instead ({e})", e=e)
+            self._ban_chanmode(userinfo)
+
+    @defer.inlineCallbacks
+    def _kick_or_ban(self, user):
+        userinfo = yield self.bot.user_info(user)
+        if self.mode == Autokick.Mode.BAN_SERVICE:
+            self._ban_service(userinfo)
+        elif self.mode == Autokick.Mode.BAN_CHANMODE:
+            self._ban_chanmode(userinfo)
+        elif self.mode == Autokick.Mode.KICK_THEN_BAN:
+            self.bot.kick(self.channel, user)
+            reactor.callLater(2, self._ban_chanmode, userinfo)
         else:
             self.bot.kick(self.channel, user)
 

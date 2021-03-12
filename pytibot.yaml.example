@@ -120,10 +120,11 @@ Channelmodules:
       buffer_length: 6 # default 5
       repeat_count: 3 # default 3
       max_highlights: 3 # default 5
-      ban: false # ban instead of kick
+      mode: KICK # one of KICK, KICK_THEN_BAN, BAN_CHANMODE, BAN_SERVICE
       ban_service: Q # on Quakenet, ChanServ on Freenode etc
-      ban_command: "TEMPBAN $CHANNEL $NICK!$USER@$HOST 5d" # Quakenet
-      # ban_command: "BAN $CHANNEL $NICK!$USER@$HOST" # Freenode
+      ban_service_command: "TEMPBAN $CHANNEL $NICK!$USER@$HOST 5d" # Quakenet
+      # ban_service_command: "BAN $CHANNEL $NICK!$USER@$HOST" # Freenode
+      # ban_chanmode_mask: "*!*@$HOST"
       min_delay: 0
       max_delay: 0 # delay before kicking or banning to hide the fact that it's automated (0 to disable)
   -

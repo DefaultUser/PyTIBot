@@ -81,6 +81,8 @@ class Autokick(abstract.ChannelWatcher):
             Autokick.logger.warn("Invalid ban mask, kicking instead ({e})", e=e)
             self.bot.kick(self.channel, userinfo.nick)
             return
+        Autokick.logger.info("Attempting to kick {mask} from #{channel} via "
+                             "channel mode", mask=mask, channel=self.channel)
         self.bot.mode(self.channel, True, "b", mask=mask)
 
     def _ban_service(self, userinfo):
@@ -94,11 +96,14 @@ class Autokick(abstract.ChannelWatcher):
                                                          USER=userinfo.user,
                                                          HOST=userinfo.host,
                                                          CHANNEL=self.channel)
-            self.bot.msg(self.ban_service, bancmd)
         except Exception as e:
             Autokick.logger.warn("Invalid ban command, trying BAN_CHANMODE "
                                  "instead ({e})", e=e)
             self._ban_chanmode(userinfo)
+            return
+        Autokick.logger.info("Sending ban command: /msg {service} {cmd}",
+                             service=self.ban_service, cmd=bancmd)
+        self.bot.msg(self.ban_service, bancmd)
 
     @defer.inlineCallbacks
     def _kick_or_ban(self, user):
@@ -108,9 +113,13 @@ class Autokick(abstract.ChannelWatcher):
         elif self.mode == Autokick.Mode.BAN_CHANMODE:
             self._ban_chanmode(userinfo)
         elif self.mode == Autokick.Mode.KICK_THEN_BAN:
+            Autokick.logger.info("Kicking {user} from #{channel} for delayed "
+                                 "ban", user=user, channel=self.channel)
             self.bot.kick(self.channel, user)
             reactor.callLater(2, self._ban_chanmode, userinfo)
         else:
+            Autokick.logger.info("Kicking {user} from #{channel}", user=user,
+                                 channel=self.channel)
             self.bot.kick(self.channel, user)
 
     def kick_or_ban(self, user):

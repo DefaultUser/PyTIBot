@@ -1188,7 +1188,8 @@ class Vote(abstract.ChannelWatcher):
         except Exception as e:
             Vote.logger.warn("Encountered error during vote: {}".format(e))
         vote_count = yield self.count_votes(poll_id, True)
-        if abs(vote_count.yes - vote_count.no) > vote_count.not_voted:
+        # end poll early on 2/3 majority
+        if 3*max(vote_count.yes, vote_count.no) >= 2*self._num_active_users:
             self._poll_delayed_call_cancel(poll_id)
             self.end_poll(poll_id)
 

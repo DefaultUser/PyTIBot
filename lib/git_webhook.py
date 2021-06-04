@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2020>  <Sebastian Schmidt>
+# Copyright (C) <2017-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -42,8 +42,8 @@ class GitWebhookServer(Resource):
     log = Logger()
     GH_ReviewFloodPrevention_Delay = 10
 
-    def __init__(self, bot, config):
-        self.bot = bot
+    def __init__(self, botfactory, config):
+        self.botfactory = botfactory
         self.github_secret = config["GitWebhook"].get("github_secret", None)
         self.gitlab_secret = config["GitWebhook"].get("gitlab_secret", None)
         self.channels = config["GitWebhook"]["channels"]
@@ -141,6 +141,8 @@ class GitWebhookServer(Resource):
         """
         Send a success or fail message to the 'hook_report_users'
         """
+        if self.botfactory.bot is None:
+            return
         if isinstance(success, Failure):
             message = "Hook {} failed: {}".format(colored(actionname, IRCColorCodes.blue),
                                                   success.getErrorMessage())
@@ -148,7 +150,7 @@ class GitWebhookServer(Resource):
             message = "Hook {} finished without errors".format(
                 colored(actionname, IRCColorCodes.blue))
         for user in self.hook_report_users:
-            self.bot.msg(user, message)
+            self.botfactory.bot.msg(user, message)
 
     def push_hooks(self, data):
         """
@@ -210,6 +212,8 @@ class GitWebhookServer(Resource):
         # TODO: issue_hooks, tag_hooks, pullrequest_hooks and comment_hooks
 
     def report_to_irc(self, repo_name, message):
+        if self.botfactory.bot is None:
+            return
         channels = []
         if repo_name in self.channels:
             channels = self.channels[repo_name]
@@ -224,7 +228,7 @@ class GitWebhookServer(Resource):
                           repo=repo_name)
             return
         for channel in channels:
-            self.bot.msg(channel, message)
+            self.botfactory.bot.msg(channel, message)
 
     @defer.inlineCallbacks
     def commits_to_irc(self, repo_name, commits, github=False):

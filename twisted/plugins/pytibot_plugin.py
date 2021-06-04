@@ -29,6 +29,7 @@ from yamlcfg import YamlConfig
 from pytibotfactory import PyTIBotFactory
 from twisted.conch import manhole_tap
 from lib import http
+from lib.git_webhook import GitWebhookServer
 from util import filesystem as fs
 from util import log
 
@@ -97,6 +98,26 @@ class PyTIBotServiceMaker(object):
                        'telnetPort': telnetPort}
             tn_sv = manhole_tap.makeService(options)
             tn_sv.setServiceParent(mService)
+
+        if (config["GitWebhook"] and ("port" in config["GitWebhook"] or
+                                      "sshport" in config["GitWebhook"])):
+            webhook_server = GitWebhookServer(ircbotfactory, config)
+            factory = Site(webhook_server)
+            # https
+            sslport = config["GitWebhook"].get("sslport", None)
+            privkey = config["GitWebhook"].get("privkey", None)
+            cert = config["GitWebhook"].get("certificate", None)
+            if sslport and privkey and cert:
+                sslContext = ssl.DefaultOpenSSLContextFactory(
+                    privkey, cert)
+                webhook_https_sv = internet.SSLServer(sslport, factory,
+                                                      sslContext)
+                webhook_https_sv.setServiceParent(mService)
+            # http
+            port = config["GitWebhook"].get("port", None)
+            if port:
+                webhook_http_sv = internet.TCPServer(port, factory)
+                webhook_http_sv.setServiceParent(mService)
 
         if (config["HTTPServer"] and ("port" in config["HTTPServer"] or
                                       "sshport" in config["HTTPServer"])):

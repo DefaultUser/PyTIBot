@@ -417,6 +417,8 @@ class GitWebhookServer(Resource):
             action = "synchronized"
         elif action == "ready_for_review":
             action = "marked ready for review:"
+        elif action == "converted_to_draft":
+            action = "converted to draft:"
         if not payload:
             payload = yield shorten_github_url(
                 data["pull_request"]["html_url"])

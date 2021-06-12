@@ -18,9 +18,14 @@
 
 from twisted.internet import protocol, reactor
 from twisted.logger import Logger
+from zope.interface import implementer
+
+
+from backends.interfaces import IBotProvider
 from pytibot import PyTIBot
 
 
+@implementer(IBotProvider)
 class PyTIBotFactory(protocol.ClientFactory):
     """A factory for PyTIBot"""
     MAX_ATTEMPTS = 5

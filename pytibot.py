@@ -24,7 +24,9 @@ from twisted.internet import ssl
 from twisted.web.server import Site
 from twisted.logger import Logger
 import sys
+from zope.interface import implementer
 
+from backends.interfaces import IBot
 from lib.stdiointerface import STDIOInterface
 from lib import commands
 from lib.simpletrigger import simple_trigger
@@ -40,6 +42,7 @@ irc.numeric_to_symbolic["330"] = "RPL_WHOISAUTH"
 Alias = namedtuple("Alias", "command arguments")
 
 
+@implementer(IBot)
 class PyTIBot(irc.IRCClient, object):
     """A simple IRC bot"""
     lineRate = 1

@@ -26,6 +26,8 @@ class IBotProvider(zope.interface.Interface):
 
 
 class IBot(zope.interface.Interface):
+    userlist = zope.interface.Attribute("""Dictionary containing all users per channel""")
+
     """Interface for all Bot backends"""
     def msg(target, message, length=None):
         """Send a message to a channel/room/user"""

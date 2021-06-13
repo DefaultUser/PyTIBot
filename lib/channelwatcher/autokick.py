@@ -83,7 +83,7 @@ class Autokick(abstract.ChannelWatcher):
             Autokick.logger.warn("Invalid ban mask, kicking instead ({e})", e=e)
             self.bot.kick(self.channel, userinfo.nick)
             return
-        Autokick.logger.info("Attempting to kick {mask} from #{channel} via "
+        Autokick.logger.info("Attempting to kick {mask} from {channel} via "
                              "channel mode", mask=mask, channel=self.channel)
         self.bot.mode(self.channel, True, "b", mask=mask)
 
@@ -115,12 +115,12 @@ class Autokick(abstract.ChannelWatcher):
         elif self.mode == Autokick.Mode.BAN_CHANMODE:
             self._ban_chanmode(userinfo)
         elif self.mode == Autokick.Mode.KICK_THEN_BAN:
-            Autokick.logger.info("Kicking {user} from #{channel} for delayed "
+            Autokick.logger.info("Kicking {user} from {channel} for delayed "
                                  "ban", user=user, channel=self.channel)
             self.bot.kick(self.channel, user)
             reactor.callLater(2, self._ban_chanmode, userinfo)
         else:
-            Autokick.logger.info("Kicking {user} from #{channel}", user=user,
+            Autokick.logger.info("Kicking {user} from {channel}", user=user,
                                  channel=self.channel)
             self.bot.kick(self.channel, user)
 
@@ -193,7 +193,7 @@ class Autokick(abstract.ChannelWatcher):
         """Check if message is just repeated spam"""
         msg = message.lower()
         # replace nicks to prevent spam that only changes mentioned users
-        for nick in self.bot.userlist[self.channel.lower()]:
+        for nick in self.bot.userlist[self.channel]:
             msg = msg.replace(nick.lower(), "<user>")
         self.msg_buffer[user].append(msg)
         if self.msg_buffer[user].count(msg) == self.repeat_count:
@@ -206,7 +206,7 @@ class Autokick(abstract.ChannelWatcher):
             return False
         message = message.lower()
         count = 0
-        for user in self.bot.userlist[self.channel.lower()]:
+        for user in self.bot.userlist[self.channel]:
             if user.lower() in message:
                 count += 1
             if count > self.max_highlights:

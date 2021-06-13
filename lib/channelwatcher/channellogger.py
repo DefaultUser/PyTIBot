@@ -35,7 +35,7 @@ class ChannelLogger(abstract.ChannelWatcher):
             name += ".yaml"
         else:
             name += ".txt"
-        self.logger = logging.getLogger(channel.lower())
+        self.logger = logging.getLogger(channel)
         if bot.config["Logging"].get("log_minor", False):
             log_level = log.TOPIC
         else:

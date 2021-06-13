@@ -125,7 +125,6 @@ class PyTIBot(irc.IRCClient, object):
         if not channel.startswith("#"):
             channel = "#" + channel
         # make all channels lowercase
-        channel = channel.lower()
         if channel in self.channelwatchers:
             self.channelwatchers[channel].append(watcher)
         else:
@@ -135,7 +134,6 @@ class PyTIBot(irc.IRCClient, object):
         if not channel.startswith("#"):
             channel = "#" + channel
         # make all channels lowercase
-        channel = channel.lower()
         try:
             watchers = self.channelwatchers.pop(channel)
         except KeyError:
@@ -269,7 +267,6 @@ class PyTIBot(irc.IRCClient, object):
     def joined(self, channel):
         """Triggered when joining a channel"""
         self.log.info("Joined channel: {channel}", channel=channel)
-        channel = channel.lower()
         if self.config["Channelmodules"]:
             for watcher in self.config["Channelmodules"].get(channel, []):
                 if isinstance(watcher, dict):
@@ -289,7 +286,6 @@ class PyTIBot(irc.IRCClient, object):
 
     def left(self, channel):
         """Triggered when leaving a channel"""
-        channel = channel.lower()
         self.userlist.pop(channel)
         self.log.info("Left channel: {channel}", channel=channel)
         if channel in self.channelwatchers:
@@ -303,7 +299,6 @@ class PyTIBot(irc.IRCClient, object):
         user, temp = user.split('!', 1)
         userhost = temp.split("@")[-1]
 
-        channel = channel.lower()
         if channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:
                 watcher.msg(user, msg)
@@ -425,14 +420,12 @@ class PyTIBot(irc.IRCClient, object):
         nick = user.split("!")[0]
         self.log.info("{nick} changed the topic of {channel} to {topic}",
                       nick=nick, channel=channel, topic=newTopic)
-        channel = channel.lower()
         if channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:
                 watcher.topic(nick, newTopic)
 
     def userJoined(self, user, channel):
         """Triggered when a user joins a channel"""
-        channel = channel.lower()
         self.userlist[channel].append(user)
         self.log.info("{user} joined {channel}", user=user, channel=channel)
         if channel in self.channelwatchers:
@@ -444,7 +437,6 @@ class PyTIBot(irc.IRCClient, object):
         self.log.info("{oldname} is now known as {newname}",
                       oldname=oldname, newname=newname)
         for channel in self.userlist.keys():
-            channel = channel.lower()
             if oldname in self.userlist[channel]:
                 self.userlist[channel].remove(oldname)
                 self.userlist[channel].append(newname)
@@ -462,7 +454,6 @@ class PyTIBot(irc.IRCClient, object):
         nick = user.split("!")[0]
         self.log.info("{channel} | *{nick} {data}", channel=channel,
                       nick=nick, data=data)
-        channel = channel.lower()
         if channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:
                 watcher.action(nick, data)
@@ -472,7 +463,6 @@ class PyTIBot(irc.IRCClient, object):
         nick = user.split("!")[0]
         self.log.info("{channel} | [{nick} {message}]", channel=channel,
                       nick=nick, message=message)
-        channel = channel.lower()
         if channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:
                 watcher.notice(nick, message)
@@ -492,7 +482,6 @@ class PyTIBot(irc.IRCClient, object):
         self.log.info("{kickee} was kicked from {channel} by {kicker} "
                       "({reason})", kickee=kickee, channel=channel,
                       kicker=kicker, reason=message)
-        channel = channel.lower()
         self.remove_user_from_cache(kickee)
         self.userlist[channel].remove(kickee)
 
@@ -501,7 +490,6 @@ class PyTIBot(irc.IRCClient, object):
                 watcher.kick(kickee, kicker, message)
 
     def userLeft(self, user, channel):
-        channel = channel.lower()
         self.remove_user_from_cache(user)
         self.userlist[channel].remove(user)
         self.log.info("{user} left {channel}", user=user, channel=channel)
@@ -515,7 +503,6 @@ class PyTIBot(irc.IRCClient, object):
         self.log.info("{user} quit({message})", user=user, message=quitMessage)
 
         for channel in self.userlist.keys():
-            channel = channel.lower()
             if user in self.userlist[channel]:
                 self.userlist[channel].remove(user)
                 if channel in self.channelwatchers:
@@ -524,7 +511,6 @@ class PyTIBot(irc.IRCClient, object):
 
     def kickedFrom(self, channel, kicker, message):
         """Triggered when bot gets kicked"""
-        channel = channel.lower()
         self.log.warn("Kicked from {channel} by {kicker} ({reason})",
                       channel=channel, kicker=kicker, reason=message)
         if self.config["Connection"].get("rejoinKicked", False):

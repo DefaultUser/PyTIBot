@@ -159,7 +159,7 @@ class LogPageElement(PageElement):
 class LogPage(BaseResource):
     def __init__(self, crumb, config):
         super(LogPage, self).__init__(crumb)
-        self.channel = config["channel"].lstrip("#")
+        self.channel = config["channel"]
         self.log_dir = log.get_channellog_dir()
         self.title = config.get("title", "Channel Logs for {}".format(self.channel))
         search_pagelen = config.get("search_pagelen", 5)
@@ -170,11 +170,11 @@ class LogPage(BaseResource):
     def log_items(self, date, level):
         filename = None
         if date == datetime.today().strftime("%Y-%m-%d"):
-            filename = "{}.yaml".format(self.channel)
+            filename = "{}.yaml".format(self.channel.lstrip("#"))
         elif date_regex.match(date):
-            filename = "{}.{}.yaml".format(self.channel, date)
+            filename = "{}.{}.yaml".format(self.channel.lstrip("#"), date)
         elif date == "current":
-            filename = "{}.yaml".format(self.page.channel)
+            filename = "{}.yaml".format(self.page.channel.lstrip("#"))
         if filename and os.path.isfile(os.path.join(self.log_dir, filename)):
             with open(os.path.join(self.log_dir, filename)) as logfile:
                 for i, data in enumerate(yaml.full_load_all(logfile)):
@@ -255,13 +255,13 @@ class SearchPage(BaseResource):
                                date=fields.DATETIME(stored=True,
                                                     sortable=True))
         indexpath = os.path.join(fs.adirs.user_cache_dir, "index",
-                                 self.channel)
+                                 self.channel.lstrip("#"))
         if not os.path.exists(indexpath):
             os.makedirs(indexpath)
         ix = create_in(indexpath, schema)
         writer = ix.writer(procs=self.indexer_procs)
         for name in os.listdir(self.log_dir):
-            if name.startswith(self.channel + ".") and name.endswith(".yaml"):
+            if name.startswith(self.channel.lstrip("#") + ".") and name.endswith(".yaml"):
                 c, date = self._fields_from_yaml(name)
                 writer.add_document(path=name, content=c, date=date)
         writer.commit()
@@ -277,13 +277,13 @@ class SearchPage(BaseResource):
             for field in searcher.all_stored_fields():
                 indexed_paths.add(field["path"])
         for name in os.listdir(self.log_dir):
-            if name.startswith(self.channel + ".") and name.endswith(".yaml"):
+            if name.startswith(self.channel.lstrip("#") + ".") and name.endswith(".yaml"):
                 if name not in indexed_paths:
                     c, date = self._fields_from_yaml(name)
                     writer.add_document(path=name, content=c,
                                         date=date)
         # <channelname>.yaml is the only file that can change
-        name = u"{}.yaml".format(self.channel)
+        name = u"{}.yaml".format(self.channel.lstrip("#"))
         path = os.path.join(self.log_dir, name)
         if os.path.isfile(path):
             modtime = os.path.getmtime(path)

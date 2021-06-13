@@ -33,6 +33,18 @@ def bytes_to_str(data):
     return str(data, "utf-8")
 
 
+def removeprefix(s, prefix):
+    if s.startswith(prefix):
+        return s[len(prefix):]
+    return s
+
+
+def removesuffix(s, suffix):
+    if s.endswith(suffix):
+        return s[:len(s)-len(suffix)]
+    return s
+
+
 def filter_dict(data, rule):
     """
     Returns True if rule applies to the dictionary

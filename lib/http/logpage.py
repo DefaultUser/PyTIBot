@@ -37,7 +37,7 @@ from html import escape as htmlescape
 from .common import PageElement, webpage_error_handler, BaseResource
 from util import log, formatting
 from util import filesystem as fs
-from util.misc import bytes_to_str
+from util.misc import bytes_to_str, removeprefix, removesuffix
 from util.whoosh_tag_formatter import WhooshTagFormatter
 
 
@@ -239,7 +239,7 @@ class SearchPage(BaseResource):
                 if element["levelname"] == "MSG":
                     msg = irc.stripFormatting(element["message"])
                     content.append(msg)
-            datestr = name.lstrip(self.channel + ".").rstrip(".yaml")
+            datestr = removesuffix(removeprefix(name, self.channel.lstrip("#") + "."), ".yaml")
             try:
                 date = datetime.strptime(datestr, "%Y-%m-%d")
             except ValueError:

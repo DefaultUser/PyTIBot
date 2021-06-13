@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2018>  <Sebastian Schmidt>
+# Copyright (C) <2017-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,11 +19,14 @@
 import logging
 import os
 
-from util import log
 from . import abstract
+from backends import Backends
+from util import log
 
 
 class ChannelLogger(abstract.ChannelWatcher):
+    supported_backends = [Backends.IRC]
+
     def __init__(self, bot, channel, config):
         super(ChannelLogger, self).__init__(bot, channel, config)
         name = channel.lstrip("#")

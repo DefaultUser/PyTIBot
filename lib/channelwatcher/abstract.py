@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2018>  <Sebastian Schmidt>
+# Copyright (C) <2017-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@ class ChannelWatcher(object):
     Abstract base class for watching activity on a channel
     """
     __metaclass__ = ABCMeta
+    supported_backends = []
 
     def __init__(self, bot, channel, config):
         self.bot = bot

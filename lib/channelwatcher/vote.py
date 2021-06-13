@@ -32,6 +32,7 @@ import textwrap
 from inspect import signature, Parameter
 
 from . import abstract
+from backends import Backends
 from util import filesystem as fs
 from util.decorators import maybe_deferred
 from util import formatting
@@ -358,6 +359,8 @@ class CommandOptions(OptionsWithoutHandlers):
 
 class Vote(abstract.ChannelWatcher):
     logger = Logger()
+    supported_backends = [Backends.IRC]
+
     PollEndWarningTime = timedelta(days=2)
     PollDefaultDuration = timedelta(days=15)
     expireTimeRegex = re.compile(r"(extend|reduce)\s+(?:(\d+)\s*d(?:ays?)?)?\s*(?:(\d+)\s*h(?:ours?)?)?$")

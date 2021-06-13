@@ -26,11 +26,13 @@ from twisted.words.protocols import irc
 from twisted.internet import defer, reactor
 
 from . import abstract
+from backends import Backends
 
 
 class Autokick(abstract.ChannelWatcher):
     logger = Logger()
     Mode = Enum("Mode", "KICK KICK_THEN_BAN BAN_CHANMODE BAN_SERVICE")
+    supported_backends = [Backends.IRC]
 
     def __init__(self, bot, channel, config):
         super(Autokick, self).__init__(bot, channel, config)

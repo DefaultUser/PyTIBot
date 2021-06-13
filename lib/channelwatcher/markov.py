@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2019>  <Sebastian Schmidt>
+# Copyright (C) <2019-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,10 +22,13 @@ import os
 from twisted.logger import Logger
 
 from . import abstract
+from backends import Backends
 from util import filesystem as fs
 
 
 class MarkovChat(abstract.ChannelWatcher):
+    supported_backends = [Backends.IRC]
+
     def __init__(self, bot, channel, config):
         super(MarkovChat, self).__init__(bot, channel, config)
         self.units = []

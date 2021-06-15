@@ -26,6 +26,7 @@ from twisted.logger import Logger
 import sys
 from zope.interface import implementer
 
+from backends import Backends
 from backends.interfaces import IBot
 from lib.stdiointerface import STDIOInterface
 from lib import commands
@@ -278,6 +279,11 @@ class PyTIBot(irc.IRCClient, object):
                 if not hasattr(channelwatcher, name):
                     self.log.warn("No channelwatcher called {name}, "
                                   "ignoring", name=name)
+                    continue
+                type_ = getattr(channelwatcher, name)
+                if not Backends.IRC in type_.supported_backends:
+                    self.log.warn("Channelwatcher {name} doesn't support IRC",
+                                  name=name)
                     continue
                 instance = getattr(channelwatcher, name)(self, channel,
                                                          config)

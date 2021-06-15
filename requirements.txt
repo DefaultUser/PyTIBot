@@ -9,3 +9,4 @@ unidecode
 colormath
 markovify
 dateparser
+matrix-nio[e2e]

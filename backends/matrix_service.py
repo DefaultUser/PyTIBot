@@ -13,9 +13,26 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+from twisted.application.service import Service
+from twisted.internet.defer import ensureDeferred
+from zope.interface import implementer
 
-from enum import Enum
+from backends.interfaces import IBotProvider
+from backends.matrix_bot import MatrixBot
 
 
-Backends = Enum("Backends", "IRC MATRIX")
+@implementer(IBotProvider)
+class MatrixService(Service):
+    def __init__(self, config):
+        self.bot = MatrixBot(config)
 
+    def get_bot(self):
+        return self.bot
+
+    def startService(self):
+        ensureDeferred(self.bot.start())
+        super().startService()
+
+    def stopService(self):
+        super().stopService()
+        self.bot.stop()

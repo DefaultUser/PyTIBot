@@ -26,7 +26,9 @@ import os
 
 from yamlcfg import YamlConfig
 
+from backends import Backends
 from pytibotfactory import PyTIBotFactory
+from backends.matrix_service import MatrixService
 from twisted.conch import manhole_tap
 from lib import http
 from lib.git_webhook import GitWebhookServer
@@ -62,20 +64,30 @@ class PyTIBotServiceMaker(object):
 
         mService = MultiService()
 
-        # irc client
-        ircserver = config["Connection"]["server"]
-        ircsslport = config["Connection"].get("sslport", None)
-        ircport = config["Connection"].get("port", None)
-        ircbotfactory = PyTIBotFactory(config)
-        if ircsslport:
-            irc_cl = internet.SSLClient(ircserver, ircsslport, ircbotfactory,
-                                        ssl.ClientContextFactory())
-        elif ircport:
-            irc_cl = internet.TCPClient(ircserver, ircport, ircbotfactory)
-        else:
-            raise EnvironmentError("Neither sslport nor port are given for "
-                                   "the irc connection!\nPlease reconfigure")
-        irc_cl.setServiceParent(mService)
+        try:
+            mode = Backends[config["Connection"].get("mode", "IRC").upper()]
+        except ValueError:
+            raise EnvironmentError("No valid backend selected")
+        if mode == Backends.IRC:
+            # irc client
+            ircserver = config["Connection"]["server"]
+            ircsslport = config["Connection"].get("sslport", None)
+            ircport = config["Connection"].get("port", None)
+            ircbotfactory = PyTIBotFactory(config)
+            bot_provider = ircbotfactory
+            if ircsslport:
+                irc_cl = internet.SSLClient(ircserver, ircsslport, ircbotfactory,
+                                            ssl.ClientContextFactory())
+            elif ircport:
+                irc_cl = internet.TCPClient(ircserver, ircport, ircbotfactory)
+            else:
+                raise EnvironmentError("Neither sslport nor port are given for "
+                                       "the irc connection!\nPlease reconfigure")
+            irc_cl.setServiceParent(mService)
+        elif mode == Backends.MATRIX:
+            matrix_service = MatrixService(config)
+            bot_provider = matrix_service
+            matrix_service.setServiceParent(mService)
 
         # manhole for debugging
         if config["Manhole"]:
@@ -88,7 +100,7 @@ class PyTIBotServiceMaker(object):
             sshKeySize = config.Manhole.get("sshKeySize", 4096)
             if sshPort:
                 sshPort = "ssl:{}".format(sshPort)
-            options = {'namespace': {'get_bot': ircbotfactory.get_bot},
+            options = {'namespace': {'get_bot': bot_provider.get_bot},
                        'passwd': os.path.join(fs.adirs.user_config_dir,
                                               'manhole_cred'),
                        'sshPort': sshPort,
@@ -101,7 +113,7 @@ class PyTIBotServiceMaker(object):
 
         if (config["GitWebhook"] and ("port" in config["GitWebhook"] or
                                       "sshport" in config["GitWebhook"])):
-            webhook_server = GitWebhookServer(ircbotfactory, config)
+            webhook_server = GitWebhookServer(bot_provider, config)
             factory = Site(webhook_server)
             # https
             sslport = config["GitWebhook"].get("sslport", None)

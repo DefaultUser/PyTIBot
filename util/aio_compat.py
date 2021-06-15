@@ -14,8 +14,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from enum import Enum
+import asyncio
+from twisted.internet.defer import Deferred
 
 
-Backends = Enum("Backends", "IRC MATRIX")
+def deferred_to_future(d):
+    return d.asFuture(asyncio.get_event_loop())
+
+def future_to_deferred(f):
+    return Deferred.fromFuture(asyncio.ensure_future(f))
 

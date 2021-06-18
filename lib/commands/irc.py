@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2018>  <Sebastian Schmidt>
+# Copyright (C) <2015-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,31 +15,6 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-
-from twisted.logger import Logger
-
-
-log = Logger()
-
-
-def whois(bot):
-    """Return the WHOISUSER reply as notice"""
-    def _reply(params, sender):
-        bot.notice(sender, ", ".join(params))
-
-    def _eb(fail, sender, nick):
-        log.error("An error occured while retrieving 'whois' "
-                  "information for nick {nick}: {error}",
-                  nick=nick, error=fail)
-        bot.notice(sender, "Could not retrieve 'whois' information "
-                   "for {}".format(nick))
-
-    while True:
-        args, sender, senderhost, channel = yield
-        bot.get_user_info(args[0]).addCallbacks(_reply, _eb,
-                                                callbackArgs=[sender],
-                                                errbackArgs=[sender, args[0]])
-
 
 def hello(bot):
     """Just a hello function"""

@@ -17,14 +17,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import random
-from twisted.internet import threads, defer
-from treq import get
 from util import formatting
-
-try:
-    import xmlrpclib
-except ImportError:
-    import xmlrpc.client as xmlrpclib
 
 
 def rand(bot):

@@ -21,9 +21,9 @@ import sys
 from util import formatting
 
 from lib.commands.administration import *
+from lib.commands.basic import *
 from lib.commands.education import *
 from lib.commands.fun import *
-from lib.commands.irc import *
 
 
 def bot_help(bot):

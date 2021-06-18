@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2020>  <Sebastian Schmidt>
+# Copyright (C) <2015-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -129,17 +129,6 @@ def reload_config(bot):
             bot.load_settings()
 
     while True:
-        args, sender, senderhost, channel = yield
+        args, sender, channel = yield
         bot.is_user_admin(sender).addCallback(_reload)
 
-
-def raw(bot):
-    """Send a raw IRC line to the server"""
-    def _raw(is_admin, line):
-        if is_admin:
-            bot.sendLine(line)
-
-    while True:
-        args, sender, senderhost, channel = yield
-        line = " ".join(args)
-        bot.is_user_admin(sender).addCallback(_raw, line)

@@ -19,14 +19,14 @@
 def hello(bot):
     """Just a hello function"""
     while True:
-        args, sender, senderhost, channel = yield
+        args, sender, channel = yield
         bot.msg(channel, "hello {}".format(sender))
 
 
 def tell(bot):
     """Send a message to a user or channel"""
     while True:
-        args, sender, senderhost, channel = yield
+        args, sender, channel = yield
         if len(args):
             targetnick = args[0]
             body = " ".join(args[1:])
@@ -36,7 +36,7 @@ def tell(bot):
 def say(bot):
     """Make the bot say something"""
     while True:
-        args, sender, senderhost, channel = yield
+        args, sender, channel = yield
         message = " ".join(args)
         if message.lower() == "something":
             message = "To be or not to be - that's the question."

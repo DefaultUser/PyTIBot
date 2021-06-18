@@ -26,7 +26,7 @@ def shutdown(bot):
             bot.msg(channel, "I won't listen to you!")
 
     while True:
-        args, sender, senderhost, channel = yield
+        args, sender, channel = yield
         bot.is_user_admin(sender).addCallback(_shutdown, channel, args)
 
 
@@ -73,7 +73,7 @@ to remove from the list, 'ls' or 'list' to show the list"""
                                                   " help", formatting.IRCColorCodes.red))
 
     while True:
-        args, sender, senderhost, channel = yield
+        args, sender, channel = yield
         bot.is_user_admin(sender).addCallback(_do_ignore, sender, args)
 
 
@@ -85,7 +85,7 @@ def join(bot):
                 bot.join(c)
 
     while True:
-        args, sender, senderhost, channel = yield
+        args, sender, channel = yield
         bot.is_user_admin(sender).addCallback(_join, args)
 
 
@@ -97,7 +97,7 @@ def part(bot):
                 bot.leave(c)
 
     while True:
-        args, sender, senderhost, channel = yield
+        args, sender, channel = yield
         bot.is_user_admin(sender).addCallback(_part, args)
 
 
@@ -108,7 +108,7 @@ def change_nick(bot):
             bot.setNick(newnick)
 
     while True:
-        args, sender, senderhost, channel = yield
+        args, sender, channel = yield
         if args:
             bot.is_user_admin(sender).addCallback(_change_nick, args[0])
 
@@ -118,7 +118,7 @@ def about(bot):
     info = ("PyTIBot - sources and info can be found at "
             "https://github.com/DefaultUser/PyTIBot")
     while True:
-        args, sender, senderhost, channel = yield
+        args, sender, channel = yield
         bot.msg(channel, info)
 
 

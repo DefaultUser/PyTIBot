@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2020>  <Sebastian Schmidt>
+# Copyright (C) <2015-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -50,7 +48,7 @@ morse_dict = bidict({'A': '.-', 'B': '-...', 'C': '-.-.',
 def morse(bot):
     """Translate to morse code"""
     while True:
-        args, sender, senderhost, channel = yield
+        args, sender, channel = yield
         message = " ".join(args)
         morsecode = []
         for char in message:
@@ -62,7 +60,7 @@ def morse(bot):
 def unmorse(bot):
     """Translate from morse code"""
     while True:
-        args, sender, senderhost, channel = yield
+        args, sender, channel = yield
         newstring = ""
         for char in args:
             newstring += morse_dict.inv.get(char, char)
@@ -83,7 +81,7 @@ def joke(bot):
         bot.msg(channel, str(cnjoke), length=510)
 
     while True:
-        args, sender, senderhost, channel = yield
+        args, sender, channel = yield
         get(url).addCallback(_tell_joke, channel, " ".join(args))
 
 
@@ -162,7 +160,7 @@ allow long fortunes, -o to allow offensive fortunes"""
         return fortune
 
     while True:
-        args, sender, senderhost, channel = yield
+        args, sender, channel = yield
         try:
             options, unknown_options = parser.parse_known_args(args)
         except Exception as e:

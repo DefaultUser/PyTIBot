@@ -31,7 +31,7 @@ def rand(bot):
     """Randomizer, opt args: 'range int1 int2', 'frange float1 float2' or \
 list of choices"""
     while True:
-        args, sender, senderhost, channel = yield
+        args, sender, channel = yield
         try:
             if not args:
                 result = random.choice(["Heads", "Tails"])

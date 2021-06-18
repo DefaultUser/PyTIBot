@@ -356,7 +356,7 @@ class PyTIBot(irc.IRCClient, object):
                         args.insert(index, arg)
                 command = self.aliases[command].command
             if command in self.commands:
-                self.commands[command].send((args, user, userhost, channel))
+                self.commands[command].send((args, user, channel))
             else:
                 self.log.debug("No such command: {cmd}", cmd=command)
 
@@ -370,7 +370,7 @@ class PyTIBot(irc.IRCClient, object):
 
         # send message to generator functions
         for gen in matches:
-            gen.send((msg, user, userhost, channel))
+            gen.send((msg, user, channel))
 
         if self.config["Simple Triggers"]:
             triggers = self.config["Simple Triggers"]
@@ -380,7 +380,7 @@ class PyTIBot(irc.IRCClient, object):
                        re.search(re.compile(trigger["trigger"].replace(
                            "$nickname", self.nickname), re.IGNORECASE), msg)]
             for trigger in matches:
-                self.simple_trigger.send((trigger, user, userhost, channel))
+                self.simple_trigger.send((trigger, user, channel))
 
     def nickChanged(self, nick):
         """Triggered when own nick changes"""

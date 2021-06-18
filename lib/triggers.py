@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015>  <Sebastian Schmidt>
+# Copyright (C) <2015-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -65,7 +63,7 @@ def youtube(bot):
                 length=510)
 
     while True:
-        message, sender, senderhost, channel = yield
+        message, sender, channel = yield
         if not yt_service:
             print("No youtube API key set, can't fetch youtube video titles")
             continue
@@ -86,7 +84,7 @@ def import_this(bot):
     zen = "".join([this.d.get(char, char) for char in this.s])
     zen = zen.lstrip("The Zen of Python, by Tim Peters\n\n")
     while True:
-        message, sender, senderhost, channel = yield
+        message, sender, channel = yield
         bot.msg(channel, zen)
 
 
@@ -107,7 +105,7 @@ def enable_command(bot):
             bot.msg(channel, "ImportError: No module named {}".format(cmd))
 
     while True:
-        message, sender, senderhost, channel = yield
+        message, sender, channel = yield
         pat = re.compile(r"^from {}\.(?P<type>commands|triggers) import"
                          " (?P<cmd>\w+)( as (?P<name>\w+))?$".format(
                              bot.nickname))

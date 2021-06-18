@@ -259,6 +259,9 @@ class PyTIBot(irc.IRCClient, object):
             for watcher in self.channelwatchers[user]:
                 watcher.msg(self.nickname, message)
 
+    def action(self, channel, action):
+        self.describe(channel, action)
+
     def ban(self, channel, user):
         """
         Attempt to ban a user from a channel

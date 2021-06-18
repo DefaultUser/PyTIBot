@@ -80,7 +80,7 @@ class STDIOInterface(LineOnlyReceiver, object):
         if not data:
             raise ValueError("No channel and action given")
         channel, action = data.split(None, 1)
-        self.bot.describe(channel, action)
+        self.bot.action(channel, action)
 
     def irc_msg(self, data):
         """Send a message to an IRC channel or user

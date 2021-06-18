@@ -26,14 +26,20 @@ class IBotProvider(zope.interface.Interface):
 
 
 class IBot(zope.interface.Interface):
+    """Interface for all Bot backends"""
     userlist = zope.interface.Attribute("""Dictionary containing all users per channel""")
 
-    """Interface for all Bot backends"""
+    def setNick(newnick):
+        """Set a new nickname"""
+
     def msg(target, message, length=None):
         """Send a message to a channel/room/user"""
 
     def notice(target, message, length=None):
         """Send a notice to a channel/room/user"""
+
+    def action(channel, action):
+        """Do an action/emote"""
 
     def join(channel):
         """Join a channel"""

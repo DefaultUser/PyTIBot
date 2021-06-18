@@ -87,7 +87,6 @@ Commands:
   joke: joke
   say: say
   random: rand
-  whois: whois
   fortune: fortune
 
 Aliases:

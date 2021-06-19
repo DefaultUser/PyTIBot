@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2020>  <Sebastian Schmidt>
+# Copyright (C) <2017-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,7 +59,7 @@ _channellog_dir = os.path.join(fs.adirs.user_log_dir, "channellogs")
 @only_once
 def channellog_dir_from_config(config):
     global _channellog_dir
-    _channellog_dir = config["Logging"].get("directory", _channellog_dir)
+    _channellog_dir = config.get("Logging", dict()).get("directory", _channellog_dir)
 
 def get_channellog_dir():
     return _channellog_dir

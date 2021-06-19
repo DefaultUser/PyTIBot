@@ -74,7 +74,7 @@ class GitWebhookServer(Resource):
         service = None
         # GitHub
         if request.getHeader(b"X-GitHub-Event"):
-            eventtype = request.getHeader(b"X-GitHub-Event")
+            eventtype = bytes_to_str(request.getHeader(b"X-GitHub-Event"))
             sig = request.getHeader(b"X-Hub-Signature")
             if sig:
                 sig = sig[5:]
@@ -88,7 +88,6 @@ class GitWebhookServer(Resource):
         else:
             request.setResponseCode(403)
             return b""
-        eventtype = bytes_to_str(eventtype)
 
         secret = None
         if service == "github":

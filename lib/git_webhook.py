@@ -96,12 +96,19 @@ class GitWebhookServer(Resource):
             secret = self.gitlab_secret
         if secret:
             secret = str_to_bytes(secret)
-            h = hmac.new(secret, body, sha1)
-            if codecs.encode(h.digest(), "hex") != sig:
-                self.log.warn("Request's signature does not correspond"
-                              " with the given secret - ignoring request")
-                request.setResponseCode(200)
-                return b""
+            if service == "github":
+                h = hmac.new(secret, body, sha1)
+                if codecs.encode(h.digest(), "hex") != sig:
+                    self.log.warn("Request's signature does not correspond"
+                                  " with the given secret - ignoring request")
+                    request.setResponseCode(200)
+                    return b""
+            else:
+                if secret != sig:
+                    self.log.warn("Request's signature does not correspond"
+                                  " with the given secret - ignoring request")
+                    request.setResponseCode(200)
+                    return b""
         # filtering: inject eventtype for filtering
         data["eventtype"] = eventtype
         if self.filter_event(data):

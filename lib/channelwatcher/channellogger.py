@@ -30,16 +30,20 @@ class ChannelLogger(abstract.ChannelWatcher):
     def __init__(self, bot, channel, config):
         super(ChannelLogger, self).__init__(bot, channel, config)
         name = channel.lstrip("#")
-        use_yaml = bot.config["Logging"].get("yaml", True)
+        if bot.config["Logging"]:
+            use_yaml = bot.config["Logging"].get("yaml", True)
+            if bot.config["Logging"].get("log_minor", False):
+                log_level = log.TOPIC
+            else:
+                log_level = log.NOTICE
+        else:
+            use_yaml = True
+            log_level = log.NOTICE
         if use_yaml:
             name += ".yaml"
         else:
             name += ".txt"
         self.logger = logging.getLogger(channel)
-        if bot.config["Logging"].get("log_minor", False):
-            log_level = log.TOPIC
-        else:
-            log_level = log.NOTICE
         self.logger.setLevel(log_level)
         # don't propagate to parent loggers
         self.logger.propagate = False

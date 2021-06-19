@@ -59,7 +59,8 @@ _channellog_dir = os.path.join(fs.adirs.user_log_dir, "channellogs")
 @only_once
 def channellog_dir_from_config(config):
     global _channellog_dir
-    _channellog_dir = config.get("Logging", dict()).get("directory", _channellog_dir)
+    if config["Logging"]:
+        _channellog_dir = config["Logging"].get("directory", _channellog_dir)
 
 def get_channellog_dir():
     return _channellog_dir

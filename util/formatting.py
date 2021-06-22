@@ -276,6 +276,33 @@ def to_html(text, link_urls=True):
     return html
 
 
+def _style_dict_to_matrix(text, style_dict):
+    if style_dict["underline"]:
+        text = "<u>"+text+"</u>"
+    if style_dict["bold"]:
+        text = "<b>"+text+"</b>"
+    if style_dict["italic"]:
+        text = "<i>"+text+"</i>"
+    color = ""
+    if style_dict["fg"]:
+        color += " data-mx-color=\""+IRCColorsHex[style_dict["fg"]]+"\""
+    if style_dict["bg"]:
+        color += " data-mx-bg-color=\""+IRCColorsHex[style_dict["fg"]]+"\""
+    if color:
+        text = "<span"+color+">"+text+"</span>"
+    return text
+
+
+def to_matrix(text):
+    """
+    \brief Convert a string with IRC formatting information to matrix format
+    """
+    result = ""
+    for frag in _extract_irc_style(text):
+        result += _style_dict_to_matrix(frag.text, frag.style)#
+    return result
+
+
 def _style_dict_to_tags(text, style_dict, link_urls=True):
     styles = _style_html_string(style_dict)
     if link_urls:

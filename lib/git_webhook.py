@@ -25,6 +25,7 @@ import hmac
 from hashlib import sha1
 import re
 import sys
+import textwrap
 from unidecode import unidecode
 
 from util.formatting import colored, closest_irc_color, split_rgb_string,\
@@ -236,25 +237,26 @@ class GitWebhookServer(Resource):
         for channel in channels:
             self.botfactory.bot.msg(channel, message)
 
+    @staticmethod
     @defer.inlineCallbacks
-    def commits_to_irc(self, repo_name, commits, github=False):
+    def format_commits(commits, github=False):
+        msg = ""
         for i, commit in enumerate(commits):
             if i == 3:
-                self.report_to_irc(repo_name, "+{} more commits".format(
-                    len(commits) - 3))
+                msg += "\n+{} more commits".format(len(commits) - 3)
                 break
             if github:
                 url = yield shorten_github_url(commit["url"])
             else:
                 url = commit["url"]
             message = unidecode(commit["message"].split("\n")[0])
-            if len(message) > 100:
-                message = message[:100] + "..."
-            self.report_to_irc(repo_name, "{author}: {message} ({url})".format(
-                author=colored(unidecode(commit["author"]["name"]),
-                               IRCColorCodes.dark_cyan),
-                message=message,
-                url=url))
+            if i != 0:
+                msg += "\n"
+            msg += "{author}: {message} ({url})".format(
+                        author=colored(unidecode(commit["author"]["name"]),
+                                       IRCColorCodes.dark_cyan),
+                        message=textwrap.shorten(message, 100), url=url)
+        return msg
 
     @defer.inlineCallbacks
     def on_github_push(self, data):
@@ -275,8 +277,10 @@ class GitWebhookServer(Resource):
                    num_commits=len(data["commits"]),
                    branch=colored(branch, IRCColorCodes.dark_green),
                    compare=url))
+        commit_msgs = yield GitWebhookServer.format_commits(data["commits"], github=True)
+        if commit_msgs:
+            msg += "\n" + commit_msgs
         self.report_to_irc(repo_name, msg)
-        self.commits_to_irc(repo_name, data["commits"], github=True)
         # subset of information that is common for both GitHUb and GitLab
         # only a few useful pieces of information
         subset = {"commits": data["commits"],
@@ -551,8 +555,10 @@ class GitWebhookServer(Resource):
                                                 IRCColorCodes.dark_cyan),
                                  num_commits=len(data["commits"]),
                                  branch=colored(branch, IRCColorCodes.dark_green)))
+        commit_msgs = yield GitWebhookServer.format_commits(data["commits"], github=False)
+        if commit_msgs:
+            msg += "\n" + commit_msgs
         self.report_to_irc(repo_name, msg)
-        self.commits_to_irc(repo_name, data["commits"])
         # subset of information that is common for both GitHUb and GitLab
         # only a few useful pieces of information
         subset = {"commits": data["commits"],
@@ -573,8 +579,10 @@ class GitWebhookServer(Resource):
             repo_name=colored(repo_name, IRCColorCodes.blue),
             pusher=colored(data["user_name"], IRCColorCodes.dark_cyan),
             tag=colored(data["ref"].split("/", 2)[-1], IRCColorCodes.dark_green)))
+        commit_msgs = yield GitWebhookServer.format_commits(data["commits"], github=False)
+        if commit_msgs:
+            msg += "\n" + commit_msgs
         self.report_to_irc(repo_name, msg)
-        self.commits_to_irc(repo_name, data["commits"])
 
     def on_gitlab_issue(self, data):
         repo_name = data["project"]["name"]

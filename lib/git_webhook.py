@@ -26,7 +26,6 @@ from hashlib import sha1
 import re
 import sys
 import textwrap
-from unidecode import unidecode
 
 from util.formatting import colored, closest_irc_color, split_rgb_string,\
     good_contrast_with_black, IRCColorCodes
@@ -249,11 +248,11 @@ class GitWebhookServer(Resource):
                 url = yield shorten_github_url(commit["url"])
             else:
                 url = commit["url"]
-            message = unidecode(commit["message"].split("\n")[0])
+            message = commit["message"].split("\n")[0]
             if i != 0:
                 msg += "\n"
             msg += "{author}: {message} ({url})".format(
-                        author=colored(unidecode(commit["author"]["name"]),
+                        author=colored(commit["author"]["name"],
                                        IRCColorCodes.dark_cyan),
                         message=textwrap.shorten(message, 100), url=url)
         return msg
@@ -271,7 +270,7 @@ class GitWebhookServer(Resource):
         msg = ("[{repo_name}] {pusher} {action} {num_commits} commit(s) to "
                "{branch}: {compare}".format(
                    repo_name=colored(repo_name, IRCColorCodes.blue),
-                   pusher=colored(unidecode(data["pusher"]["name"]),
+                   pusher=colored(data["pusher"]["name"],
                                   IRCColorCodes.dark_cyan),
                    action=action,
                    num_commits=len(data["commits"]),
@@ -325,7 +324,7 @@ class GitWebhookServer(Resource):
                                   action=action,
                                   number=colored(str(data["issue"]["number"]),
                                                  IRCColorCodes.dark_yellow),
-                                  title=unidecode(data["issue"]["title"]),
+                                  title=data["issue"]["title"],
                                   payload=payload))
         self.report_to_irc(repo_name, msg)
 
@@ -341,7 +340,7 @@ class GitWebhookServer(Resource):
                    action=data["action"],
                    number=colored(str(data["issue"]["number"]),
                                   IRCColorCodes.dark_yellow),
-                   title=unidecode(data["issue"]["title"]),
+                   title=data["issue"]["title"],
                    url=url))
         self.report_to_irc(repo_name, msg)
 
@@ -439,7 +438,7 @@ class GitWebhookServer(Resource):
                    action=action,
                    number=colored(str(data["pull_request"]["number"]),
                                   IRCColorCodes.dark_yellow),
-                   title=unidecode(data["pull_request"]["title"]),
+                   title=data["pull_request"]["title"],
                    head=colored(data["pull_request"]["head"]["ref"],
                                 IRCColorCodes.dark_blue),
                    base=colored(data["pull_request"]["base"]["ref"],
@@ -457,7 +456,7 @@ class GitWebhookServer(Resource):
                    action=action,
                    type_=type_,
                    number=colored(pr_number, IRCColorCodes.dark_yellow),
-                   title=unidecode(title),
+                   title=title,
                    head=colored(head, IRCColorCodes.dark_blue),
                    base=colored(base, IRCColorCodes.dark_red),
                    url=", ".join(urls)))
@@ -603,7 +602,7 @@ class GitWebhookServer(Resource):
                               action=action,
                               number=colored(str(attribs["iid"]),
                                              IRCColorCodes.dark_yellow),
-                              title=unidecode(attribs["title"]),
+                              title=attribs["title"],
                               url=attribs["url"]))
         self.report_to_irc(repo_name, msg)
 
@@ -634,7 +633,7 @@ class GitWebhookServer(Resource):
                    user=colored(data["user"]["name"], IRCColorCodes.dark_cyan),
                    noteable_type=noteable_type,
                    number=colored(str(id), IRCColorCodes.dark_yellow),
-                   title=unidecode(title),
+                   title=title,
                    url=attribs["url"]))
         self.report_to_irc(repo_name, msg)
 
@@ -660,7 +659,7 @@ class GitWebhookServer(Resource):
                    user=colored(data["user"]["name"], IRCColorCodes.dark_cyan),
                    action=action,
                    number=colored(str(attribs["iid"]), IRCColorCodes.dark_yellow),
-                   title=unidecode(attribs["title"]),
+                   title=attribs["title"],
                    source=colored(attribs["source_branch"], IRCColorCodes.dark_blue),
                    target=colored(attribs["target_branch"], IRCColorCodes.dark_red),
                    url=attribs["url"]))

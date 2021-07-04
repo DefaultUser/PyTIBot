@@ -17,7 +17,6 @@ yamlcfg
 appdirs
 whoosh
 bidict
-unidecode
 colormath
 dateparser
 apiclient (python module for google api) (optional)

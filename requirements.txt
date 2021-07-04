@@ -5,7 +5,6 @@ yamlcfg
 appdirs
 whoosh
 bidict
-unidecode
 colormath
 markovify
 dateparser

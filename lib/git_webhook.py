@@ -545,6 +545,7 @@ class GitWebhookServer(Resource):
                 data["pull_request"]["base"]["ref"],
                 [url])
 
+    @defer.inlineCallbacks
     def on_gitlab_push(self, data):
         repo_name = data["project"]["name"]
         branch = data["ref"].split("/", 2)[-1]
@@ -572,6 +573,7 @@ class GitWebhookServer(Resource):
                              "id": data["user_id"]}}
         self.push_hooks(subset)
 
+    @defer.inlineCallbacks
     def on_gitlab_tag_push(self, data):
         repo_name = data["project"]["name"]
         msg = ("[{repo_name}] {pusher} added tag {tag}".format(

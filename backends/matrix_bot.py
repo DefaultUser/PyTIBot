@@ -56,7 +56,7 @@ class MatrixBot:
         if unformatted == message:
             return {"body": message}
         return {"body": unformatted, "format": "org.matrix.custom.html",
-                "formatted_body": formatting.to_matrix(message)}
+                "formatted_body": formatting.to_matrix(message).replace("\n", "<br/>")}
 
     def msg(self, target, message, length=None):
         content = {"msgtype": "m.text", **MatrixBot.formatted_message_content(message)}

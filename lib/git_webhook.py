@@ -241,7 +241,7 @@ class GitWebhookServer(Resource):
     def format_commits(commits, num_commits, github=False):
         msg = ""
         for i, commit in enumerate(commits):
-            if i == 3:
+            if i == 3 and num_commits != 4:
                 msg += "\n+{} more commits".format(num_commits - 3)
                 break
             if github:

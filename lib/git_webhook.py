@@ -238,11 +238,11 @@ class GitWebhookServer(Resource):
 
     @staticmethod
     @defer.inlineCallbacks
-    def format_commits(commits, github=False):
+    def format_commits(commits, num_commits, github=False):
         msg = ""
         for i, commit in enumerate(commits):
             if i == 3:
-                msg += "\n+{} more commits".format(len(commits) - 3)
+                msg += "\n+{} more commits".format(num_commits - 3)
                 break
             if github:
                 url = yield shorten_github_url(commit["url"])
@@ -276,7 +276,9 @@ class GitWebhookServer(Resource):
                    num_commits=len(data["commits"]),
                    branch=colored(branch, IRCColorCodes.dark_green),
                    compare=url))
-        commit_msgs = yield GitWebhookServer.format_commits(data["commits"], github=True)
+        commit_msgs = yield GitWebhookServer.format_commits(data["commits"],
+                                                            len(data["commits"]),
+                                                            github=True)
         if commit_msgs:
             msg += "\n" + commit_msgs
         self.report_to_irc(repo_name, msg)
@@ -553,9 +555,10 @@ class GitWebhookServer(Resource):
                "{branch}".format(repo_name=colored(repo_name, IRCColorCodes.blue),
                                  pusher=colored(data["user_name"],
                                                 IRCColorCodes.dark_cyan),
-                                 num_commits=len(data["commits"]),
+                                 num_commits=data["total_commits_count"],
                                  branch=colored(branch, IRCColorCodes.dark_green)))
-        commit_msgs = yield GitWebhookServer.format_commits(data["commits"], github=False)
+        commit_msgs = yield GitWebhookServer.format_commits(
+                data["commits"], int(data["total_commits_count"]), github=False)
         if commit_msgs:
             msg += "\n" + commit_msgs
         self.report_to_irc(repo_name, msg)
@@ -580,7 +583,8 @@ class GitWebhookServer(Resource):
             repo_name=colored(repo_name, IRCColorCodes.blue),
             pusher=colored(data["user_name"], IRCColorCodes.dark_cyan),
             tag=colored(data["ref"].split("/", 2)[-1], IRCColorCodes.dark_green)))
-        commit_msgs = yield GitWebhookServer.format_commits(data["commits"], github=False)
+        commit_msgs = yield GitWebhookServer.format_commits(
+                data["commits"], int(data["total_commits_count"]), github=False)
         if commit_msgs:
             msg += "\n" + commit_msgs
         self.report_to_irc(repo_name, msg)

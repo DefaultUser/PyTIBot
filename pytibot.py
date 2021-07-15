@@ -28,7 +28,7 @@ from zope.interface import implementer
 
 from backends import Backends
 from backends.interfaces import IBot
-from lib.stdiointerface import STDIOInterface
+from lib.ipc.stdiointerface import STDIOInterface
 from lib import commands
 from lib.simpletrigger import simple_trigger
 from lib import triggers

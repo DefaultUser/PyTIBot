@@ -21,7 +21,7 @@ from zope.interface import implementer
 
 from backends.interfaces import IBot
 
-from lib.stdiointerface import STDIOInterface
+from lib.ipc.stdiointerface import STDIOInterface
 
 from util.aio_compat import deferred_to_future, future_to_deferred
 from util import formatting

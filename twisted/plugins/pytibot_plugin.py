@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2016-2020>  <Sebastian Schmidt>
+# Copyright (C) <2016-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ from twisted.application.service import IServiceMaker, MultiService
 from twisted.application import internet
 from twisted.internet import ssl
 from twisted.web.server import Site
+from twisted.logger import Logger
 import os
 
 from yamlcfg import YamlConfig
@@ -34,6 +35,16 @@ from lib import http
 from lib.git_webhook import GitWebhookServer
 from util import filesystem as fs
 from util import log
+
+
+logger = Logger()
+
+try:
+    from lib.ipc.dbusobject import create_and_export
+    supports_dbus = True
+except ImportError as e:
+    logger.debug("Could not import DBus interface")
+    supports_dbus = False
 
 
 mandatory_settings = ["server", "nickname", "admins"]
@@ -110,6 +121,9 @@ class PyTIBotServiceMaker(object):
                        'telnetPort': telnetPort}
             tn_sv = manhole_tap.makeService(options)
             tn_sv.setServiceParent(mService)
+
+        if supports_dbus:
+            dbus_connection = create_and_export(bot_provider)
 
         if (config["GitWebhook"] and ("port" in config["GitWebhook"] or
                                       "sshport" in config["GitWebhook"])):

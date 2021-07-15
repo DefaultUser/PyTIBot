@@ -38,7 +38,7 @@ class IBot(zope.interface.Interface):
     def notice(target, message, length=None):
         """Send a notice to a channel/room/user"""
 
-    def action(channel, action):
+    def describe(channel, action):
         """Do an action/emote"""
 
     def join(channel):

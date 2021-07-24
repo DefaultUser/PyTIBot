@@ -20,6 +20,7 @@ from twisted.python.failure import Failure
 from twisted.logger import Logger
 import treq
 import codecs
+from functools import partial
 import json
 import hmac
 from hashlib import sha1
@@ -30,7 +31,8 @@ import textwrap
 from util.formatting import colored, closest_irc_color, split_rgb_string,\
     good_contrast_with_black, IRCColorCodes
 from util.misc import str_to_bytes, bytes_to_str, filter_dict
-from util.internet import shorten_github_url
+from util.internet import shorten_url, shorten_github_url, DirectAccessor,\
+    HeaderAccessor, JsonAccessor
 from lib import webhook_actions
 
 
@@ -67,6 +69,38 @@ class GitWebhookServer(Resource):
                           "'hook_report_users', but got a single string")
             users = [users]
         self.hook_report_users = users
+        # URL shortener
+        self.url_shortener = None
+        url_shortener_settings = config["GitWebhook"].get("url_shortener", None)
+        if url_shortener_settings:
+            try:
+                service_url = url_shortener_settings["service_url"]
+                method = url_shortener_settings.get("method", "POST").upper()
+                headers = url_shortener_settings.get("headers", None)
+                post_data = url_shortener_settings.get("post_data", None)
+                request_params = url_shortener_settings.get("request_params", None)
+                payload_accessor_settings = url_shortener_settings.get(
+                        "payload_accessor", "DirectAccessor")
+                if payload_accessor_settings == "DirectAccessor":
+                    accessor = DirectAccessor()
+                else:
+                    if not isinstance(payload_accessor_settings, dict):
+                        raise ValueError("payload_accessor requires further "
+                                         "configuration")
+                    type_name = payload_accessor_settings.keys()[0] # there can only be one
+                    if type_name == "JsonAccessor":
+                        accessor = JsonAccessor(**payload_accessor_settings[type_name])
+                    elif type_name == "HeaderAccessor":
+                        accessor = HeaderAccessor(**payload_accessor_settings[type_name])
+                    else:
+                        raise ValueError("No such payload_accessor: {}".format(type_name))
+                self.url_shortener = partial(shorten_url, service_url=service_url,
+                                             method=method, headers=headers,
+                                             post_data=post_data,
+                                             request_params=request_params,
+                                             payload_accessor=accessor)
+            except Exception as e:
+                self.log.warn("Couldn't set up url shortener: {error}", error=e)
 
     def render_POST(self, request):
         body = request.content.read()
@@ -238,14 +272,14 @@ class GitWebhookServer(Resource):
 
     @staticmethod
     @defer.inlineCallbacks
-    def format_commits(commits, num_commits, github=False):
+    def format_commits(commits, num_commits, url_shortener=None):
         msg = ""
         for i, commit in enumerate(commits):
             if i == 3 and num_commits != 4:
                 msg += "\n+{} more commits".format(num_commits - 3)
                 break
-            if github:
-                url = yield shorten_github_url(commit["url"])
+            if url_shortener is not None:
+                url = yield url_shortener(commit["url"])
             else:
                 url = commit["url"]
             message = commit["message"].split("\n")[0]
@@ -276,9 +310,9 @@ class GitWebhookServer(Resource):
                    num_commits=len(data["commits"]),
                    branch=colored(branch, IRCColorCodes.dark_green),
                    compare=url))
-        commit_msgs = yield GitWebhookServer.format_commits(data["commits"],
-                                                            len(data["commits"]),
-                                                            github=True)
+        commit_msgs = yield GitWebhookServer.format_commits(
+                data["commits"], len(data["commits"]),
+                url_shortener=shorten_github_url)
         if commit_msgs:
             msg += "\n" + commit_msgs
         self.report_to_irc(repo_name, msg)
@@ -558,7 +592,8 @@ class GitWebhookServer(Resource):
                                  num_commits=data["total_commits_count"],
                                  branch=colored(branch, IRCColorCodes.dark_green)))
         commit_msgs = yield GitWebhookServer.format_commits(
-                data["commits"], int(data["total_commits_count"]), github=False)
+                data["commits"], int(data["total_commits_count"]),
+                url_shortener=self.url_shortener)
         if commit_msgs:
             msg += "\n" + commit_msgs
         self.report_to_irc(repo_name, msg)
@@ -584,11 +619,13 @@ class GitWebhookServer(Resource):
             pusher=colored(data["user_name"], IRCColorCodes.dark_cyan),
             tag=colored(data["ref"].split("/", 2)[-1], IRCColorCodes.dark_green)))
         commit_msgs = yield GitWebhookServer.format_commits(
-                data["commits"], int(data["total_commits_count"]), github=False)
+                data["commits"], int(data["total_commits_count"]),
+                url_shortener=self.url_shortener)
         if commit_msgs:
             msg += "\n" + commit_msgs
         self.report_to_irc(repo_name, msg)
 
+    @defer.inlineCallbacks
     def on_gitlab_issue(self, data):
         repo_name = data["project"]["name"]
         attribs = data["object_attributes"]
@@ -601,6 +638,10 @@ class GitWebhookServer(Resource):
             action = colored("closed", IRCColorCodes.dark_green)
         elif action == "update":
             action = "updated"
+        if self.url_shortener:
+            url = yield self.shorten_url(attribs["url"])
+        else:
+            url = attribs["url"]
         msg = ("[{repo_name}] {user} {action} Issue #{number} {title} "
                "{url}".format(repo_name=colored(repo_name, IRCColorCodes.blue),
                               user=colored(data["user"]["name"],
@@ -609,9 +650,10 @@ class GitWebhookServer(Resource):
                               number=colored(str(attribs["iid"]),
                                              IRCColorCodes.dark_yellow),
                               title=attribs["title"],
-                              url=attribs["url"]))
+                              url=url))
         self.report_to_irc(repo_name, msg)
 
+    @defer.inlineCallbacks
     def on_gitlab_note(self, data):
         repo_name = data["project"]["name"]
         attribs = data["object_attributes"]
@@ -633,6 +675,10 @@ class GitWebhookServer(Resource):
             title = data["snippet"]["title"]
         else:
             return
+        if self.url_shortener:
+            url = yield self.shorten_url(attribs["url"])
+        else:
+            url = attribs["url"]
         msg = ("[{repo_name}] {user} commented on {noteable_type} {number} "
                "{title} {url}".format(
                    repo_name=colored(repo_name, IRCColorCodes.blue),
@@ -640,9 +686,10 @@ class GitWebhookServer(Resource):
                    noteable_type=noteable_type,
                    number=colored(str(id), IRCColorCodes.dark_yellow),
                    title=title,
-                   url=attribs["url"]))
+                   url=url))
         self.report_to_irc(repo_name, msg)
 
+    @defer.inlineCallbacks
     def on_gitlab_merge_request(self, data):
         attribs = data["object_attributes"]
         repo_name = attribs["target"]["name"]
@@ -659,6 +706,10 @@ class GitWebhookServer(Resource):
             action = "updated"
         elif action == "approved":
             action = colored("approved", IRCColorCodes.dark_green)
+        if self.url_shortener:
+            url = yield self.shorten_url(attribs["url"])
+        else:
+            url = attribs["url"]
         msg = ("[{repo_name}] {user} {action} Merge Request #{number} "
                "{title} ({source} -> {target}): {url}".format(
                    repo_name=colored(repo_name, IRCColorCodes.blue),
@@ -668,5 +719,5 @@ class GitWebhookServer(Resource):
                    title=attribs["title"],
                    source=colored(attribs["source_branch"], IRCColorCodes.dark_blue),
                    target=colored(attribs["target_branch"], IRCColorCodes.dark_red),
-                   url=attribs["url"]))
+                   url=url))
         self.report_to_irc(repo_name, msg)

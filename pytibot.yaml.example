@@ -53,6 +53,26 @@ GitWebhook:
   - eventtype == issues AND action == pinned
   # example for gitlab
   - eventtype == note AND object_attributes.noteable_type == Snippet
+  # url shortener for gitlab
+  url_shortener:
+    # $URL will be replaced by the url to shorten
+    service_url: "https://example.com/shorten"
+    method: GET # Defaults to POST
+    headers:
+      TOKEN: SECRET_TOKEN
+    request_params: # GET parameters
+      url: $URL
+    #post_data: # POST data
+    #  TOKEN: SECRET_TOKEN
+    #  long_url: $URL
+    payload_accessor:
+      #DirectAccessor # received payload is plaintext shortened url, DEFAULT
+      JsonAccessor: # extract shortened url from a received Json response
+        path: # keys to the shortened url value
+        - response
+        - shortened_url
+      #HeaderAccessor: # shortened url is contained in the HTTP headers
+      #  key: Location
   Hooks:
     Push:
       default:

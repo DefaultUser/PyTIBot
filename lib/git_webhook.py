@@ -639,7 +639,7 @@ class GitWebhookServer(Resource):
         elif action == "update":
             action = "updated"
         if self.url_shortener:
-            url = yield self.shorten_url(attribs["url"])
+            url = yield self.url_shortener(attribs["url"])
         else:
             url = attribs["url"]
         msg = ("[{repo_name}] {user} {action} Issue #{number} {title} "
@@ -676,7 +676,7 @@ class GitWebhookServer(Resource):
         else:
             return
         if self.url_shortener:
-            url = yield self.shorten_url(attribs["url"])
+            url = yield self.url_shortener(attribs["url"])
         else:
             url = attribs["url"]
         msg = ("[{repo_name}] {user} commented on {noteable_type} {number} "
@@ -707,7 +707,7 @@ class GitWebhookServer(Resource):
         elif action == "approved":
             action = colored("approved", IRCColorCodes.dark_green)
         if self.url_shortener:
-            url = yield self.shorten_url(attribs["url"])
+            url = yield self.url_shortener(attribs["url"])
         else:
             url = attribs["url"]
         msg = ("[{repo_name}] {user} {action} Merge Request #{number} "

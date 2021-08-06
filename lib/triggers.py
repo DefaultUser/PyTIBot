@@ -17,23 +17,28 @@
 import re
 from twisted.internet import threads
 import sys
+import random
+
+from util import formatting
+
 
 trigger_module = sys.modules[__name__]
 
 __trigs__ = {r"youtube.com/watch\?v=": "youtube",
              r"^import this$": "import_this",
              r"^from $NICKNAME\.(commands|triggers) import"
-             " (\w+)( as (\w+))?$": "enable_command"}
+             " (\w+)( as (\w+))?$": "enable_command",
+             ".": "simple_trigger"}
 
 
-def youtube(bot):
+def youtube(bot, config):
     """Send title and duration of a youtube video to IRC"""
     pat = re.compile(r"youtube.com/watch\?v=([A-Za-z0-9_-]+)"
                      r"(&feature=youtu.be)?\b")
     duration_pattern = re.compile(r"PT(?P<hours>[0-9]{1,2}H)?(?P<minutes>"
                                   "[0-9]{1,2}M)?(?P<seconds>[0-9]{1,2}S)")
     yt_service = None
-    YOUTUBE_API_KEY = bot.config["Triggers"].get("youtube_api_key", None)
+    YOUTUBE_API_KEY = config.get("youtube_api_key", None)
     if YOUTUBE_API_KEY:
         from apiclient.discovery import build
 
@@ -78,7 +83,7 @@ def youtube(bot):
             d.addCallback(_send_title, channel)
 
 
-def import_this(bot):
+def import_this(bot, config):
     """Send the python zen to IRC"""
     import this
     zen = "".join([this.d.get(char, char) for char in this.s])
@@ -88,7 +93,7 @@ def import_this(bot):
         bot.msg(channel, zen)
 
 
-def enable_command(bot):
+def enable_command(bot, config):
     """Enable command or trigger with python-like syntax"""
     def _enable(is_admin, channel, _type, cmd, name):
         if not is_admin:
@@ -97,7 +102,7 @@ def enable_command(bot):
         if _type == "commands":
             success = bot.enable_command(cmd, name, add_to_config=True)
         elif _type == "triggers":
-            success = bot.enable_trigger(cmd, add_to_config=True)
+            success = bot.enable_trigger(cmd)
         else:
             raise RuntimeError("Something went horribly wrong")
 
@@ -117,3 +122,22 @@ def enable_command(bot):
 
         bot.is_user_admin(sender).addCallback(_enable, channel, _type,
                                               cmd, name)
+
+
+def simple_trigger(bot, config):
+    """Send a user defined reply to IRC when the corresponding trigger is mentioned
+    """
+    while True:
+        msg, sender, channel = yield
+        matches = [trigger for trigger in config if
+                   re.search(re.compile(trigger["trigger"].replace(
+                       "$nickname", bot.nickname), re.IGNORECASE), msg)]
+        for trigger in matches:
+            answer = trigger["answer"]
+            if isinstance(answer, list):
+                answer = random.choice(answer)
+            msg = answer.replace("$USER", sender).replace("$CHANNEL", channel)
+
+            # Replace colors
+            msg = formatting.from_human_readable(msg)
+            bot.msg(channel, msg)

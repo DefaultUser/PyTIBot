@@ -94,12 +94,7 @@ can be called using these aliases. *$USER* will be expanded to the nickname
 of the caller.
 
 Triggers:<br/>
-*enabled* - list of all triggers<br/>
-specific options for the triggers
-
-Simple Triggers:<br/>
-User defineable lines that the bot should send when a certain word or pattern
-is used in a message. See below.
+The bot can react to (parts of) messages and patterns.
 
 User supplied content (like additional files for the fortune command) can be read
 from the user's data directory:
@@ -134,38 +129,46 @@ help - print help
 reload - reload the config file
 ```
 
-Additional commands can be configured in the ini file (see pytibot.ini.example)
+Additional commands can be configured in the config file (see pytibot.yaml.example)
 
 
 Trigger commands
 ----------------
 Additionally to commands, the bot can also be triggered by words and patterns
-in any message. There are two kinds of trigger commands:
+in any message.
+```
+Triggers:
+- import_this
+- enable_command
+- youtube:
+  youtube_api_key: REPLACE_ME
+- simple_trigger:
+  - trigger: PyTIBot is great
+    answer: 
+    - Thank you, $USER.
+    - I know
+  - trigger: to be or not to be
+    answer: that is the question
+```
 
-Trigger commands that run a python function:<br/>
+`enable_command` allows admins to enable commands and triggers via IRC:
 ```
 from $NICKNAME.commands import cmd as name
 ```
 where $NICKNAME is the nick of the bot enables the command `cmd` using the name `name`.
-
 ```
 from $NICKNAME.triggers import trigger
 ```
 where $NICKNAME is the nick of the bot enables the trigger `trigger`.
 
-youtube url -> bot returns the title of the video<br/>
-*ATTENTION* This trigger needs a google API key from https://code.google.com/apis/console
-```
-Triggers:
-  enabled: [youtube]
-  youtube_api_key: REPLACE_ME
-```
+`import_this` will print the Zen of Python whenever a message contains "import this".
 
-Simple Trigger that can be specified by the user in the ini file:<br/>
-These can be specified under the [Simple Trigger] section<br/>
+`youtube` will cause the bot to show the title and length of youtube video urls
+in messages. *ATTENTION* This trigger needs a google API key from `https://code.google.com/apis/console`
+
+`simple_trigger` allows to react to (parts of) messages with pre-made answers.<br/>
 *trigger* will be used as trigger and the *answer* is send to irc.<br/>
-If *answer* is a list, a random element of that list is chosen.
-
+If *answer* is a list, a random element of that list is chosen.<br/>
 "$USER" and "$CHANNEL" will be expanded to the user and channel, which triggered
 the line. Text formatting described in section [Text Formatting](#text-formatting).
 

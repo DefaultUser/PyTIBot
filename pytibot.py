@@ -30,7 +30,6 @@ from backends import Backends
 from backends.interfaces import IBot
 from lib.stdiointerface import STDIOInterface
 from lib import commands
-from lib.simpletrigger import simple_trigger
 from lib import triggers
 from lib import channelwatcher
 from util import decorators, formatting
@@ -56,7 +55,6 @@ class PyTIBot(irc.IRCClient, object):
                          "reload": "reload_config",
                          "about": "about"
                          }
-    _default_triggers = ["enable_command"]
     log = Logger()
 
     def __init__(self, config):
@@ -70,9 +68,6 @@ class PyTIBot(irc.IRCClient, object):
         self.triggers = {}
         self.userlist = {}
         self.load_settings()
-
-        self.simple_trigger = simple_trigger(self)
-        next(self.simple_trigger)
 
         self.stdiointerface = stdio.StandardIO(STDIOInterface(self))
 
@@ -112,15 +107,9 @@ class PyTIBot(irc.IRCClient, object):
         self.triggers = {}
 
         # load the triggers
-        trgs = self._default_triggers
         if self.config["Triggers"]:
-            enabled = self.config["Triggers"].get("enabled", [])
-            if isinstance(enabled, list):
-                trgs.extend(enabled)
-            else:
-                trgs.append(enabled)
-        for trigger in trgs:
-            self.enable_trigger(trigger)
+            for trigger in self.config["Triggers"]:
+                self.enable_trigger(trigger)
 
     def install_channelwatcher(self, channel, watcher):
         if not channel.startswith("#"):
@@ -183,12 +172,18 @@ class PyTIBot(irc.IRCClient, object):
             self.log.info("Added {name}={body} to config", name=name, body=body)
         return True
 
-    def enable_trigger(self, trigger, add_to_config=False):
+    def enable_trigger(self, trigger):
         """Enable a trigger - return True at success"""
+        if isinstance(trigger, str):
+            name = trigger
+            config = {}
+        else:
+            name = list(trigger.keys())[0]
+            config = trigger[name]
         __trigs_inv = dict([[v, k] for k, v in triggers.__trigs__.items()])
         # no such trigger
-        if not hasattr(triggers, trigger):
-            self.log.warn("No such trigger: {trigger}", trigger=trigger)
+        if not hasattr(triggers, name):
+            self.log.warn("No such trigger: {trigger}", trigger=name)
             return False
 
         # allready present
@@ -196,22 +191,14 @@ class PyTIBot(irc.IRCClient, object):
         enabled = []
         for gen in self.triggers.values():
             enabled.append(gen.__name__)
-        if trigger in enabled:
-            self.log.warn("Trigger {trigger} allready enabled", trigger=trigger)
+        if name in enabled:
+            self.log.warn("Trigger {trigger} allready enabled", trigger=name)
             return True
 
         # add trigger
-        regex = __trigs_inv[trigger]
-        self.triggers[regex] = getattr(triggers, trigger)(self)
+        regex = __trigs_inv[name]
+        self.triggers[regex] = getattr(triggers, name)(self, config)
         next(self.triggers[regex])
-        # add to config
-        if add_to_config:
-            enabled = self.config["Triggers"].get("enabled", [])
-            if not isinstance(enabled, list):
-                enabled = [enabled]
-            enabled.append(trigger)
-            self.config["Triggers"]["enabled"] = enabled
-            self.log.info("Added {trigger} to config", trigger=trigger)
         return True
 
     def auth(self):
@@ -371,16 +358,6 @@ class PyTIBot(irc.IRCClient, object):
         # send message to generator functions
         for gen in matches:
             gen.send((msg, user, channel))
-
-        if self.config["Simple Triggers"]:
-            triggers = self.config["Simple Triggers"]
-            # options in ini are automatically converted to lower case
-            # adjust $NICKNAME
-            matches = [trigger for trigger in triggers if
-                       re.search(re.compile(trigger["trigger"].replace(
-                           "$nickname", self.nickname), re.IGNORECASE), msg)]
-            for trigger in matches:
-                self.simple_trigger.send((trigger, user, channel))
 
     def nickChanged(self, nick):
         """Triggered when own nick changes"""

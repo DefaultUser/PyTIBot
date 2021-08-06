@@ -114,9 +114,11 @@ Aliases:
   whoami: whois $USER
 
 Triggers:
-  enabled: [youtube, import_this]
-
-Simple Triggers:
+- youtube:
+  youtube_api_key: SECRET
+- import_this
+- enable_command
+- simple_trigger:
   -
     trigger: trigger
     answer: This line was triggered by $USER in $CHANNEL.

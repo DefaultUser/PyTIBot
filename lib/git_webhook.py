@@ -293,23 +293,30 @@ class GitWebhookServer(Resource):
 
     @defer.inlineCallbacks
     def on_github_push(self, data):
-        action = "pushed"
-        if data["deleted"]:
-            action = colored("deleted", IRCColorCodes.red)
-        elif data["forced"]:
-            action = colored("force pushed", IRCColorCodes.red)
         url = yield shorten_github_url(data["compare"])
         repo_name = data["repository"]["name"]
         branch = data["ref"].split("/", 2)[-1]
-        msg = ("[{repo_name}] {pusher} {action} {num_commits} commit(s) to "
-               "{branch}: {compare}".format(
-                   repo_name=colored(repo_name, IRCColorCodes.blue),
-                   pusher=colored(data["pusher"]["name"],
-                                  IRCColorCodes.dark_cyan),
-                   action=action,
-                   num_commits=len(data["commits"]),
-                   branch=colored(branch, IRCColorCodes.dark_green),
-                   compare=url))
+        action = "pushed"
+        if data["deleted"]:
+            action = colored("deleted", IRCColorCodes.red)
+            msg = "[{repo_name}] {pusher} {action} branch {branch}".format(
+                    repo_name=colored(repo_name, IRCColorCodes.blue),
+                    pusher=colored(data["pusher"]["name"],
+                                   IRCColorCodes.dark_cyan),
+                    action=action,
+                    branch=colored(branch, IRCColorCodes.dark_green))
+        else:
+            if data["forced"]:
+                action = colored("force pushed", IRCColorCodes.red)
+            msg = ("[{repo_name}] {pusher} {action} {num_commits} commit(s) to "
+                   "{branch}: {compare}".format(
+                       repo_name=colored(repo_name, IRCColorCodes.blue),
+                       pusher=colored(data["pusher"]["name"],
+                                      IRCColorCodes.dark_cyan),
+                       action=action,
+                       num_commits=len(data["commits"]),
+                       branch=colored(branch, IRCColorCodes.dark_green),
+                       compare=url))
         commit_msgs = yield GitWebhookServer.format_commits(
                 data["commits"], len(data["commits"]),
                 url_shortener=shorten_github_url)

@@ -592,12 +592,20 @@ class GitWebhookServer(Resource):
     def on_gitlab_push(self, data):
         repo_name = data["project"]["name"]
         branch = data["ref"].split("/", 2)[-1]
-        msg = ("[{repo_name}] {pusher} pushed {num_commits} commit(s) to "
-               "{branch}".format(repo_name=colored(repo_name, IRCColorCodes.blue),
-                                 pusher=colored(data["user_name"],
-                                                IRCColorCodes.dark_cyan),
-                                 num_commits=data["total_commits_count"],
-                                 branch=colored(branch, IRCColorCodes.dark_green)))
+        if data["checkout_sha"] is None:
+            action = colored("deleted", IRCColorCodes.red)
+            msg = ("[{repo_name}] {pusher} {action} branch {branch}".format(
+                repo_name=colored(repo_name, IRCColorCodes.blue),
+                pusher=colored(data["user_name"], IRCColorCodes.dark_cyan),
+                action=action,
+                branch=colored(branch, IRCColorCodes.dark_green)))
+        else:
+            msg = ("[{repo_name}] {pusher} pushed {num_commits} commit(s) to "
+                   "{branch}".format(repo_name=colored(repo_name, IRCColorCodes.blue),
+                                     pusher=colored(data["user_name"],
+                                                    IRCColorCodes.dark_cyan),
+                                     num_commits=data["total_commits_count"],
+                                     branch=colored(branch, IRCColorCodes.dark_green)))
         commit_msgs = yield GitWebhookServer.format_commits(
                 data["commits"], int(data["total_commits_count"]),
                 url_shortener=self.url_shortener)

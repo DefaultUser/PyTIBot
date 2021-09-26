@@ -287,7 +287,7 @@ def _style_dict_to_matrix(text, style_dict):
     if style_dict["fg"]:
         color += " data-mx-color=\""+IRCColorsHex[style_dict["fg"]]+"\""
     if style_dict["bg"]:
-        color += " data-mx-bg-color=\""+IRCColorsHex[style_dict["fg"]]+"\""
+        color += " data-mx-bg-color=\""+IRCColorsHex[style_dict["bg"]]+"\""
     if color:
         text = "<span"+color+">"+text+"</span>"
     return text
@@ -299,7 +299,7 @@ def to_matrix(text):
     """
     result = ""
     for frag in _extract_irc_style(text):
-        result += _style_dict_to_matrix(frag.text, frag.style)#
+        result += _style_dict_to_matrix(frag.text, frag.style)
     return result
 
 

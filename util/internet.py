@@ -83,6 +83,8 @@ def shorten_url(url, service_url, method, headers=None, post_data=None,
         response = yield treq.request(method, service_url, headers=headers,
                                       data=post_data, params=request_params,
                                       timeout=5)
+        if response.headers.code != 200:
+            return url
         shorturl = yield defer.maybeDeferred(payload_accessor, response)
         return shorturl or url
     except Exception as e:

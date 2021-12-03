@@ -17,7 +17,7 @@
 from twisted.internet import reactor, defer
 from twisted.logger import Logger
 
-from txdbus           import client, objects, error
+from txdbus import client, objects, error
 from txdbus.interface import DBusInterface, Method
 
 from util import formatting

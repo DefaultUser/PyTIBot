@@ -71,10 +71,13 @@ class PyTIBot(irc.IRCClient, object):
 
         self.stdiointerface = stdio.StandardIO(STDIOInterface(self))
 
+    def reload(self):
+        self.config.load()
+        self.load_settings()
+
     def load_settings(self):
         """Load settings with config manager"""
         PyTIBot.log.info("Loading settings from {path}", path=self.config._path)
-        self.config.open(path=self.config._path)
         self.nickname = self.config["Connection"]["nickname"]
         self.channelwatchers = {}
 

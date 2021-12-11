@@ -1,7 +1,6 @@
 twisted[tls,conch]
 treq
 PyYAML>=5.1.2
-yamlcfg
 appdirs
 whoosh
 bidict

@@ -25,14 +25,13 @@ from twisted.web.server import Site
 from twisted.logger import Logger
 import os
 
-from yamlcfg import YamlConfig
-
 from backends import Backends
 from pytibotfactory import PyTIBotFactory
 from backends.matrix_service import MatrixService
 from twisted.conch import manhole_tap
 from lib import http
 from lib.git_webhook import GitWebhookServer
+from util.config import Config
 from util import filesystem as fs
 from util import log
 
@@ -64,7 +63,7 @@ class PyTIBotServiceMaker(object):
         """
         Create an instance of PyTIBot
         """
-        config = YamlConfig(path=fs.config_file(options["config"]))
+        config = Config(path=fs.config_file(options["config"]))
         log.channellog_dir_from_config(config)
         if not (config["Connection"] and all([config["Connection"].get(option,
                                                                        False)

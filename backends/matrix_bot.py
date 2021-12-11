@@ -35,6 +35,10 @@ class MatrixBot:
                                   config["Connection"]["username"])
         self.stdiointerface = stdio.StandardIO(STDIOInterface(self))
 
+    def reload(self):
+        self.config.load()
+        # TODO: setup aliases, triggers, channelwatchers
+
     async def start(self):
         await future_to_deferred(self.client.login(self.config["Connection"]["password"]))
         await future_to_deferred(self.client.sync_forever(timeout=30000))

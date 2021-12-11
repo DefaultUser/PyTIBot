@@ -71,7 +71,7 @@ class IBot(zope.interface.Interface):
     def is_user_admin(user):
         """Check if a user is an admin for the bot"""
 
-    def load_settings():
+    def reload():
         """(Re)load settings from config"""
 
     def quit(message=None):

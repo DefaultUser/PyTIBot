@@ -13,7 +13,6 @@ The following packages are needed (also see requirements.txt):
 twisted
 treq
 PyYAML>=5.1.2
-yamlcfg
 appdirs
 whoosh
 bidict

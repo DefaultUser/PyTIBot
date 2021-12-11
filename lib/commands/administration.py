@@ -126,7 +126,7 @@ def reload_config(bot):
     """Reload the config"""
     def _reload(is_admin):
         if is_admin:
-            bot.load_settings()
+            bot.reload()
 
     while True:
         args, sender, channel = yield

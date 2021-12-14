@@ -26,7 +26,7 @@ from twisted.logger import Logger
 import os
 
 from backends import Backends
-from pytibotfactory import PyTIBotFactory
+from backends.irc_factory import IRCFactory
 from backends.matrix_service import MatrixService
 from twisted.conch import manhole_tap
 from lib import http
@@ -83,7 +83,7 @@ class PyTIBotServiceMaker(object):
             ircserver = config["Connection"]["server"]
             ircsslport = config["Connection"].get("sslport", None)
             ircport = config["Connection"].get("port", None)
-            ircbotfactory = PyTIBotFactory(config)
+            ircbotfactory = IRCFactory(config)
             bot_provider = ircbotfactory
             if ircsslport:
                 irc_cl = internet.SSLClient(ircserver, ircsslport, ircbotfactory,

@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # PyTIBot - IRC Bot using python and the twisted library
 # Copyright (C) <2015-2021>  <Sebastian Schmidt>
 
@@ -22,12 +20,12 @@ from zope.interface import implementer
 
 
 from backends.interfaces import IBotProvider
-from pytibot import PyTIBot
+from backends.irc_bot import IRCBot
 
 
 @implementer(IBotProvider)
-class PyTIBotFactory(protocol.ClientFactory):
-    """A factory for PyTIBot"""
+class IRCFactory(protocol.ClientFactory):
+    """A factory for the IRCBot"""
     MAX_ATTEMPTS = 5
     RECONNECT_DELAY = 60
     log = Logger()
@@ -39,7 +37,7 @@ class PyTIBotFactory(protocol.ClientFactory):
         self.connection_attempts = 0
 
     def buildProtocol(self, addr):
-        bot = PyTIBot(self.config)
+        bot = IRCBot(self.config)
         bot.factory = self
         self._bot = bot
         self.connection_attempts = 0
@@ -62,8 +60,8 @@ class PyTIBotFactory(protocol.ClientFactory):
 
     def clientConnectionFailed(self, connector, reason):
         self.log.error("connection failed ({reason})", reason=reason)
-        if self.connection_attempts < PyTIBotFactory.MAX_ATTEMPTS:
-            reactor.callLater(PyTIBotFactory.RECONNECT_DELAY,
+        if self.connection_attempts < IRCFactory.MAX_ATTEMPTS:
+            reactor.callLater(IRCFactory.RECONNECT_DELAY,
                               connector.connect)
             self.connection_attempts += 1
         else:

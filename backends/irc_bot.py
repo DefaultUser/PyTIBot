@@ -43,7 +43,7 @@ Alias = namedtuple("Alias", "command arguments")
 
 
 @implementer(IBot)
-class PyTIBot(irc.IRCClient, object):
+class IRCBot(irc.IRCClient, object):
     """A simple IRC bot"""
     lineRate = 1
     _default_commands = {"quit": "shutdown",
@@ -77,7 +77,7 @@ class PyTIBot(irc.IRCClient, object):
 
     def load_settings(self):
         """Load settings with config manager"""
-        PyTIBot.log.info("Loading settings from {path}", path=self.config._path)
+        IRCBot.log.info("Loading settings from {path}", path=self.config._path)
         self.nickname = self.config["Connection"]["nickname"]
         self.channelwatchers = {}
 
@@ -242,7 +242,7 @@ class PyTIBot(irc.IRCClient, object):
         """
         Send the message and log it to a channel log if neccessary
         """
-        super(PyTIBot, self).msg(user, message, length)
+        super().msg(user, message, length)
         # user can also be a channel
         user = user.lower()
         if user in self.channelwatchers:
@@ -645,11 +645,11 @@ class PyTIBot(irc.IRCClient, object):
         for channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:
                 watcher.quit(self.nickname, message)
-        super(PyTIBot, self).quit(message)
+        super().quit(message)
 
     def connectionLost(self, reason):
         self.stdiointerface.loseConnection()
         for channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:
                 watcher.connectionLost(reason)
-        super(PyTIBot, self).connectionLost(reason)
+        super().connectionLost(reason)

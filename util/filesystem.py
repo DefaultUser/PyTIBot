@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2016>  <Sebastian Schmidt>
+# Copyright (C) <2016-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,7 +16,6 @@
 
 import appdirs
 import os
-import pytibot
 from util.decorators import memoize
 
 
@@ -26,7 +25,7 @@ adirs = appdirs.AppDirs(appname="PyTIBot")
 @memoize
 def get_base_dir():
     """Return the base directory for this project"""
-    return os.path.dirname(os.path.realpath(pytibot.__file__))
+    return os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
 
 @memoize

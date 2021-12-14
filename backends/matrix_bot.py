@@ -15,18 +15,23 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from twisted.internet.defer import Deferred, ensureDeferred
 from twisted.internet import reactor
+from twisted.logger import Logger
 from twisted.words.protocols import irc
 from nio import AsyncClient
+import os
 from zope.interface import implementer
 
 from backends.interfaces import IBot
 
 from util.aio_compat import deferred_to_future, future_to_deferred
+from util import filesystem as fs
 from util import formatting
 
 
 @implementer(IBot)
 class MatrixBot:
+    log = Logger()
+
     def __init__(self, config):
         self.config = config
         self.client = AsyncClient(config["Connection"]["server"],
@@ -39,11 +44,23 @@ class MatrixBot:
 
     async def start(self):
         await future_to_deferred(self.client.login(self.config["Connection"]["password"]))
-        await future_to_deferred(self.client.sync_forever(timeout=30000))
+        sync_token = None
+        server_address = self.client.homeserver.removeprefix("http://").removeprefix("https://")
+        state_filepath = os.path.join(fs.adirs.user_cache_dir, f"state-{server_address}")
+        if (os.path.isfile(state_filepath)):
+            with open(state_filepath) as f:
+                sync_token = f.read().strip()
+        await future_to_deferred(self.client.sync_forever(timeout=30000, loop_sleep_time=1000,
+                                                          since=sync_token))
         return Deferred()
 
     def quit(self, ignored=None):
         self.stop()
+        # save latest sync token
+        server_address = self.client.homeserver.removeprefix("http://").removeprefix("https://")
+        state_filepath = os.path.join(fs.adirs.user_cache_dir, f"state-{server_address}")
+        with open(state_filepath, "w") as f:
+            f.write(self.client.next_batch)
         reactor.stop()
 
     def stop(self):

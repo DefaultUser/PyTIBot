@@ -30,7 +30,8 @@ class MatrixBot:
     def __init__(self, config):
         self.config = config
         self.client = AsyncClient(config["Connection"]["server"],
-                                  config["Connection"]["username"])
+                                  config["Connection"]["username"],
+                                  device_id=config["Connection"].get("deviceID", None))
 
     def reload(self):
         self.config.load()

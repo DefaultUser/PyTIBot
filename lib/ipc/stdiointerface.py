@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017>  <Sebastian Schmidt>
+# Copyright (C) <2017-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -44,7 +42,7 @@ class STDIOInterface(LineOnlyReceiver, object):
         except ValueError:
             command = line
             data = None
-        method = getattr(self, "irc_{}".format(command), None)
+        method = getattr(self, "cmd_{}".format(command), None)
         if method:
             try:
                 method(data)
@@ -56,11 +54,11 @@ class STDIOInterface(LineOnlyReceiver, object):
                                                   "{}.".format(command),
                                                   fg=ANSIColors.red))
 
-    def irc_help(self, command=None):
+    def cmd_help(self, command=None):
         """Show help
         Usage: help [command]"""
         if command:
-            method = getattr(self, "irc_{}".format(command), None)
+            method = getattr(self, "cmd_{}".format(command), None)
             if method:
                 self.sendLine(formatting.ansi_colored(method.__doc__,
                                                       fg=ANSIColors.cyan))
@@ -72,57 +70,57 @@ class STDIOInterface(LineOnlyReceiver, object):
             self.sendLine(formatting.ansi_colored("Available commands: ",
                                                   fg=ANSIColors.blue) +
                           ", ".join([member[4:] for member in dir(self)
-                                     if member.startswith("irc_")]))
+                                     if member.startswith("cmd_")]))
 
-    def irc_action(self, data):
-        """Send an action to an IRC channel
+    def cmd_action(self, data):
+        """Send an action to a channel
         Usage: action <channel> <action>"""
         if not data:
             raise ValueError("No channel and action given")
         channel, action = data.split(None, 1)
         self.bot.describe(channel, action)
 
-    def irc_msg(self, data):
-        """Send a message to an IRC channel or user
+    def cmd_msg(self, data):
+        """Send a message to a channel or user
         Usage: msg <channel> <message>"""
         if not data:
             raise ValueError("No channel and message given")
         channel, message = data.split(None, 1)
         self.bot.msg(channel, formatting.from_human_readable(message))
 
-    def irc_notice(self, data):
-        """Send a notice to an IRC channel or user
+    def cmd_notice(self, data):
+        """Send a notice to a channel or user
         Usage: notice <channel> <message>"""
         if not data:
             raise ValueError("No channel and message given")
         channel, message = data.split(None, 1)
         self.bot.notice(channel, formatting.from_human_readable(message))
 
-    def irc_join(self, channels):
-        """Try to join one or more IRC channels
+    def cmd_join(self, channels):
+        """Try to join one or more channels
         Usage: join <channels>"""
         for channel in channels.split():
             self.bot.join(channel)
 
-    def irc_leave(self, channels):
-        """Leave one or more IRC channels
+    def cmd_leave(self, channels):
+        """Leave one or more channels
         Usage: leave <channels>"""
         for channel in channels.split():
             self.bot.leave(channel)
 
-    def irc_quit(self, message):
+    def cmd_quit(self, message):
         """Quit the bot
         Usage: quit [message]"""
         self.bot.quit(message)
 
-    def irc_kick(self, data):
+    def cmd_kick(self, data):
         """Attempt to kick a user from a channel
         Usage: kick <channel> <user>
         """
         channel, user = data.split(None, 1)
         self.bot.kick(channel, user)
 
-    def irc_ban(self, data):
+    def cmd_ban(self, data):
         """Attempt to ban a user from a channel
         Usage: ban <channel> <user>
         """

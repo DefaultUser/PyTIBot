@@ -18,6 +18,7 @@ from twisted.internet import reactor
 from twisted.logger import Logger
 from twisted.words.protocols import irc
 from nio import AsyncClient
+from nio import responses as MatrixResponses
 import os
 from zope.interface import implementer
 
@@ -43,7 +44,11 @@ class MatrixBot:
         # TODO: setup aliases, triggers, channelwatchers
 
     async def start(self):
-        await future_to_deferred(self.client.login(self.config["Connection"]["password"]))
+        response = await future_to_deferred(self.client.login(self.config["Connection"]["password"]))
+        if isinstance(response, MatrixResponses.LoginError):
+            MatrixBot.log.error("Error logging in {}", response)
+            raise EnvironmentError("Login failed")
+        #await self.signedOn()
         sync_token = None
         server_address = self.client.homeserver.removeprefix("http://").removeprefix("https://")
         state_filepath = os.path.join(fs.adirs.user_cache_dir, f"state-{server_address}")

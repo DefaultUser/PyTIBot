@@ -90,7 +90,7 @@ class PytibotDBusObject(objects.DBusObject):
             self.botprovider.bot.quit()
 
 @defer.inlineCallbacks
-def create_and_export(botprovider):
+def setup(botprovider):
     try:
         connection = yield client.connect(reactor)
         connection.exportObject(PytibotDBusObject("/PyTIBot", botprovider))

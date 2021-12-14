@@ -31,6 +31,7 @@ from backends.matrix_service import MatrixService
 from twisted.conch import manhole_tap
 from lib import http
 from lib.git_webhook import GitWebhookServer
+from lib.ipc import stdioreceiver
 from util.config import Config
 from util import filesystem as fs
 from util import log
@@ -39,7 +40,7 @@ from util import log
 logger = Logger()
 
 try:
-    from lib.ipc.dbusobject import create_and_export
+    from lib.ipc import dbusobject
     supports_dbus = True
 except ImportError as e:
     logger.debug("Could not import DBus interface")
@@ -121,8 +122,11 @@ class PyTIBotServiceMaker(object):
             tn_sv = manhole_tap.makeService(options)
             tn_sv.setServiceParent(mService)
 
+        # TODO: create a generic IPC setup
+        stdio_receiver = stdioreceiver.setup(bot_provider)
+
         if supports_dbus:
-            dbus_connection = create_and_export(bot_provider)
+            dbus_connection = dbusobject.setup(bot_provider)
 
         if (config["GitWebhook"] and ("port" in config["GitWebhook"] or
                                       "sshport" in config["GitWebhook"])):

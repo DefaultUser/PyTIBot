@@ -14,14 +14,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 from twisted.internet.defer import Deferred, ensureDeferred
-from twisted.internet import stdio, reactor
+from twisted.internet import reactor
 from twisted.words.protocols import irc
 from nio import AsyncClient
 from zope.interface import implementer
 
 from backends.interfaces import IBot
-
-from lib.ipc.stdiointerface import STDIOInterface
 
 from util.aio_compat import deferred_to_future, future_to_deferred
 from util import formatting
@@ -33,7 +31,6 @@ class MatrixBot:
         self.config = config
         self.client = AsyncClient(config["Connection"]["server"],
                                   config["Connection"]["username"])
-        self.stdiointerface = stdio.StandardIO(STDIOInterface(self))
 
     def reload(self):
         self.config.load()
@@ -49,7 +46,6 @@ class MatrixBot:
         reactor.stop()
 
     def stop(self):
-        self.stdiointerface.loseConnection()
         future_to_deferred(self.client.close())
 
     @staticmethod

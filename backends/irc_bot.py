@@ -19,7 +19,7 @@
 import re
 from collections import namedtuple
 from twisted.words.protocols import irc
-from twisted.internet import defer, reactor, stdio
+from twisted.internet import defer, reactor
 from twisted.internet import ssl
 from twisted.web.server import Site
 from twisted.logger import Logger
@@ -28,7 +28,6 @@ from zope.interface import implementer
 
 from backends import Backends
 from backends.interfaces import IBot
-from lib.ipc.stdiointerface import STDIOInterface
 from lib import commands
 from lib import triggers
 from lib import channelwatcher
@@ -68,8 +67,6 @@ class IRCBot(irc.IRCClient, object):
         self.triggers = {}
         self.userlist = {}
         self.load_settings()
-
-        self.stdiointerface = stdio.StandardIO(STDIOInterface(self))
 
     def reload(self):
         self.config.load()
@@ -648,7 +645,6 @@ class IRCBot(irc.IRCClient, object):
         super().quit(message)
 
     def connectionLost(self, reason):
-        self.stdiointerface.loseConnection()
         for channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:
                 watcher.connectionLost(reason)

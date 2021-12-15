@@ -39,6 +39,11 @@ class MatrixBot:
                                   config["Connection"]["username"],
                                   device_id=config["Connection"].get("deviceID", None))
 
+    @property
+    def state_filepath(self):
+        server_address = self.client.homeserver.removeprefix("http://").removeprefix("https://")
+        return os.path.join(fs.adirs.user_cache_dir, f"state-{server_address}")
+
     def reload(self):
         self.config.load()
         # TODO: setup aliases, triggers, channelwatchers
@@ -50,10 +55,8 @@ class MatrixBot:
             raise EnvironmentError("Login failed")
         #await self.signedOn()
         sync_token = None
-        server_address = self.client.homeserver.removeprefix("http://").removeprefix("https://")
-        state_filepath = os.path.join(fs.adirs.user_cache_dir, f"state-{server_address}")
-        if (os.path.isfile(state_filepath)):
-            with open(state_filepath) as f:
+        if (os.path.isfile(self.state_filepath)):
+            with open(self.state_filepath) as f:
                 sync_token = f.read().strip()
         await future_to_deferred(self.client.sync_forever(timeout=30000, loop_sleep_time=1000,
                                                           since=sync_token))
@@ -62,9 +65,7 @@ class MatrixBot:
     def quit(self, ignored=None):
         self.stop()
         # save latest sync token
-        server_address = self.client.homeserver.removeprefix("http://").removeprefix("https://")
-        state_filepath = os.path.join(fs.adirs.user_cache_dir, f"state-{server_address}")
-        with open(state_filepath, "w") as f:
+        with open(self.state_filepath, "w") as f:
             f.write(self.client.next_batch)
         reactor.stop()
 

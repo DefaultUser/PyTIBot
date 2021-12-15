@@ -46,7 +46,7 @@ class MatrixBot:
     async def start(self):
         response = await future_to_deferred(self.client.login(self.config["Connection"]["password"]))
         if isinstance(response, MatrixResponses.LoginError):
-            MatrixBot.log.error("Error logging in {}", response)
+            MatrixBot.log.error("Error logging in {response}", response=response)
             raise EnvironmentError("Login failed")
         #await self.signedOn()
         sync_token = None

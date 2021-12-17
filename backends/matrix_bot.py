@@ -28,6 +28,7 @@ from backends.interfaces import IBot
 from util.aio_compat import deferred_to_future, future_to_deferred
 from util import filesystem as fs
 from util import formatting
+from util.decorators import maybe_deferred
 
 
 @implementer(IBot)
@@ -48,6 +49,15 @@ class MatrixBot:
     def reload(self):
         self.config.load()
         # TODO: setup aliases, triggers, channelwatchers
+
+    @maybe_deferred
+    def get_auth(self, user):
+        # the user handle is already unique
+        return user
+
+    @maybe_deferred
+    def is_user_admin(self, user):
+        return user in self.config["Connection"]["admins"]
 
     async def start(self):
         response = await future_to_deferred(self.client.login(self.config["Connection"]["password"]))

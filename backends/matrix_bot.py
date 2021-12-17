@@ -13,12 +13,13 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
-from twisted.internet.defer import Deferred, ensureDeferred
+from twisted.internet.defer import Deferred, ensureDeferred, inlineCallbacks
 from twisted.internet import reactor
 from twisted.logger import Logger
 from twisted.words.protocols import irc
-from nio import AsyncClient
+from nio import AsyncClient, MatrixRoom
 from nio import responses as MatrixResponses
+from nio.api import RoomPreset
 import os
 from zope.interface import implementer
 
@@ -59,7 +60,7 @@ class MatrixBot:
             with open(self.state_filepath) as f:
                 sync_token = f.read().strip()
         await future_to_deferred(self.client.sync_forever(timeout=30000, loop_sleep_time=1000,
-                                                          since=sync_token))
+                                                          since=sync_token, full_state=True))
         return Deferred()
 
     def quit(self, ignored=None):
@@ -82,17 +83,53 @@ class MatrixBot:
         return {"body": unformatted, "format": "org.matrix.custom.html",
                 "formatted_body": formatting.to_matrix(message).replace("\n", "<br/>")}
 
+    @inlineCallbacks
+    def get_or_create_direct_message_room(self, user):
+        for room_id, room in self.client.rooms.items():
+            if room.is_group and room.member_count == 2 and user in room.users:
+                return room_id
+        resp = yield future_to_deferred(self.client.room_create(is_direct=True, invite=[user],
+            preset=RoomPreset.trusted_private_chat))
+        return resp.room_id
+
+    def resolve_joined_room_alias(self, target):
+        for room_id, room in self.client.rooms.items():
+            if room.machine_name == target:
+                return room_id
+        else:
+            MatrixBot.log.info("No room with alias {target} found", target=target)
+            return
+
+    @inlineCallbacks
     def msg(self, target, message, length=None):
+        # direct messages will stay open until the user leaves the room
+        # TODO: leave rooms when the last user left a room
+        if target.startswith("@"):
+            target = yield self.get_or_create_direct_message_room(target)
+        elif target.startswith("#"):
+            target = self.resolve_joined_room_alias(target)
+        if target is None:
+            return
         content = {"msgtype": "m.text", **MatrixBot.formatted_message_content(message)}
         future_to_deferred(self.client.room_send(room_id=target,
-                                             message_type="m.room.message",
-                                             content=content))
+                                                 message_type="m.room.message",
+                                                 content=content))
 
+    @inlineCallbacks
     def notice(self, target, message, length=None):
+        # direct messages will stay open until the user leaves the room
+        # TODO: leave rooms when the last user left a room
+        # TODO: remove this code duplication
+        if target.startswith("@"):
+            target = yield self.get_or_create_direct_message_room(target)
+        elif target.startswith("#"):
+            target = self.resolve_joined_room_alias(target)
+        if target is None:
+            return
         content = {"msgtype": "m.notice", **MatrixBot.formatted_message_content(message)}
-        self.client.room_send(room_id=target,
-                              message_type="m.room.message",
-                              content=content)
+        future_to_deferred(self.client.room_send(room_id=target,
+                                                 message_type="m.room.message",
+                                                 content=content))
 
     def join(self, channel):
         self.client.join(channel)

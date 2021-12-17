@@ -59,6 +59,10 @@ class MatrixBot:
     def is_user_admin(self, user):
         return user in self.config["Connection"]["admins"]
 
+    @property
+    def userlist(self):
+        return {room_id: list(room.users.keys()) for room_id, room in self.client.rooms.items()}
+
     async def start(self):
         response = await future_to_deferred(self.client.login(self.config["Connection"]["password"]))
         if isinstance(response, MatrixResponses.LoginError):

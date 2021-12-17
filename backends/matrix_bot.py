@@ -13,6 +13,7 @@
 
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
+import asyncio
 from twisted.internet.defer import Deferred, ensureDeferred, inlineCallbacks
 from twisted.internet import reactor
 from twisted.logger import Logger
@@ -69,7 +70,9 @@ class MatrixBot:
             MatrixBot.log.error("Error logging in {response}", response=response)
             raise EnvironmentError("Login failed")
         MatrixBot.log.info("Login successfull")
-        #await self.signedOn()
+        # WARNING: don't await the signedOn method
+        # it requires a first sync to know the already joined rooms
+        self.signedOn()
         sync_token = None
         if (os.path.isfile(self.state_filepath)):
             with open(self.state_filepath) as f:
@@ -77,6 +80,13 @@ class MatrixBot:
         await future_to_deferred(self.client.sync_forever(timeout=30000, loop_sleep_time=1000,
                                                           since=sync_token, full_state=True))
         return Deferred()
+
+    @inlineCallbacks
+    def signedOn(self):
+        yield future_to_deferred(asyncio.ensure_future(self.client.synced.wait()))
+        for room in self.config["Connection"]["channels"]:
+            if room not in self.client.rooms:
+                self.join(room)
 
     def quit(self, ignored=None):
         self.stop()

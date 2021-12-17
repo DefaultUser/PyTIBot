@@ -68,6 +68,7 @@ class MatrixBot:
         if isinstance(response, MatrixResponses.LoginError):
             MatrixBot.log.error("Error logging in {response}", response=response)
             raise EnvironmentError("Login failed")
+        MatrixBot.log.info("Login successfull")
         #await self.signedOn()
         sync_token = None
         if (os.path.isfile(self.state_filepath)):
@@ -82,6 +83,7 @@ class MatrixBot:
         # save latest sync token
         with open(self.state_filepath, "w") as f:
             f.write(self.client.next_batch)
+        MatrixBot.log.info("Shutting down")
         reactor.stop()
 
     def stop(self):

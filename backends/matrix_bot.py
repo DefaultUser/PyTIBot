@@ -142,14 +142,14 @@ class MatrixBot:
                                                  content=content))
 
     def join(self, channel):
-        self.client.join(channel)
+        future_to_deferred(self.client.join(channel))
 
     def leave(self, channel):
-        self.client.room_leave(channel)
+        future_to_deferred(self.client.room_leave(channel))
 
     def kick(self, channel, user, reason=""):
-        self.client.room_kick(channel, user, reason)
+        future_to_deferred(self.client.room_kick(channel, user, reason))
 
     def ban(self, channel, user, reason=""):
-        self.client.room_ban(channel, user, reason)
+        future_to_deferred(self.client.room_ban(channel, user, reason))
 

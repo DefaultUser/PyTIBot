@@ -359,7 +359,7 @@ class CommandOptions(OptionsWithoutHandlers):
 
 class Vote(abstract.ChannelWatcher):
     logger = Logger()
-    supported_backends = [Backends.IRC]
+    supported_backends = [Backends.IRC, Backends.MATRIX]
 
     PollEndWarningTime = timedelta(days=2)
     PollDefaultDuration = timedelta(days=15)

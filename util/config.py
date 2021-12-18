@@ -31,6 +31,9 @@ class Config:
         with open(self._path, "w") as f:
             f.write(yaml.dump(self._data))
 
+    def get(self, index, default):
+        return self._data.get(index, default)
+
     def __getattr__(self, attr):
         return self[attr]
 

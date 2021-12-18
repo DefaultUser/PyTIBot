@@ -707,6 +707,9 @@ class Vote(abstract.ChannelWatcher):
         if not (is_admin or (yield self.is_vote_admin(issuer))):
             self.bot.notice(issuer, "Insufficient permissions")
             return
+        if user not in self.bot.userlist[self.channel]:
+            self.bot.notice(issuer, "User is not in this channel")
+            return
         auth = yield self.bot.get_auth(user)
         if not auth:
             self.bot.notice(issuer, "Couldn't query user's AUTH, aborting...")

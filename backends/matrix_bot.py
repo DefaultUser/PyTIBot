@@ -18,12 +18,14 @@ from twisted.internet.defer import Deferred, ensureDeferred, inlineCallbacks
 from twisted.internet import reactor
 from twisted.logger import Logger
 from twisted.words.protocols import irc
-from nio import AsyncClient, MatrixRoom
+from nio import AsyncClient, MatrixRoom, RoomMessageText
 from nio import responses as MatrixResponses
 from nio.api import RoomPreset
 import os
 from zope.interface import implementer
 
+from backends import Backends
+from backends.common import setup_channelwatchers
 from backends.interfaces import IBot
 
 from util.aio_compat import deferred_to_future, future_to_deferred
@@ -41,15 +43,38 @@ class MatrixBot:
         self.client = AsyncClient(config["Connection"]["server"],
                                   config["Connection"]["username"],
                                   device_id=config["Connection"].get("deviceID", None))
+        self.load_settings()
+        self.client.add_event_callback(self.on_message, RoomMessageText)
+
+    def on_message(self, room: MatrixRoom, event: RoomMessageText) -> None:
+        MatrixBot.log.info("{room.display_name} | {event.sender} : {event.body}",
+                           room=room, event=event)
+        room_id = room.room_id
+        message = event.body
+        try:
+            if event.source['content']['m.relates_to']['rel_type'] == "m.replace":
+                message = message.removeprefix("* ")
+        except KeyError:
+            pass
+        # channelwatchers
+        if room_id in self.channelwatchers:
+            for watcher in self.channelwatchers[room_id]:
+                watcher.msg(event.sender, message)
 
     @property
     def state_filepath(self):
         server_address = self.client.homeserver.removeprefix("http://").removeprefix("https://")
         return os.path.join(fs.adirs.user_cache_dir, f"state-{server_address}")
 
+    def load_settings(self):
+        MatrixBot.log.info("Loading settings from {path}", path=self.config._path)
+        # TODO: setup aliases, triggers, commands
+        self.channelwatchers = setup_channelwatchers(self, self.config.get("Channelmodules", {}),
+                                                     Backends.MATRIX)
+
     def reload(self):
         self.config.load()
-        # TODO: setup aliases, triggers, channelwatchers
+        self.load_settings()
 
     @maybe_deferred
     def get_auth(self, user):

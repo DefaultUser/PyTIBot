@@ -27,6 +27,7 @@ import sys
 from zope.interface import implementer
 
 from backends import Backends
+from backends.common import setup_channelwatchers
 from backends.interfaces import IBot
 from lib import commands
 from lib import triggers
@@ -76,7 +77,8 @@ class IRCBot(irc.IRCClient, object):
         """Load settings with config manager"""
         IRCBot.log.info("Loading settings from {path}", path=self.config._path)
         self.nickname = self.config["Connection"]["nickname"]
-        self.channelwatchers = {}
+        self.channelwatchers = setup_channelwatchers(self, self.config.get("Channelmodules", {}),
+                                                     Backends.IRC)
 
         # clear the commands
         del self.commands
@@ -110,26 +112,6 @@ class IRCBot(irc.IRCClient, object):
         if self.config["Triggers"]:
             for trigger in self.config["Triggers"]:
                 self.enable_trigger(trigger)
-
-    def install_channelwatcher(self, channel, watcher):
-        if not channel.startswith("#"):
-            channel = "#" + channel
-        # make all channels lowercase
-        if channel in self.channelwatchers:
-            self.channelwatchers[channel].append(watcher)
-        else:
-            self.channelwatchers[channel] = [watcher]
-
-    def clear_channelwatchers(self, channel):
-        if not channel.startswith("#"):
-            channel = "#" + channel
-        # make all channels lowercase
-        try:
-            watchers = self.channelwatchers.pop(channel)
-        except KeyError:
-            return
-        for watcher in watchers:
-            watcher.stop()
 
     def enable_command(self, cmd, name, add_to_config=False):
         """Enable a command - returns True at success"""
@@ -255,27 +237,9 @@ class IRCBot(irc.IRCClient, object):
     def joined(self, channel):
         """Triggered when joining a channel"""
         self.log.info("Joined channel: {channel}", channel=channel)
-        if self.config["Channelmodules"]:
-            for watcher in self.config["Channelmodules"].get(channel, []):
-                if isinstance(watcher, dict):
-                    name = list(watcher.keys())[0]
-                    config = watcher[name]
-                else:
-                    name = watcher
-                    config = {}
-                if not hasattr(channelwatcher, name):
-                    self.log.warn("No channelwatcher called {name}, "
-                                  "ignoring", name=name)
-                    continue
-                type_ = getattr(channelwatcher, name)
-                if not Backends.IRC in type_.supported_backends:
-                    self.log.warn("Channelwatcher {name} doesn't support IRC",
-                                  name=name)
-                    continue
-                instance = getattr(channelwatcher, name)(self, channel,
-                                                         config)
-                self.install_channelwatcher(channel, instance)
-                instance.join(self.nickname)
+        if channel in self.channelwatchers:
+            for watcher in self.channelwatchers[channel]:
+                watcher.join(self.nickname)
 
     def left(self, channel):
         """Triggered when leaving a channel"""
@@ -284,7 +248,6 @@ class IRCBot(irc.IRCClient, object):
         if channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:
                 watcher.part(self.nickname)
-        self.clear_channelwatchers(channel)
 
     def privmsg(self, user, channel, msg):
         """Triggered by messages"""
@@ -642,6 +605,7 @@ class IRCBot(irc.IRCClient, object):
         for channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:
                 watcher.quit(self.nickname, message)
+                watcher.stop()
         super().quit(message)
 
     def connectionLost(self, reason):

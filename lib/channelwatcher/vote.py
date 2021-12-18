@@ -56,8 +56,8 @@ PRAGMA foreign_keys = ON;""",
     time_end DATETIME DEFAULT (DATETIME('now', 'UTC', '+15 days')), -- always use UTC
     status TEXT CHECK(status in ("RUNNING", "CANCELED", "PASSED", "TIED", "FAILED", "VETOED", "DECIDED")) DEFAULT "RUNNING",
     category INTEGER,
-    FOREIGN KEY (creator) REFERENCES Users(id),
-    FOREIGN KEY (vetoed_by) REFERENCES Users(id),
+    FOREIGN KEY (creator) REFERENCES Users(id) ON UPDATE CASCADE,
+    FOREIGN KEY (vetoed_by) REFERENCES Users(id) ON UPDATE CASCADE,
     FOREIGN KEY (category) REFERENCES Categories(id) ON DELETE SET NULL
 );""",
 """CREATE TABLE IF NOT EXISTS Votes (
@@ -68,7 +68,7 @@ PRAGMA foreign_keys = ON;""",
     -- time_create INTEGER, -- needed?
     PRIMARY KEY (poll_id, user),
     FOREIGN KEY (poll_id) REFERENCES Polls(id),
-    FOREIGN KEY (user) REFERENCES Users(id)
+    FOREIGN KEY (user) REFERENCES Users(id) ON UPDATE CASCADE
 );""",
 """CREATE TABLE IF NOT EXISTS Categories (
     id INTEGER PRIMARY KEY,

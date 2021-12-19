@@ -221,7 +221,7 @@ class VotePage(BaseResource):
             where = ''
         return self.dbpool.runQuery(
                 'SELECT Polls.id, Categories.name, Categories.color, Polls.description, Users.name, Polls.status, '
-                       'Polls.veto_reason, (SELECT Users.name WHERE Polls.vetoed_by=Users.id), '
+                       'Polls.veto_reason, (SELECT name FROM Users WHERE Polls.vetoed_by=id), '
                        '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="YES"), '
                        '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="NO"), '
                        '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="ABSTAIN"), '

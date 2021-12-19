@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # PyTIBot - IRC Bot using python and the twisted library
 # Copyright (C) <2020-2021>  <Sebastian Schmidt>
 
@@ -387,8 +385,7 @@ class Vote(abstract.ChannelWatcher):
         self._http_secret = config.get("http_secret", None)
         vote_configdir = os.path.join(fs.adirs.user_config_dir, "vote")
         os.makedirs(vote_configdir, exist_ok=True)
-        dbfile = os.path.join(vote_configdir,
-                              "{}.db".format(self.channel.lstrip("#")))
+        dbfile = os.path.join(vote_configdir, "{}.sqlite".format(self.channel))
         self.dbpool = adbapi.ConnectionPool("sqlite3", dbfile,
                                             check_same_thread=False)
         self._lock = Lock()

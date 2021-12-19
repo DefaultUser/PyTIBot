@@ -170,12 +170,12 @@ class VotePageElement(PageElement):
 class VotePage(BaseResource):
     def __init__(self, crumb, config):
         super().__init__(crumb)
-        self.channel = config["channel"].lstrip("#")
+        self.channel = config["channel"]
         self.title = config.get("title", "Vote Page")
         self.key = config.get("key", None) # key to show confidential and running polls
         vote_configdir = os.path.join(fs.adirs.user_config_dir, "vote")
         dbfile = os.path.join(vote_configdir,
-                              "{}.db".format(self.channel))
+                              "{}.sqlite".format(self.channel))
         self.dbpool = adbapi.ConnectionPool("sqlite3", dbfile,
                                             check_same_thread=False)
 

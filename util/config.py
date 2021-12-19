@@ -34,6 +34,9 @@ class Config:
     def get(self, index, default):
         return self._data.get(index, default)
 
+    def __contains__(self, item):
+        return item in self._data
+
     def __getattr__(self, attr):
         return self[attr]
 

@@ -66,8 +66,8 @@ class PyTIBotServiceMaker(object):
         """
         config = Config(path=fs.config_file(options["config"]))
         log.channellog_dir_from_config(config)
-        if not (config["Connection"] and all([config["Connection"].get(option,
-                                                                       False)
+        if not ("Connection" in config and all([config["Connection"].get(option,
+                                                                         False)
                                               for option in
                                               mandatory_settings])):
             raise EnvironmentError("Reading config file failed, mandatory"
@@ -101,7 +101,7 @@ class PyTIBotServiceMaker(object):
             matrix_service.setServiceParent(mService)
 
         # manhole for debugging
-        if config["Manhole"]:
+        if "Manhole" in config:
             telnetPort = config.Manhole.get("telnetport", None)
             if telnetPort:
                 telnetPort = "tcp:{}".format(telnetPort)
@@ -128,8 +128,8 @@ class PyTIBotServiceMaker(object):
         if supports_dbus:
             dbus_connection = dbusobject.setup(bot_provider)
 
-        if (config["GitWebhook"] and ("port" in config["GitWebhook"] or
-                                      "sshport" in config["GitWebhook"])):
+        if ("GitWebhook" in config and ("port" in config["GitWebhook"] or
+                                        "sshport" in config["GitWebhook"])):
             webhook_server = GitWebhookServer(bot_provider, config)
             factory = Site(webhook_server)
             # https
@@ -148,8 +148,8 @@ class PyTIBotServiceMaker(object):
                 webhook_http_sv = internet.TCPServer(port, factory)
                 webhook_http_sv.setServiceParent(mService)
 
-        if (config["HTTPServer"] and ("port" in config["HTTPServer"] or
-                                      "sshport" in config["HTTPServer"])):
+        if ("HTTPServer" in config and ("port" in config["HTTPServer"] or
+                                        "sshport" in config["HTTPServer"])):
             root = http.setup_http_root(config["HTTPServer"]["root"])
             httpfactory = Site(root)
             port = config["HTTPServer"].get("port", None)

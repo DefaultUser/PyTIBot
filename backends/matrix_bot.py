@@ -18,7 +18,7 @@ from twisted.internet.defer import Deferred, ensureDeferred, inlineCallbacks
 from twisted.internet import reactor
 from twisted.logger import Logger
 from twisted.words.protocols import irc
-from nio import AsyncClient, MatrixRoom, RoomMessageText
+from nio import AsyncClient, MatrixRoom, RoomMessageText, RoomMessageNotice
 from nio import responses as MatrixResponses
 from nio.api import RoomPreset
 import os
@@ -45,6 +45,7 @@ class MatrixBot:
                                   device_id=config["Connection"].get("deviceID", None))
         self.load_settings()
         self.client.add_event_callback(self.on_message, RoomMessageText)
+        self.client.add_event_callback(self.on_notice, RoomMessageNotice)
 
     def on_message(self, room: MatrixRoom, event: RoomMessageText) -> None:
         MatrixBot.log.info("{room.display_name} | {event.sender} : {event.body}",
@@ -60,6 +61,22 @@ class MatrixBot:
         if room_id in self.channelwatchers:
             for watcher in self.channelwatchers[room_id]:
                 watcher.msg(event.sender, message)
+        # TODO: aliases, commands, triggers
+
+    def on_notice(self, room: MatrixRoom, event: RoomMessageNotice) -> None:
+        MatrixBot.log.info("{room.display_name} | [{event.sender} : {event.body}]",
+                           room=room, event=event)
+        room_id = room.room_id
+        message = event.body
+        try:
+            if event.source['content']['m.relates_to']['rel_type'] == "m.replace":
+                message = message.removeprefix("* ")
+        except KeyError:
+            pass
+        # channelwatchers
+        if room_id in self.channelwatchers:
+            for watcher in self.channelwatchers[room_id]:
+                watcher.notice(event.sender, message)
 
     @property
     def state_filepath(self):

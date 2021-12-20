@@ -185,8 +185,13 @@ class MatrixBot:
     def join(self, channel):
         future_to_deferred(self.client.join(channel))
 
+    @inlineCallbacks
     def leave(self, channel):
-        future_to_deferred(self.client.room_leave(channel))
+        response = yield future_to_deferred(self.client.room_leave(channel))
+        if isinstance(response, MatrixResponses.RoomLeaveError):
+            MatrixBot.log.error("Couldn't leave room {channel}", channel=channel)
+            return
+        future_to_deferred(self.client.room_forget(channel))
 
     def kick(self, channel, user, reason=""):
         future_to_deferred(self.client.room_kick(channel, user, reason))

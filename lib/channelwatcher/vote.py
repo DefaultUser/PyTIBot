@@ -85,6 +85,7 @@ PollDelayedCalls = namedtuple("PollDelayedCalls", "end_warning end")
 VoteCount = namedtuple("VoteCount", "not_voted abstained yes no")
 
 PollListStatusFilter = Enum("PollListStatusFilter", "RUNNING CANCELED PASSED TIED FAILED VETOED DECIDED ENDED ALL")
+UserListStatusFilter = Enum("UserListStatusFilter", "ADMIN ACTIVE REVOKED ALL")
 
 
 IRCHelp = namedtuple("IRCHelp", "subCommands flags params pos_params")
@@ -160,10 +161,16 @@ class UserModifyOptions(OptionsWithoutHandlers):
             self["value"] = self["value"].upper()
 
 
+class UserListOptions(OptionsWithoutHandlers):
+    def parseArgs(self, filter="ACTIVE"):
+        self["filter"] = UserListStatusFilter[filter.upper()]
+
+
 class UserOptions(OptionsWithoutHandlers):
     subCommands = [
         ['add', None, UserAddOptions, "Add a new user"],
-        ['modify', 'mod', UserModifyOptions, "Modify user name or rights"]
+        ['modify', 'mod', UserModifyOptions, "Modify user name or rights"],
+        ['list', 'ls', UserListOptions, "List users"]
     ]
 
 
@@ -363,6 +370,7 @@ class Vote(abstract.ChannelWatcher):
     PollDefaultDuration = timedelta(days=15)
     expireTimeRegex = re.compile(r"(extend|reduce)\s+(?:(\d+)\s*d(?:ays?)?)?\s*(?:(\d+)\s*h(?:ours?)?)?$")
     description_length = 150
+    PrivilegeOrder = {"ADMIN": 0, "USER": 10, "REVOKED": 20} # Lower means shown earlier
 
     class Colors:
         poll_id = IRCColorCodes.dark_yellow
@@ -760,6 +768,36 @@ class Vote(abstract.ChannelWatcher):
         self.query_active_user_count()
         self.bot.notice(issuer, "Successfully modified User {}".format(
             Vote.colored_user(user)))
+
+    @defer.inlineCallbacks
+    def cmd_user_list(self, issuer, filter):
+        if not(yield self.is_vote_user(issuer)):
+            self.bot.notice(issuer, "Insufficient permissions")
+            return
+        if filter == UserListStatusFilter.ALL:
+            filter_string = ""
+        elif filter == UserListStatusFilter.ADMIN:
+            filter_string = 'WHERE privilege="ADMIN"'
+        elif filter == UserListStatusFilter.ACTIVE:
+            filter_string = 'WHERE privilege!="REVOKED"'
+        elif filter == UserListStatusFilter.REVOKED:
+            filter_string = 'WHERE privilege="REVOKED"'
+        else:
+            Vote.logger.error("Userlist: Invalid filter {filter}, using ACTIVE instead",
+                              filter=filter)
+            filter_string = 'WHERE privilege!="REVOKED"'
+        try:
+            users_raw = yield self.dbpool.runQuery('SELECT name, privilege FROM Users ' +
+                                                   filter_string + ';')
+        except Exception as e:
+            self.bot.notice(issuer, f"Couldn't query user list. Reason: {e}")
+            Vote.logger.warn("Error querying user list for vote system in channel "
+                             "{channel}: {e}", channel=self.channel, e=e)
+            return
+        users_raw = sorted(users_raw, key=lambda x: Vote.PrivilegeOrder[x[1]])
+        for privilege, userlist in itertools.groupby(users_raw, lambda x: x[1]):
+            self.bot.notice(issuer, "{privilege}: {users}".format(
+                privilege=privilege, users=", ".join(x[0] for x in userlist)))
 
     @defer.inlineCallbacks
     def is_poll_running(self, poll_id):

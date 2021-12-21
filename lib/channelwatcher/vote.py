@@ -28,6 +28,7 @@ import re
 from threading import Lock
 import textwrap
 from inspect import signature, Parameter
+import typing
 
 from . import abstract
 from backends import Backends
@@ -77,15 +78,21 @@ PRAGMA foreign_keys = ON;""",
 );"""]
 
 
-UserPrivilege = Enum("UserPrivilege", "REVOKED USER ADMIN INVALID")
+UserPrivilege = Enum("UserPrivilege", "REVOKED USER ADMIN")
 PollStatus = Enum("PollStatus", "RUNNING CANCELED PASSED TIED FAILED VETOED DECIDED")
 VoteDecision = Enum("VoteDecision", "NONE ABSTAIN YES NO")
 
 PollDelayedCalls = namedtuple("PollDelayedCalls", "end_warning end")
 VoteCount = namedtuple("VoteCount", "not_voted abstained yes no")
 
-PollListStatusFilter = Enum("PollListStatusFilter", "RUNNING CANCELED PASSED TIED FAILED VETOED DECIDED ENDED ALL")
-UserListStatusFilter = Enum("UserListStatusFilter", "ADMIN ACTIVE REVOKED ALL")
+PollListStatusFilterType = typing.Literal["RUNNING", "CANCELED", "PASSED", "TIED",
+                                          "FAILED", "VETOED", "DECIDED", "ENDED", "ALL"]
+PollListStatusFilter = Enum("PollListStatusFilter", typing.get_args(PollListStatusFilterType))
+UserListStatusFilterType = typing.Literal["ADMIN", "ACTIVE", "REVOKED", "ALL"]
+UserListStatusFilter = Enum("UserListStatusFilter", typing.get_args(UserListStatusFilterType))
+UserModifyFieldType = typing.Literal["name", "privilege"]
+PollModifyFieldType = typing.Literal["category", "description"]
+CategoryModifyFieldType = typing.Literal["description", "color", "confidential"]
 
 
 IRCHelp = namedtuple("IRCHelp", "subCommands flags params pos_params")
@@ -115,6 +122,7 @@ class OptionsWithoutHandlers(usage.Options):
         for parameter in getattr(cls, "optParameters", []):
             long, short, default, desc = parameter[:4]
             if isinstance(default, Enum):
+                desc += f" ({', '.join([e.name for e in type(default)])})"
                 default = default.name
             if short:
                 params.append("--{}=, -{}: {} (default: {})".format(
@@ -129,7 +137,15 @@ class OptionsWithoutHandlers(usage.Options):
                 if p.kind == Parameter.VAR_POSITIONAL:
                     pos_params.append("{}...".format(p.name))
                 else:
-                    pos_params.append(p.name)
+                    parameter_description = p.name
+                    if p.annotation is not Parameter.empty:
+                        if typing.get_origin(p.annotation) == typing.Literal:
+                            parameter_description += f" {typing.get_args(p.annotation)}"
+                        else:
+                            parameter_description += f" ({p.annotation.__name__})"
+                    if p.default is not Parameter.empty:
+                        parameter_description += f" (default {p.default})"
+                    pos_params.append(parameter_description)
         return IRCHelp(subCommands=subCommands, flags=flags, params=params,
                        pos_params=pos_params)
 
@@ -149,7 +165,7 @@ class UserModifyOptions(OptionsWithoutHandlers):
         ['auth', 'a', "Use auth of the user directly"],
     ]
 
-    def parseArgs(self, user, field, value):
+    def parseArgs(self, user, field: UserModifyFieldType, value):
         self["user"] = user
         self["field"] = field
         self["value"] = value
@@ -162,7 +178,7 @@ class UserModifyOptions(OptionsWithoutHandlers):
 
 
 class UserListOptions(OptionsWithoutHandlers):
-    def parseArgs(self, filter="ACTIVE"):
+    def parseArgs(self, filter: UserListStatusFilterType = "ACTIVE"):
         self["filter"] = UserListStatusFilter[filter.upper()]
 
 
@@ -179,7 +195,7 @@ class VoteOptions(OptionsWithoutHandlers):
         ['yes', 'y', "autoconfirm changes"],
     ]
 
-    def parseArgs(self, poll_id, decision, *comment):
+    def parseArgs(self, poll_id: int, decision, *comment):
         try:
             self["poll_id"] = int(poll_id)
         except ValueError:
@@ -212,7 +228,7 @@ class PollCreateOptions(OptionsWithoutHandlers):
 
 
 class PollModifyOptions(OptionsWithoutHandlers):
-    def parseArgs(self, poll_id, field, *value):
+    def parseArgs(self, poll_id: int, field: PollModifyFieldType, *value):
         try:
             self["poll_id"] = int(poll_id)
         except ValueError:
@@ -231,7 +247,7 @@ class PollModifyOptions(OptionsWithoutHandlers):
 
 
 class PollCancelOptions(OptionsWithoutHandlers):
-    def parseArgs(self, poll_id):
+    def parseArgs(self, poll_id: int):
         try:
             self["poll_id"] = int(poll_id)
         except ValueError:
@@ -239,7 +255,7 @@ class PollCancelOptions(OptionsWithoutHandlers):
 
 
 class PollVetoOptions(OptionsWithoutHandlers):
-    def parseArgs(self, poll_id, *reason):
+    def parseArgs(self, poll_id: int, *reason):
         try:
             self["poll_id"] = int(poll_id)
         except ValueError:
@@ -248,7 +264,7 @@ class PollVetoOptions(OptionsWithoutHandlers):
 
 
 class PollDecideOptions(OptionsWithoutHandlers):
-    def parseArgs(self, poll_id):
+    def parseArgs(self, poll_id: int):
         try:
             self["poll_id"] = int(poll_id)
         except ValueError:
@@ -256,7 +272,7 @@ class PollDecideOptions(OptionsWithoutHandlers):
 
 
 class PollExpireOptions(OptionsWithoutHandlers):
-    def parseArgs(self, poll_id, *value):
+    def parseArgs(self, poll_id: int, *value):
         try:
             self["poll_id"] = int(poll_id)
         except ValueError:
@@ -275,7 +291,7 @@ class PollListOptions(OptionsWithoutHandlers):
 
 
 class PollInfoOptions(OptionsWithoutHandlers):
-    def parseArgs(self, poll_id):
+    def parseArgs(self, poll_id: int):
         try:
             self["poll_id"] = int(poll_id)
         except ValueError:
@@ -311,7 +327,7 @@ class CategoryAddOptions(OptionsWithoutHandlers):
 
 
 class CategoryModifyOptions(OptionsWithoutHandlers):
-    def parseArgs(self, name, field, *value):
+    def parseArgs(self, name, field: CategoryModifyFieldType, *value):
         self["name"] = name
         self["field"] = field
         self["value"] = " ".join(value)
@@ -559,7 +575,7 @@ class Vote(abstract.ChannelWatcher):
         auth = yield self.bot.get_auth(name)
         if not auth:
             Vote.logger.info("User {user} is not authed", user=name)
-            return UserPrivilege.INVALID
+            return None
         privilege = yield self.dbpool.runQuery('SELECT privilege FROM Users '
                                                'WHERE ID=:auth;', {"auth": auth})
         try:
@@ -567,7 +583,7 @@ class Vote(abstract.ChannelWatcher):
         except Exception as e:
             Vote.logger.debug("Error getting user privilege for {user}: {e}",
                               user=name, e=e)
-            return UserPrivilege.INVALID
+            return None
 
     @defer.inlineCallbacks
     def query_active_user_count(self):
@@ -1292,23 +1308,23 @@ class Vote(abstract.ChannelWatcher):
             self.bot.notice(user, "{}: {}".format(
                 formatting.colored("Available commands",
                                    IRCColorCodes.blue),
-                ", ".join(sig.subCommands)))
+                " | ".join(sig.subCommands)))
             return
         self.bot.notice(user, desc)
         if sig.flags:
             self.bot.notice(user, "{}: {}".format(
                 formatting.colored("Flags", IRCColorCodes.yellow),
-                ", ".join(sig.flags)))
+                "; ".join(sig.flags)))
         if sig.params:
             self.bot.notice(user, "{}: {}".format(
                 formatting.colored("Optional parameters",
                                    IRCColorCodes.yellow),
-                ", ".join(sig.params)))
+                "; ".join(sig.params)))
         if sig.pos_params:
             self.bot.notice(user, "{}: {}".format(
                 formatting.colored("Positional parameters",
                                    IRCColorCodes.green),
-                ", ".join(sig.pos_params)))
+                "; ".join(sig.pos_params)))
 
     def topic(self, user, topic):
         pass

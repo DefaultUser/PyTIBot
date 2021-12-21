@@ -195,7 +195,7 @@ class PollCreateOptions(OptionsWithoutHandlers):
     ]
 
     def parseArgs(self, *description):
-        if len(description) < 5:
+        if len(description) == 0:
             raise usage.UsageError("Description is required")
         self["description"] = " ".join(description)
 

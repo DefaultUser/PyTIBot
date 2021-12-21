@@ -407,6 +407,7 @@ class Vote(abstract.ChannelWatcher):
         self.prefix = config.get("prefix", "!")
         self._poll_url = config.get("poll_url", None)
         self._http_secret = config.get("http_secret", None)
+        self.notification_channel = config.get("notification_channel", None)
         vote_configdir = os.path.join(fs.adirs.user_config_dir, "vote")
         os.makedirs(vote_configdir, exist_ok=True)
         dbfile = os.path.join(vote_configdir, "{}.sqlite".format(self.channel))
@@ -664,15 +665,17 @@ class Vote(abstract.ChannelWatcher):
             return
         desc, creator = res[0]
         vote_count = yield self.count_votes(poll_id, True)
-        self.bot.msg(self.channel, "Poll #{poll_id} is running out soon: {desc} "
-                "by {creator}: YES:{yes} | NO:{no} | ABSTAINED:{vote_count.abstained} | "
-                "OPEN:{vote_count.not_voted}".format(
+        msg = "Poll #{poll_id} is running out soon: {desc} by {creator}: YES:{yes} | NO:{no} "\
+                "| ABSTAINED:{vote_count.abstained} | OPEN:{vote_count.not_voted}".format(
                     poll_id=Vote.colored_poll_id(poll_id),
                     desc=Vote.colored_description(desc),
                     creator=Vote.colored_user(creator),
                     yes=formatting.colored(str(vote_count.yes), Vote.Colors.yes),
                     no=formatting.colored(str(vote_count.no), Vote.Colors.no),
-                    vote_count=vote_count))
+                    vote_count=vote_count)
+        self.bot.msg(self.channel, msg)
+        if self.notification_channel:
+            self.bot.msg(self.notification_channel, msg)
 
     @defer.inlineCallbacks
     def end_poll(self, poll_id):
@@ -693,17 +696,18 @@ class Vote(abstract.ChannelWatcher):
         else:
             result = PollStatus.FAILED
         self.dbpool.runInteraction(Vote.update_poll_status, poll_id, result)
-        self.bot.msg(self.channel, "Poll #{poll_id} {result}: {desc} "
-                "by {creator}: YES:{yes} | NO:{no} | "
-                "ABSTAINED:{vote_count.abstained} | "
-                "NOT VOTED:{vote_count.not_voted}".format(
+        msg = "Poll #{poll_id} {result}: {desc} by {creator}: YES:{yes} | NO:{no} | "\
+                "ABSTAINED:{vote_count.abstained} | NOT VOTED:{vote_count.not_voted}".format(
                     poll_id=Vote.colored_poll_id(poll_id),
                     result=Vote.colored_poll_status(result),
                     desc=Vote.colored_description(desc),
                     creator=Vote.colored_user(creator),
                     yes=formatting.colored(str(vote_count.yes), Vote.Colors.yes),
                     no=formatting.colored(str(vote_count.no), Vote.Colors.no),
-                    vote_count=vote_count))
+                    vote_count=vote_count)
+        self.bot.msg(self.channel, msg)
+        if self.notification_channel:
+            self.bot.msg(self.notification_channel, msg)
         # add Vote "NONE" for all active users who haven't voted
         self.dbpool.runInteraction(Vote.add_not_voted, poll_id)
 
@@ -860,12 +864,14 @@ class Vote(abstract.ChannelWatcher):
                 url = ""
             else:
                 url = " (" + url + ")"
-            self.bot.msg(self.channel, "{category}New poll #{poll_id} by {user}{url}: "
-                         "{description}".format(
-                             poll_id=Vote.colored_poll_id(poll_id),
-                             user=Vote.colored_user(issuer),
-                             url=url, category=category_str,
-                             description=Vote.colored_description(description)))
+            msg = "{category}New poll #{poll_id} by {user}{url}: {description}".format(
+                    poll_id=Vote.colored_poll_id(poll_id),
+                    user=Vote.colored_user(issuer),
+                    url=url, category=category_str,
+                    description=Vote.colored_description(description))
+            self.bot.msg(self.channel, msg)
+            if self.notification_channel:
+                self.bot.msg(self.notification_channel, msg)
         self._poll_delay_call(poll_id, datetime.now(tz=timezone.utc) + Vote.PollDefaultDuration)
         if kwargs["yes"]:
             self.cmd_vote(issuer, poll_id, VoteDecision.YES, "")
@@ -899,7 +905,14 @@ class Vote(abstract.ChannelWatcher):
             Vote.logger.warn("")
             self.bot.notice(issuer, "Couldn't modify poll ({})".format(e))
             return
-        self.bot.notice(issuer, "Successfully modified poll")
+        if field == "description":
+            msg = "Poll #{}: description changed to: {}".format(
+                    Vote.colored_poll_id(poll_id), value)
+            self.bot.notice(self.channel, msg)
+            if self.notification_channel:
+                self.bot.notice(self.notification_channel, msg)
+        else:
+            self.bot.notice(issuer, "Successfully modified poll")
 
     @defer.inlineCallbacks
     def cmd_poll_veto(self, issuer, poll_id, reason):
@@ -925,8 +938,10 @@ class Vote(abstract.ChannelWatcher):
                 Vote.logger.warn("Error vetoing poll #{id}: {error}",
                                  id=poll_id, error=e)
                 return
-            self.bot.msg(self.channel, "Poll #{} vetoed".format(
-                Vote.colored_poll_id(poll_id)))
+            msg = "Poll #{} vetoed".format(Vote.colored_poll_id(poll_id))
+            self.bot.msg(self.channel, msg)
+            if self.notification_channel:
+                self.bot.msg(self.notification_channel, msg)
         self._poll_delayed_call_cancel(poll_id)
 
     @defer.inlineCallbacks
@@ -952,8 +967,10 @@ class Vote(abstract.ChannelWatcher):
                 Vote.logger.warn("Error deciding poll #{id}: {error}",
                                  id=poll_id, error=e)
                 return
-            self.bot.msg(self.channel, "Poll #{} decided".format(
-                Vote.colored_poll_id(poll_id)))
+            msg = "Poll #{} decided".format(Vote.colored_poll_id(poll_id))
+            self.bot.msg(self.channel, msg)
+            if self.notification_channel:
+                self.bot.msg(self.notification_channel, msg)
         self._poll_delayed_call_cancel(poll_id)
 
     @defer.inlineCallbacks
@@ -986,8 +1003,10 @@ class Vote(abstract.ChannelWatcher):
                 Vote.logger.warn("Error cancelling poll #{id}: {error}",
                                  id=poll_id, error=e)
                 return
-            self.bot.msg(self.channel, "Poll #{} cancelled".format(
-                Vote.colored_poll_id(poll_id)))
+            msg = "Poll #{} cancelled".format(Vote.colored_poll_id(poll_id))
+            self.bot.msg(self.channel, msg)
+            if self.notification_channel:
+                self.bot.msg(self.notification_channel, msg)
         self._poll_delayed_call_cancel(poll_id)
 
     @defer.inlineCallbacks
@@ -1030,9 +1049,11 @@ class Vote(abstract.ChannelWatcher):
             time_end = utcnow
         else:
             self._poll_delay_call(poll_id, time_end)
-            self.bot.msg(self.channel, "Poll #{} will end at {}".format(
-                Vote.colored_poll_id(poll_id),
-                time_end.isoformat()))
+            msg = "Poll #{} will end at {}".format(Vote.colored_poll_id(poll_id),
+                                                   time_end.isoformat())
+            self.bot.msg(self.channel, msg)
+            if self.notification_channel:
+                self.bot.msg(self.notification_channel, msg)
         self.dbpool.runInteraction(Vote.update_poll_time_end, poll_id,
                                    time_end)
 

@@ -32,6 +32,11 @@ HTTPServer:
         title: Awesome Log Server
         search_pagelen: 5
         indexer_procs: 4 # use multiple processes for indexing logs
+      vote:
+        type: VotePage
+        title: Votes for my project
+        channel: '#myweirdchannel'
+        secret: secret
       # assets is automatically added to root
 
 GitWebhook:
@@ -162,6 +167,12 @@ Channelmodules:
   "#myweirdchannel":
   -
     ChannelLogger
+  -
+    Vote:
+      prefix: "@"
+      poll_url: https://example.org:8081/vote
+      secret: secret
+      notification_channel: '#mysuperchannel' # will be notified of major events
 
 Actions:
   userkicked: Nice work $KICKER, noone liked $KICKEE anyways!

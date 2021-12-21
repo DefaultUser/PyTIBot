@@ -1202,7 +1202,7 @@ class Vote(abstract.ChannelWatcher):
             self.bot.notice(user, "Another confirmation is already "
                             "pending")
             return False
-        self.bot.notice(user, message)
+        self.bot.notice(self.channel, message)
         d = defer.Deferred()
         def onTimeout(*args):
             self.bot.notice(user, "Confirmation timed out")

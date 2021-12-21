@@ -654,6 +654,25 @@ class Vote(abstract.ChannelWatcher):
                          no=c[VoteDecision.NO], not_voted=c[VoteDecision.NONE])
 
     @defer.inlineCallbacks
+    def notify_missing_voters(self, poll_id):
+        res = yield self.dbpool.runQuery('SELECT id FROM Users WHERE privilege!="REVOKED";')
+        if not res:
+            Vote.logger.warn("Active poll, but no active user")
+            return
+        active_users = {x[0] for x in res}
+        res = yield self.dbpool.runQuery('SELECT user FROM Votes WHERE poll_id=:poll_id;',
+                                         {"poll_id": poll_id})
+        users_who_voted = {x[0] for x in res}
+        missing_voter_auths = active_users - users_who_voted
+        for user in self.bot.userlist[self.channel]:
+            auth = yield self.bot.get_auth(user)
+            if not auth:
+                continue
+            if auth in missing_voter_auths:
+                self.bot.notice(user, "Your vote is required in channel {} for poll #{}".format(
+                    self.channel, Vote.colored_poll_id(poll_id)))
+
+    @defer.inlineCallbacks
     def warn_end_poll(self, poll_id):
         res = yield self.dbpool.runQuery(
                 'SELECT Polls.description, Users.name FROM Polls, Users '
@@ -676,6 +695,7 @@ class Vote(abstract.ChannelWatcher):
         self.bot.msg(self.channel, msg)
         if self.notification_channel:
             self.bot.msg(self.notification_channel, msg)
+        self.notify_missing_voters(poll_id)
 
     @defer.inlineCallbacks
     def end_poll(self, poll_id):

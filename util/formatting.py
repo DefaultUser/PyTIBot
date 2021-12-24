@@ -22,6 +22,7 @@ from collections import namedtuple
 from colormath.color_objects import sRGBColor, LabColor
 from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
+from html import escape as htmlescape
 from twisted.web.template import tags
 
 ## \brief Token to start underlined text
@@ -271,7 +272,7 @@ def to_html(text, link_urls=True):
     \brief Convert a string with IRC formatting information to html formatting
     """
     html = ""
-    for frag in _extract_irc_style(text):
+    for frag in _extract_irc_style(htmlescape(text)):
         html += _style_dict_to_html(frag.text, frag.style, link_urls)
     return html
 
@@ -298,7 +299,7 @@ def to_matrix(text):
     \brief Convert a string with IRC formatting information to matrix format
     """
     result = ""
-    for frag in _extract_irc_style(text):
+    for frag in _extract_irc_style(htmlescape(text)):
         result += _style_dict_to_matrix(frag.text, frag.style)
     return result
 

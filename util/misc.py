@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2020>  <Sebastian Schmidt>
+# Copyright (C) <2017-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,18 +31,6 @@ def str_to_bytes(data):
 
 def bytes_to_str(data):
     return str(data, "utf-8")
-
-
-def removeprefix(s, prefix):
-    if s.startswith(prefix):
-        return s[len(prefix):]
-    return s
-
-
-def removesuffix(s, suffix):
-    if s.endswith(suffix):
-        return s[:len(s)-len(suffix)]
-    return s
 
 
 def filter_dict(data, rule):

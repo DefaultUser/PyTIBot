@@ -32,7 +32,6 @@ import re
 import time
 from collections import defaultdict
 from datetime import datetime, timedelta
-from html import escape as htmlescape
 
 from .common import PageElement, webpage_error_handler, BaseResource
 from util import log, formatting

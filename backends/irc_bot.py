@@ -225,8 +225,9 @@ class IRCBot(irc.IRCClient, object):
         # user can also be a channel
         user = user.lower()
         if user in self.channelwatchers:
-            for watcher in self.channelwatchers[user]:
-                watcher.msg(self.nickname, message)
+            for msg in message.split("\n"):
+                for watcher in self.channelwatchers[user]:
+                    watcher.msg(self.nickname, msg)
 
     def ban(self, channel, user):
         """

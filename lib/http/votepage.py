@@ -28,7 +28,7 @@ from lib.channelwatcher.vote import PollListStatusFilter
 
 from util.misc import bytes_to_str
 from util import filesystem as fs
-from util.formatting import IRCColorCodes, IRCColorsHex, good_contrast_with_black
+from util.formatting import IRCColorCodes, IRCColorsHex, good_contrast_with_black, to_tags
 
 
 log = Logger()
@@ -148,7 +148,7 @@ class VotePageElement(PageElement):
                 yield tag.clone()(tags.td(poll_id, class_="vote_id"),
                                   tags.td(str(category_name), class_="vote_category",
                                           **category_options),
-                                  tags.td(str(title), class_="vote_title"),
+                                  tags.td(to_tags(title), class_="vote_title"),
                                   tags.td(str(creator), class_="vote_creator"),
                                   tags.td(str(status), class_="vote_status",
                                           style=VotePageElement.status_style(status)),
@@ -279,7 +279,7 @@ class VoteDetailPageElement(PageElement):
                 yield tag.clone()(tags.td(voter, class_="vote_user"),
                                   tags.td(decision, class_="vote_decision",
                                           **decision_kwargs),
-                                  tags.td(comment or "", class_="vote_comment"))
+                                  tags.td(to_tags(comment or ""), class_="vote_comment"))
 
         show_confidential = self.page.has_key(request)
         return self.page.votes(show_confidential=show_confidential).addCallback(_inner)

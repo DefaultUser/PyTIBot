@@ -400,6 +400,9 @@ class Vote(abstract.ChannelWatcher):
         TIED = IRCColorCodes.dark_yellow
         VETOED = IRCColorCodes.dark_red
         DECIDED = IRCColorCodes.dark_green
+        ADMIN = IRCColorCodes.dark_green
+        USER = IRCColorCodes.green
+        REVOKED = IRCColorCodes.dark_red
 
 
     def __init__(self, bot, channel, config):
@@ -543,6 +546,16 @@ class Vote(abstract.ChannelWatcher):
         if poll_status == PollStatus.DECIDED:
             return formatting.colored(poll_status.name, Vote.Colors.DECIDED)
         return poll_status.name
+
+    @staticmethod
+    def colored_user_status(user_status):
+        if user_status == UserPrivilege.ADMIN:
+            return formatting.colored(user_status.name, Vote.Colors.ADMIN)
+        if user_status == UserPrivilege.USER:
+            return formatting.colored(user_status.name, Vote.Colors.USER)
+        if user_status == UserPrivilege.REVOKED:
+            return formatting.colored(user_status.name, Vote.Colors.REVOKED)
+        return user_status.name
 
     @staticmethod
     def colored_poll_id(poll_id):
@@ -837,7 +850,8 @@ class Vote(abstract.ChannelWatcher):
         users_raw = sorted(users_raw, key=lambda x: Vote.PrivilegeOrder[x[1]])
         for privilege, userlist in itertools.groupby(users_raw, lambda x: x[1]):
             self.bot.notice(issuer, "{privilege}: {users}".format(
-                privilege=privilege, users=", ".join(x[0] for x in userlist)))
+                privilege=Vote.colored_user_status(UserPrivilege[privilege]),
+                users=", ".join(x[0] for x in userlist)))
 
     @defer.inlineCallbacks
     def is_poll_running(self, poll_id):

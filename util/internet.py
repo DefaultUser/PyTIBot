@@ -83,7 +83,9 @@ def shorten_url(url, service_url, method, headers=None, post_data=None,
         response = yield treq.request(method, service_url, headers=headers,
                                       data=post_data, params=request_params,
                                       timeout=5)
-        if response.code != 200:
+        if response.code < 200 or response.code >= 300:
+            log.warn("Unexpected response code when shortening url {url}: {code}",
+                     url=url, code=response.code)
             return url
         shorturl = yield defer.maybeDeferred(payload_accessor, response)
         return shorturl or url

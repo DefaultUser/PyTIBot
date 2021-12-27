@@ -347,17 +347,11 @@ class CategoryModifyOptions(OptionsWithoutHandlers):
                 self["value"] = None
 
 
-class CategoryListOptions(OptionsWithoutHandlers):
-    optFlags = [
-        ['verbose', 'v', "Verbose output"]
-    ]
-
-
 class CategoryOptions(OptionsWithoutHandlers):
     subCommands = [
         ['add', None, CategoryAddOptions, "Create a new category"],
         ['modify', 'mod', CategoryModifyOptions, "Modify a category"],
-        ['list', 'ls', CategoryListOptions, "List categories"]
+        ['list', 'ls', OptionsWithoutHandlers, "List categories"]
     ]
 
 
@@ -1216,31 +1210,19 @@ class Vote(abstract.ChannelWatcher):
         self.bot.notice(issuer, "Successfully modified category")
 
     @defer.inlineCallbacks
-    def cmd_category_list(self, issuer, verbose):
+    def cmd_category_list(self, issuer):
         if not (yield self.is_vote_admin(issuer)):
             self.bot.notice(issuer, "Insufficient permissions")
             return
         res = yield self.dbpool.runQuery(
                 'SELECT name, description, color, confidential FROM Categories;')
-        self.bot.notice(issuer, "There are {} categories (confidential marked "
-                        "with *)".format(len(res)))
-        if verbose:
-            issuer_id = yield self.bot.get_auth(issuer)
-            for i, (name, desc, color, confidential) in enumerate(res):
-                if (i!=0 and i%5==0):
-                    confirm = yield self.require_confirmation(issuer, issuer_id,
-                            "Continue? (confirm with {prefix}yes)".format(
-                                prefix=self.prefix))
-                    if not confirm:
-                        return
-                self.bot.notice(issuer, "{}{}: {}".format("*" if confidential else " ",
-                                                          Vote.colored_category_name(name, color),
-                                                          desc or "No description"))
-        else:
-            self.bot.notice(issuer, ", ".join(
-                itertools.starmap(lambda n, _, c, s: "{}{}".format(
-                                    "*" if s else "", Vote.colored_category_name(n, c)),
-                                  res)))
+        if not res:
+            self.bot.notice(issuer, "There are no categories")
+            return
+        self.bot.notice(issuer, "There are {} categories (confidential marked with *):\n{}".format(
+            len(res), ", ".join(itertools.starmap(lambda n, _, c, s: "{}{}".format(
+                                                      "*" if s else "", Vote.colored_category_name(n, c)),
+                                                  res))))
 
     @defer.inlineCallbacks
     def cmd_vote(self, voter, poll_id, decision, comment, **kwargs):

@@ -229,6 +229,16 @@ class IRCBot(irc.IRCClient, object):
                 for watcher in self.channelwatchers[user]:
                     watcher.msg(self.nickname, msg)
 
+    def notice(self, user, message):
+        # Workaround for https://twistedmatrix.com/trac/ticket/10285
+        for msg in message.split("\n"):
+            super().notice(user, msg)
+        user = user.lower()
+        if user in self.channelwatchers:
+            for msg in message.split("\n"):
+                for watcher in self.channelwatchers[user]:
+                    watcher.msg(self.nickname, msg)
+
     def ban(self, channel, user):
         """
         Attempt to ban a user from a channel

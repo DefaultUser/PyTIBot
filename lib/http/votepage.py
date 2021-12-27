@@ -178,6 +178,7 @@ class VotePage(BaseResource):
                               "{}.sqlite".format(self.channel))
         self.dbpool = adbapi.ConnectionPool("sqlite3", dbfile,
                                             check_same_thread=False)
+        self.putChild(b"categories", VoteCategoryPage(b"categories", self))
 
     def has_key(self, request):
         if not self.key:
@@ -317,3 +318,51 @@ class VoteDetailPage(BaseResource):
 
     def element(self):
         return VoteDetailPageElement(self)
+
+
+class VoteCategoryPageElement(PageElement):
+    loader = XMLFile(FilePath(fs.get_abs_path("resources/vote_category_page_template.html")))
+
+    @renderer
+    def back(self, request, tag):
+        href = request.path + b"/.."
+        if b"key" in request.args:
+            href += b"?key="+ request.args[b"key"][0]
+        return tag("Back", href=href)
+
+    @renderer
+    def category_row(self, request, tag):
+        def _inner(categories):
+            for name, description, color, confidential in categories:
+                category_options = {}
+                style = VotePageElement.category_style(color)
+                if style:
+                    category_options["style"] = style
+                if confidential:
+                    name += "(confidential)"
+                yield tag.clone()(tags.td(name, class_="category_name", **category_options),
+                                  tags.td(description or "", class_="category_description"))
+
+        show_confidential = self.page.has_key(request)
+        return self.page.categories(show_confidential=show_confidential).addCallback(_inner)
+
+
+class VoteCategoryPage(BaseResource):
+    def __init__(self, crumb, parent):
+        super().__init__(crumb)
+        self.parent = parent
+        self.title = "Categories"
+
+    def categories(self, show_confidential=False):
+        if show_confidential:
+            return self.parent.dbpool.runQuery(
+                    'SELECT name, description, color, confidential FROM Categories;')
+        return self.parent.dbpool.runQuery(
+                'SELECT name, description, color, confidential FROM Categories '
+                'WHERE confidential = false;')
+
+    def has_key(self, request):
+        return self.parent.has_key(request)
+
+    def element(self):
+        return VoteCategoryPageElement(self)

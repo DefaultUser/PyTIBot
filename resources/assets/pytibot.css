@@ -93,6 +93,10 @@ table td.vote_count:before {
     content: "Votes: ";
 }
 
+table td.category_name, td.category_description {
+    display: inline-block;
+}
+
 @media (min-width: 600px) {
     table thead {
         display: table-header-group;
@@ -138,6 +142,14 @@ table td.vote_count:before {
 
     table td.vote_title:before, table td.vote_creator:before, table td.vote_status:before, table td.vote_count:before {
         display: None;
+    }
+
+    table td.category_name, td.category_description {
+        display: table-cell;
+    }
+
+    table td.category_name {
+        width: 20%;
     }
 }
 

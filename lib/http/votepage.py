@@ -73,6 +73,13 @@ class VotePageElement(PageElement):
         return ""
 
     @renderer
+    def categories_link(self, request, tag):
+        href = self.page.crumb + b"/categories"
+        if b"key" in request.args:
+            href += b"?key=" + request.args[b"key"][0]
+        return tag(tags.a("Categories", href=href))
+
+    @renderer
     def category_option(self, request, tag):
         def _inner(categories):
             try:

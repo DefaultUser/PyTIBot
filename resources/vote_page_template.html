@@ -9,7 +9,7 @@
     <div id="container">
         <header t:render="header" />
         <div id="main">
-            <a href="categories">Categories</a>
+            <div t:render="categories_link" />
             <form method="PUT" id="VoteForm" action="#">
                 <label>Category:</label>
                 <select name="category" id="categoryPicker">

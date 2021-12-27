@@ -256,6 +256,13 @@ class VoteDetailPageElement(PageElement):
     _poll_row = VotePageElement._poll_row
 
     @renderer
+    def back(self, request, tag):
+        href = request.path + b"/.."
+        if b"key" in request.args:
+            href += b"?key="+ request.args[b"key"][0]
+        return tag("Back", href=href)
+
+    @renderer
     def poll_row(self, request, tag):
         return self._poll_row(request, tag, detail_links=False)
 

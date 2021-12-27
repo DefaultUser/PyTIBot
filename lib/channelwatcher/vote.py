@@ -848,10 +848,12 @@ class Vote(abstract.ChannelWatcher):
                              "{channel}: {e}", channel=self.channel, e=e)
             return
         users_raw = sorted(users_raw, key=lambda x: Vote.PrivilegeOrder[x[1]])
+        messages = []
         for privilege, userlist in itertools.groupby(users_raw, lambda x: x[1]):
-            self.bot.notice(issuer, "{privilege}: {users}".format(
+            messages.append("{privilege}: {users}".format(
                 privilege=Vote.colored_user_status(UserPrivilege[privilege]),
                 users=", ".join(x[0] for x in userlist)))
+        self.bot.notice(issuer, "\n".join(messages))
 
     @defer.inlineCallbacks
     def is_poll_running(self, poll_id):
@@ -996,8 +998,7 @@ class Vote(abstract.ChannelWatcher):
                 yield self.dbpool.runInteraction(Vote.update_poll_status, poll_id,
                                                  PollStatus.DECIDED)
             except Exception as e:
-                self.bot.notice(issuer, "Error deciding poll, contact the "
-                                "admin")
+                self.bot.notice(issuer, "Error deciding poll, contact the admin")
                 Vote.logger.warn("Error deciding poll #{id}: {error}",
                                  id=poll_id, error=e)
                 return
@@ -1365,21 +1366,20 @@ class Vote(abstract.ChannelWatcher):
                                    IRCColorCodes.blue),
                 " | ".join(sig.subCommands)))
             return
-        self.bot.notice(user, desc)
+        help_lines = [desc]
         if sig.flags:
-            self.bot.notice(user, "{}: {}".format(
-                formatting.colored("Flags", IRCColorCodes.yellow),
-                "; ".join(sig.flags)))
+            help_lines.append("{}: {}".format(formatting.colored("Flags",
+                                                                 IRCColorCodes.yellow),
+                                              "; ".join(sig.flags)))
         if sig.params:
-            self.bot.notice(user, "{}: {}".format(
-                formatting.colored("Optional parameters",
-                                   IRCColorCodes.yellow),
-                "; ".join(sig.params)))
+            help_lines.append("{}: {}".format(formatting.colored("Optional parameters",
+                                                                 IRCColorCodes.yellow),
+                                              "; ".join(sig.params)))
         if sig.pos_params:
-            self.bot.notice(user, "{}: {}".format(
-                formatting.colored("Positional parameters",
-                                   IRCColorCodes.green),
-                "; ".join(sig.pos_params)))
+            help_lines.append("{}: {}".format(formatting.colored("Positional parameters",
+                                                                 IRCColorCodes.green),
+                                              "; ".join(sig.pos_params)))
+        self.bot.notice(user, "\n".join(help_lines))
 
     def topic(self, user, topic):
         pass

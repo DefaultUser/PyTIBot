@@ -33,7 +33,7 @@ class OverviewPageElement(PageElement):
         for child, child_res in self.page.children.items():
             if not isinstance(child_res, BaseResource):
                 continue
-            yield tag.clone()(tags.a(child, href=child))
+            yield tag.clone()(tags.a(child, href=child+"/"))
 
 
 class OverviewPage(BaseResource):

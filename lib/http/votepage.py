@@ -74,7 +74,7 @@ class VotePageElement(PageElement):
 
     @renderer
     def categories_link(self, request, tag):
-        href = b"categories"
+        href = b"categories/"
         if b"key" in request.args:
             href += b"?key=" + request.args[b"key"][0]
         return tag(tags.a("Categories", href=href))
@@ -146,7 +146,7 @@ class VotePageElement(PageElement):
                 if status == "VETOED":
                     vote_count = "{} (by {})".format(veto_reason, vetoed_by)
                 if detail_links:
-                    href = str(poll_id)
+                    href = f"{poll_id}/"
                     if b"key" in request.args:
                         href += "?key=" + bytes_to_str(request.args[b"key"][0])
                     poll_id = tags.a(str(poll_id), href=href)
@@ -265,7 +265,7 @@ class VoteDetailPageElement(PageElement):
 
     @renderer
     def back(self, request, tag):
-        href = b".."
+        href = b"../"
         if b"key" in request.args:
             href += b"?key="+ request.args[b"key"][0]
         return tag("Back", href=href)
@@ -332,7 +332,7 @@ class VoteCategoryPageElement(PageElement):
 
     @renderer
     def back(self, request, tag):
-        href = b".."
+        href = b"../"
         if b"key" in request.args:
             href += b"?key="+ request.args[b"key"][0]
         return tag("Back", href=href)

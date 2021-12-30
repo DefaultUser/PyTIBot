@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2020>  <Sebastian Schmidt>
+# Copyright (C) <2020-2021>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ class OverviewPageElement(PageElement):
         for child, child_res in self.page.children.items():
             if not isinstance(child_res, BaseResource):
                 continue
-            yield tag.clone()(tags.a(child, href=self.page.crumb+b"/"+child))
+            yield tag.clone()(tags.a(child, href=child))
 
 
 class OverviewPage(BaseResource):

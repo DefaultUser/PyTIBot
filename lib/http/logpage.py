@@ -97,14 +97,6 @@ class LogPageElement(PageElement):
                 yield tag.clone()(s, value=str(i))
 
     @renderer
-    def search_link(self, request, tag):
-        if self.page.crumb:
-            crumb = b"./" + self.page.crumb
-        else:
-            crumb = b""
-        return tag.fillSlots(crumb=crumb)
-
-    @renderer
     def log_row(self, request, tag):
         date = LogPageElement.get_date(request)
         level = LogPageElement.get_log_level(request)
@@ -209,7 +201,7 @@ class SearchPageElement(PageElement):
                     yield tag("No Logs found containing: {}".format(querystr))
                 for hit in results["hits"]:
                     date = hit["date"].strftime("%Y-%m-%d")
-                    href = "./?date={}".format(date)
+                    href = "../?date={}".format(date)
                     yield tag.clone()(tags.div(tags.label(tags.a(date, href=href),
                                                           class_="search_label"),
                                                hit["content"]))

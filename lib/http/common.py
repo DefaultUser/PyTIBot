@@ -21,6 +21,7 @@ from twisted.web.server import NOT_DONE_YET
 from twisted.python.filepath import FilePath
 
 from abc import abstractmethod
+import itertools
 
 from util import filesystem as fs
 
@@ -48,11 +49,11 @@ class BaseResource(Resource, object):
         pass
 
     def render_GET(self, request):
-        # redirect if path ends with "/"
-        if request.path != b"/" and request.path.endswith(b"/"):
-            temp = request.uri.split(b"?", 1)
-            args = b"" if len(temp)==1 else b"?"+temp[1]
-            uri = request.path[:-1] + args
+        # redirect if path doesn't end with "/"
+        if request.path != b"/" and not request.path.endswith(b"/"):
+            temp = [(key, val) for key, vals in request.args.items() for val in vals]
+            args = b"" if not temp else b"?"+b"&".join(itertools.starmap(lambda x,y: x+b"="+y, temp))
+            uri = request.path + b"/" + args
             request.redirect(uri)
             request.finish()
             return NOT_DONE_YET

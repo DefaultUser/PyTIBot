@@ -31,6 +31,16 @@ from lib.http.votepage import VotePage
 log = Logger()
 
 
+def _string_to_class(s):
+    if s == "OverviewPage":
+        return OverviewPage
+    if s == "LogPage":
+        return LogPage
+    if s == "VotePage":
+        return VotePage
+    raise NotImplementedError(f"No such Resource {s}")
+
+
 def setup_http_root(config):
     res = setup_http_resource(b"", config)
     if not res:
@@ -46,7 +56,7 @@ def setup_http_resource(crumb, config):
         if type_ == "Static":
             res = File(fs.get_abs_path(os.path.join("resources", config["path"])))
         else:
-            res = getattr(sys.modules[__name__], type_)(crumb, config)
+            res = _string_to_class(type_)(crumb, config)
     except Exception as e:
         log.warn("Error setting up HTTP Resource: {}".format(e))
         return None

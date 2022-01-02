@@ -1266,30 +1266,38 @@ class Vote(abstract.ChannelWatcher):
                                 prefix=self.prefix))
                 if not confirmed:
                     return
-                self.dbpool.runInteraction(Vote.update_vote_decision,
-                                           poll_id, voterid, decision,
-                                           comment)
-                self.bot.msg(self.channel, "{} changed vote from {} "
-                             "to {} for poll #{}: {}".format(
-                                 Vote.colored_user(voter),
-                                 Vote.colored_vote_decision(previous_decision),
-                                 Vote.colored_vote_decision(decision),
-                                 Vote.colored_poll_id(poll_id),
-                                 Vote.colored_vote_comment(comment)))
+                yield self.dbpool.runInteraction(Vote.update_vote_decision,
+                                                 poll_id, voterid, decision,
+                                                 comment)
+                msg = "{} changed vote from {} to {} for poll #{}: {}".format(
+                        Vote.colored_user(voter),
+                        Vote.colored_vote_decision(previous_decision),
+                        Vote.colored_vote_decision(decision),
+                        Vote.colored_poll_id(poll_id),
+                        Vote.colored_vote_comment(comment))
             else:
                 yield self.dbpool.runInteraction(Vote.insert_vote, poll_id,
                                                  voterid, decision, comment)
-                self.bot.msg(self.channel,
-                             "{} voted {} for poll #{}: {}".format(
-                                 Vote.colored_user(voter),
-                                 Vote.colored_vote_decision(decision),
-                                 Vote.colored_poll_id(poll_id),
-                                 Vote.colored_vote_comment(comment)))
+                msg = "{} voted {} for poll #{}: {}".format(
+                        Vote.colored_user(voter),
+                        Vote.colored_vote_decision(decision),
+                        Vote.colored_poll_id(poll_id),
+                        Vote.colored_vote_comment(comment))
         except Exception as e:
+            self.bot.notice(voter, "An error occured. Please contact the admin.")
             Vote.logger.warn("Encountered error during vote: {}".format(e))
+            return
         vote_count = yield self.count_votes(poll_id, True)
         # end poll early on 2/3 majority
-        if 3*max(vote_count.yes, vote_count.no) >= 2*self._num_active_users:
+        early_consensus = 3*max(vote_count.yes, vote_count.no) >= 2*self._num_active_users
+        if not early_consensus:
+            msg += "\nCurrent Result: YES:{yes} | NO:{no} | ABSTAINED:{vote_count.abstained} "\
+                    "| NOT VOTED:{vote_count.not_voted}".format(
+                            yes=formatting.colored(str(vote_count.yes), IRCColorCodes.green),
+                            no=formatting.colored(str(vote_count.no), IRCColorCodes.red),
+                            vote_count=vote_count)
+        self.bot.msg(self.channel, msg)
+        if early_consensus:
             self._poll_delayed_call_cancel(poll_id)
             self.end_poll(poll_id)
 

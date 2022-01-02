@@ -15,6 +15,12 @@ form {
     align-items: center;
 }
 
+div.vote_timerange {
+    width: 100%;
+    text-align: center;
+    padding: 1rem 0 2rem 0;
+}
+
 tr:nth-child(even) {
     background-color: #eeeefc;
 }

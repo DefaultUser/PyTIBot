@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2021>  <Sebastian Schmidt>
+# Copyright (C) <2021-2022>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -275,6 +275,22 @@ class VoteDetailPageElement(PageElement):
         return self._poll_row(request, tag, detail_links=False)
 
     @renderer
+    def poll_timerange(self, request, tag):
+        def _inner(rows):
+            if not rows:
+                log.error("No timerange found for poll {poll_id}", poll_id=self.page.poll_id)
+                return tag("Internal error")
+            if len(rows) != 1:
+                log.error("More than one timerange found for poll {poll_id}",
+                          poll_id=self.page.poll_id)
+            start, end = rows[0]
+            # browsers expect iso format with timezone
+            start = start.replace(" ", "T", 1) + "Z"
+            end = end.replace(" ", "T", 1) + "Z"
+            return tag.fillSlots(time_start=start, time_end=end, time_start2=start, time_end2=end)
+        return self.page.poll_timerange().addCallback(_inner)
+
+    @renderer
     def vote_row(self, request, tag):
         def _inner(votes):
             for voter, decision, comment in votes:
@@ -302,6 +318,11 @@ class VoteDetailPage(BaseResource):
     def polls(self, *args, **kwargs):
         kwargs["poll_id"] = self.poll_id
         return self.parent.polls(*args, **kwargs)
+
+    def poll_timerange(self):
+        return self.parent.dbpool.runQuery(
+                'SELECT time_start, time_end FROM Polls WHERE id=:poll_id;',
+                {"poll_id": self.poll_id})
 
     def votes(self, show_confidential=False):
         if show_confidential:

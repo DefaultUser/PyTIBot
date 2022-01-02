@@ -4,6 +4,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title t:render="title" />
     <link href="/assets/pytibot.css" rel="stylesheet"/>
+    <script rel="javascript">
+        formatter = new Intl.DateTimeFormat('default', {year:'numeric', month: 'numeric', day: 'numeric', hour:'numeric', minute:'numeric', timeZoneName: 'short'});
+        function time_to_locale() {
+            for (let elem of document.getElementsByTagName("time")) {
+                let d = new Date(Date.parse(elem.dateTime));
+                elem.innerText = formatter.format(d);
+            }
+        }
+        window.onload = time_to_locale;
+    </script>
 </head>
 <body>
     <div id="container">
@@ -21,6 +31,11 @@
                 </tr></thead>
                 <tr t:render="poll_row" />
             </table>
+            <div class="vote_timerange" t:render="poll_timerange">
+                <time><t:attr name="datetime"><t:slot name="time_start" /></t:attr><t:slot name="time_start"/></time>
+                -
+                <time><t:attr name="datetime"><t:slot name="time_end" /></t:attr><t:slot name="time_end"/></time>
+            </div>
             <table>
                 <thead><tr>
                     <th class="vote_user">User</th>

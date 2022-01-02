@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2020-2021>  <Sebastian Schmidt>
+# Copyright (C) <2020-2022>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -452,6 +452,9 @@ class Vote(abstract.ChannelWatcher):
         cursor.execute('UPDATE Polls '
                        'SET status=:status '
                        'WHERE id=:id;', {"id": poll_id, "status": status.name})
+        if status != PollStatus.RUNNING:
+            now = datetime.utcnow()
+            Vote.update_poll_time_end(cursor, poll_id, now)
 
     @staticmethod
     def update_poll_time_end(cursor, poll_id, time_end):
@@ -468,6 +471,8 @@ class Vote(abstract.ChannelWatcher):
                        'WHERE id = "{poll_id}";'.format(poll_id=poll_id,
                                                        vetoed_by=vetoed_by,
                                                        reason=reason))
+        now = datetime.utcnow()
+        Vote.update_poll_time_end(cursor, poll_id, now)
 
     @staticmethod
     def update_poll_field(cursor, poll_id, field, value):

@@ -406,6 +406,11 @@ class Vote(abstract.ChannelWatcher):
         self._poll_url = config.get("poll_url", None)
         self._http_secret = config.get("http_secret", None)
         self.notification_channel = config.get("notification_channel", None)
+        poll_duration = config.get("poll_duration", None)
+        if not isinstance(poll_duration, int) or poll_duration <= 2:
+            self.poll_duration = Vote.PollDefaultDuration
+        else:
+            self.poll_duration = timedelta(days=poll_duration)
         vote_configdir = os.path.join(fs.adirs.user_config_dir, "vote")
         os.makedirs(vote_configdir, exist_ok=True)
         dbfile = os.path.join(vote_configdir, "{}.sqlite".format(self.channel))
@@ -422,6 +427,10 @@ class Vote(abstract.ChannelWatcher):
         yield self.dbpool.runInteraction(Vote.initialize_databases)
         self.query_active_user_count()
         self.setup_poll_delayed_calls()
+
+    @staticmethod
+    def format_time(t):
+        return t.strftime("%Y-%m-%d %H:%M:%S")
 
     @staticmethod
     def initialize_databases(cursor):
@@ -443,10 +452,13 @@ class Vote(abstract.ChannelWatcher):
                        {"auth": auth, "value": value})
 
     @staticmethod
-    def insert_poll(cursor, user, description, category):
-        cursor.execute('INSERT INTO Polls (description, creator, category) '
-                       'VALUES  (:desc, :creator, :category);',
-                       {"desc": description, "creator": user, "category": category})
+    def insert_poll(cursor, user, description, category, time_start, time_end):
+        time_start_str = Vote.format_time(time_start)
+        time_end_str = Vote.format_time(time_end)
+        cursor.execute('INSERT INTO Polls (description, creator, category, time_start, time_end) '
+                'VALUES  (:desc, :creator, :category, :time_start, :time_end);',
+                {"desc": description, "creator": user, "category": category,
+                 "time_start": time_start_str, "time_end": time_end_str})
 
     @staticmethod
     def update_poll_status(cursor, poll_id, status):
@@ -459,7 +471,7 @@ class Vote(abstract.ChannelWatcher):
 
     @staticmethod
     def update_poll_time_end(cursor, poll_id, time_end):
-        timestr = time_end.strftime("%Y-%m-%d %H:%M:%S")
+        timestr = Vote.format_time(time_end)
         cursor.execute('UPDATE Polls '
                        'SET time_end=:time '
                        'WHERE id=:id;', {"id": poll_id, "time": timestr})
@@ -882,8 +894,10 @@ class Vote(abstract.ChannelWatcher):
             category_color = None
         with self._lock:
             try:
+                now = datetime.utcnow()
+                end = now + self.poll_duration
                 yield self.dbpool.runInteraction(Vote.insert_poll, issuer_auth,
-                                                 description, category_id)
+                                                 description, category_id, now, end)
             except Exception as e:
                 self.bot.msg(self.channel, "Could not create new poll")
                 Vote.logger.warn("Error inserting poll into DB: {error}",

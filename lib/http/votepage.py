@@ -354,13 +354,7 @@ class VoteDetailPage(BaseResource):
 
 class VoteCategoryPageElement(PageElement):
     loader = XMLFile(FilePath(fs.get_abs_path("resources/vote_category_page_template.html")))
-
-    @renderer
-    def back(self, request, tag):
-        href = b"../"
-        if b"key" in request.args:
-            href += b"?key="+ request.args[b"key"][0]
-        return tag("Back", href=href)
+    back = VoteDetailPageElement.back
 
     @renderer
     def category_row(self, request, tag):

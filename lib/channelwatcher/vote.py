@@ -92,6 +92,7 @@ UserListStatusFilterType = typing.Literal["ADMIN", "ACTIVE", "REVOKED", "ALL"]
 UserListStatusFilter = Enum("UserListStatusFilter", typing.get_args(UserListStatusFilterType))
 UserModifyFieldType = typing.Literal["name", "privilege"]
 PollModifyFieldType = typing.Literal["category", "description"]
+VoteDecisionType = typing.Literal["yes", "no", "abstain"]
 CategoryModifyFieldType = typing.Literal["description", "color", "confidential"]
 
 
@@ -152,11 +153,11 @@ class OptionsWithoutHandlers(usage.Options):
 
 class UserAddOptions(OptionsWithoutHandlers):
     optParameters = [
-        ['privilege', 'p', UserPrivilege.USER, "Privilege for the new User (USER|ADMIN)",
+        ['privilege', 'p', UserPrivilege.USER, "Privilege for the new User",
             lambda x: UserPrivilege[x.upper()]]
     ]
 
-    def parseArgs(self, name):
+    def parseArgs(self, name: str):
         self["user"] = name
 
 
@@ -165,7 +166,7 @@ class UserModifyOptions(OptionsWithoutHandlers):
         ['auth', 'a', "Use auth of the user directly"],
     ]
 
-    def parseArgs(self, user, field: UserModifyFieldType, value):
+    def parseArgs(self, user: str, field: UserModifyFieldType, value: str):
         self["user"] = user
         self["field"] = field
         self["value"] = value
@@ -195,7 +196,7 @@ class VoteOptions(OptionsWithoutHandlers):
         ['yes', 'y', "autoconfirm changes"],
     ]
 
-    def parseArgs(self, poll_id: int, decision, *comment):
+    def parseArgs(self, poll_id: int, decision: VoteDecisionType, *comment):
         try:
             self["poll_id"] = int(poll_id)
         except ValueError:
@@ -321,13 +322,13 @@ class CategoryAddOptions(OptionsWithoutHandlers):
         ['color', 'c', None, "Color for the category"]
     ]
 
-    def parseArgs(self, name, *description):
+    def parseArgs(self, name: str, *description):
         self["name"] = name
         self["description"] = " ".join(description)
 
 
 class CategoryModifyOptions(OptionsWithoutHandlers):
-    def parseArgs(self, name, field: CategoryModifyFieldType, *value):
+    def parseArgs(self, name: str, field: CategoryModifyFieldType, *value):
         self["name"] = name
         self["field"] = field
         self["value"] = " ".join(value)
@@ -356,7 +357,7 @@ class CategoryOptions(OptionsWithoutHandlers):
 
 
 class HelpOptions(OptionsWithoutHandlers):
-    def parseArgs(self, topic=None):
+    def parseArgs(self, topic: str=None):
         self["topic"] = topic
 
 

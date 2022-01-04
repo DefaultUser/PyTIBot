@@ -1,0 +1,17 @@
+<div xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+<h4>Arguments</h4>
+<table class="votehelp_table">
+    <tr class="votehelp_tableheader">
+        <th>Argument</th>
+        <th/>
+        <th>Default</th>
+        <th>Possible Values</th>
+    </tr>
+    <tr t:render="command_args">
+        <td class="votehelp_arg_name"><t:slot name="name" /></td>
+        <td class="votehelp_arg_dummy"/>
+        <td class="votehelp_arg_default"><t:slot name="default_value" /></td>
+        <td class="votehelp_arg_values"><t:slot name="possible_values" /></td>
+    </tr>
+</table>
+</div>

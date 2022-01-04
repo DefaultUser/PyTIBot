@@ -1,0 +1,17 @@
+<div xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+<h4>Parameters</h4>
+<table class="votehelp_table">
+    <tr class="votehelp_tableheader">
+        <th>Long</th>
+        <th>Short</th>
+        <th>Default</th>
+        <th>Description</th>
+    </tr>
+    <tr t:render="command_parameters">
+        <td class="votehelp_param_long">--<t:slot name="long" />=</td>
+        <td class="votehelp_param_short"><t:slot name="short" /></td>
+        <td class="votehelp_param_default"><t:slot name="default_value" /></td>
+        <td class="votehelp_param_desc"><t:slot name="description" /></td>
+    </tr>
+</table>
+</div>

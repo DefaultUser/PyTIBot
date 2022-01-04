@@ -1,0 +1,13 @@
+<div xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+<h4>Commands</h4>
+<table class="votehelp_table">
+    <tr class="votehelp_tableheader">
+        <th>Command</th>
+        <th>Description</th>
+    </tr>
+    <tr t:render="command_subcommands">
+        <td class="votehelp_cmd_name"><a><t:attr name="href">#<t:slot name="link" /></t:attr><t:slot name="command_name" /></a></td>
+        <td class="votehelp_cmd_desc"><t:slot name="command_description" /></td>
+    </tr>
+</table>
+</div>

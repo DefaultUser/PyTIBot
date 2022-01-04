@@ -1,0 +1,17 @@
+<div xmlns:t="http://twistedmatrix.com/ns/twisted.web.template/0.1">
+<h4>Flags</h4>
+<table class="votehelp_table">
+    <tr class="votehelp_tableheader">
+        <th>Long</th>
+        <th>Short</th>
+        <th/>
+        <th>Description</th>
+    </tr>
+    <tr t:render="command_flags">
+        <td class="votehelp_flag_long">--<t:slot name="long" /></td>
+        <td class="votehelp_flag_short"><t:slot name="short" /></td>
+        <td class="votehelp_flag_dummy"/>
+        <td class="votehelp_flag_desc"><t:slot name="description" /></td>
+    </tr>
+</table>
+</div>

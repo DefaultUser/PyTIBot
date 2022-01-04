@@ -21,6 +21,10 @@ div.vote_timerange {
     padding: 1rem 0 2rem 0;
 }
 
+li.votehelp_listitem {
+    list-style-type: none;
+}
+
 tr:nth-child(even) {
     background-color: #eeeefc;
 }
@@ -103,6 +107,49 @@ table td.category_name, td.category_description {
     display: inline-block;
 }
 
+table td.votehelp_cmd_name:before, table td.votehelp_cmd_desc:before,
+table td.votehelp_flag_long:before, table td.votehelp_flag_short:before, table td.votehelp_flag_desc:before,
+table td.votehelp_param_long:before, table td.votehelp_param_short:before, table td.votehelp_param_default:before, table td.votehelp_param_desc:before,
+table td.votehelp_arg_name:before, table td.votehelp_arg_default:before, table td.votehelp_arg_values:before {
+    display: block;
+}
+
+table tr.votehelp_tableheader {
+    display: None;
+}
+
+table td.votehelp_cmd_name:before {
+    content: "Command: ";
+}
+
+table td.votehelp_cmd_desc:before, table td.votehelp_flag_desc:before, table td.votehelp_param_desc:before {
+    content: "Description: ";
+}
+
+table td.votehelp_flag_long:before, table td.votehelp_param_long:before {
+    content: "Long: ";
+}
+
+table td.votehelp_flag_short:before, table td.votehelp_param_short:before {
+    content: "Short: ";
+}
+
+table td.votehelp_param_default:before, table td.votehelp_arg_default:before {
+    content: "Default: ";
+}
+
+table td.votehelp_arg_name:before {
+    content: "Argument: ";
+}
+
+table td.votehelp_arg_values:before {
+    content: "Possible values: ";
+}
+
+table td.votehelp_arg_dummy, table td.votehelp_flag_dummy {
+    display: None;
+}
+
 @media (min-width: 600px) {
     table thead {
         display: table-header-group;
@@ -146,7 +193,11 @@ table td.category_name, td.category_description {
         text-align: center;
     }
 
-    table td.vote_title:before, table td.vote_creator:before, table td.vote_status:before, table td.vote_count:before {
+    table td.vote_title:before, table td.vote_creator:before, table td.vote_status:before, table td.vote_count:before,
+    table td.votehelp_cmd_name:before, table td.votehelp_cmd_desc:before,
+    table td.votehelp_flag_long:before, table td.votehelp_flag_short:before, table td.votehelp_flag_desc:before,
+    table td.votehelp_param_long:before, table td.votehelp_param_short:before, table td.votehelp_param_default:before, table td.votehelp_param_desc:before,
+    table td.votehelp_arg_name:before, table td.votehelp_arg_default:before, table td.votehelp_arg_values:before {
         display: None;
     }
 
@@ -156,6 +207,29 @@ table td.category_name, td.category_description {
 
     table td.category_name {
         width: 20%;
+    }
+
+    table tr.votehelp_tableheader {
+        display: table-row;
+    }
+    table tr.votehelp_tableheader th {
+        text-align: left;
+    }
+
+    table td.votehelp_cmd_name, table td.votehelp_arg_name,table td.votehelp_flag_long, table td.votehelp_param_long {
+        width: 20ch;
+    }
+
+    table td.votehelp_flag_short, table td.votehelp_param_short, table td.votehelp_arg_dummy {
+        width: 5ch;
+    }
+
+    table td.votehelp_param_default, table td.votehelp_arg_default, table td.votehelp_flag_dummy {
+        width: 10ch;
+    }
+
+    table td.votehelp_arg_dummy, table td.votehelp_flag_dummy {
+        display: table-cell;
     }
 }
 

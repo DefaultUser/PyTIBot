@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from twisted.web.template import XMLFile, renderer, tags
+from twisted.web.template import XMLFile, renderer, tags, Element
 from twisted.web.resource import NoResource
 from twisted.python.filepath import FilePath
 from twisted.enterprise import adbapi
@@ -22,9 +22,12 @@ from twisted.logger import Logger
 
 import os
 from collections import defaultdict
+from enum import Enum
+from inspect import signature, Parameter
+import typing
 
 from .common import PageElement, webpage_error_handler, BaseResource
-from lib.channelwatcher.vote import PollListStatusFilter
+from lib.channelwatcher.vote import PollListStatusFilter, CommandOptions
 
 from util.misc import bytes_to_str
 from util import filesystem as fs
@@ -186,6 +189,7 @@ class VotePage(BaseResource):
         self.dbpool = adbapi.ConnectionPool("sqlite3", dbfile,
                                             check_same_thread=False)
         self.putChild(b"categories", VoteCategoryPage(b"categories", self))
+        self.putChild(b"help", VoteHelpPage(b"help", self))
 
     def has_key(self, request):
         if not self.key:
@@ -394,3 +398,145 @@ class VoteCategoryPage(BaseResource):
 
     def element(self):
         return VoteCategoryPageElement(self)
+
+
+class VoteHelpPageParametersWidget(Element):
+    loader = XMLFile(FilePath(fs.get_abs_path("resources/vote_help_parameters_widget.html")))
+
+    def __init__(self, parameters, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.parameters = parameters
+
+    @renderer
+    def command_parameters(self, request, tag):
+        for parameter in self.parameters:
+            long, short, default, desc = parameter[:4]
+            if isinstance(default, Enum):
+                desc += f" ({', '.join([e.name for e in type(default)])})"
+                default = default.name
+            if short:
+                short = f"-{short}"
+            else:
+                short = "N/A"
+            yield tag.clone().fillSlots(long=long, short=short, default_value=default or "N/A",
+                                        description=desc)
+
+
+class VoteHelpPageFlagsWidget(Element):
+    loader = XMLFile(FilePath(fs.get_abs_path("resources/vote_help_flags_widget.html")))
+
+    def __init__(self, flags, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.flags = flags
+
+    @renderer
+    def command_flags(self, request, tag):
+        for long, short, desc in self.flags:
+            if short:
+                short = f"-{short}"
+            else:
+                short = "N/A"
+            yield tag.clone().fillSlots(long=long, short=short, description=desc)
+
+
+class VoteHelpPageArgsWidget(Element):
+    loader = XMLFile(FilePath(fs.get_abs_path("resources/vote_help_args_widget.html")))
+
+    def __init__(self, sig, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.sig = sig
+
+    @renderer
+    def command_args(self, request, tag):
+        for p in self.sig.parameters.values():
+            if p.name == "self":
+                continue
+            default = p.default
+            if default is Parameter.empty or default is None:
+                default = "N/A"
+            possible_values = "N/A"
+            if p.annotation is not Parameter.empty:
+                if typing.get_origin(p.annotation) == typing.Literal:
+                    possible_values = ", ".join(typing.get_args(p.annotation))
+                else:
+                    possible_values = p.annotation.__name__
+            elif p.kind == Parameter.VAR_POSITIONAL:
+                possible_values = "freetext"
+            yield tag.clone().fillSlots(name=p.name, default_value=default,
+                                        possible_values=possible_values)
+
+
+class VoteHelpPageSubcommandsWidget(Element):
+    loader = XMLFile(FilePath(fs.get_abs_path("resources/vote_help_subcommands_widget.html")))
+
+    def __init__(self, subCommands, parentCommand, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.subCommands = subCommands
+        self.parentCommand = parentCommand
+
+    @renderer
+    def command_subcommands(self, request, tag):
+        for long, short, _, desc in self.subCommands:
+            if short:
+                name = f"{long} ({short})"
+            else:
+                name = long
+            link = ".".join([self.parentCommand, long]) if self.parentCommand else long
+            yield tag.clone().fillSlots(link=link, command_name=name, command_description=desc)
+
+
+class VoteHelpPageRecursiveWidget(Element):
+    loader = XMLFile(FilePath(fs.get_abs_path("resources/vote_help_recursive_widget.html")))
+
+    def __init__(self, path, options, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.path = path
+        self.options = options
+
+    @renderer
+    def command_subcommand_list(self, request, tag):
+        if hasattr(self.options, "subCommands"):
+            widgets = tags.ul()
+            subcommand_widget = VoteHelpPageSubcommandsWidget(self.options.subCommands, ".".join(self.path))
+            for long, _, options, desc in self.options.subCommands:
+                new_path = self.path + [long]
+                widgets.children.append(tags.li(tags.h3(" ".join(new_path), id_=".".join(new_path)),
+                                                tags.p(desc),
+                                                VoteHelpPageRecursiveWidget(new_path, options),
+                                                class_="votehelp_listitem"))
+            yield tag([subcommand_widget, widgets])
+
+    @renderer
+    def command_flags(self, request, tag):
+        if hasattr(self.options, "optFlags"):
+            yield VoteHelpPageFlagsWidget(self.options.optFlags)
+
+    @renderer
+    def command_parameters(self, request, tag):
+        if hasattr(self.options, "optParameters"):
+            yield VoteHelpPageParametersWidget(self.options.optParameters)
+
+    @renderer
+    def command_args(self, request, tag):
+        sig = signature(self.options.parseArgs)
+        if len(sig.parameters) > 1:
+            yield VoteHelpPageArgsWidget(sig)
+
+
+class VoteHelpPageElement(PageElement):
+    loader = XMLFile(FilePath(fs.get_abs_path("resources/vote_help_page_template.html")))
+
+    @renderer
+    def command(self, request, tag):
+        yield VoteHelpPageRecursiveWidget([], CommandOptions)
+
+
+class VoteHelpPage(BaseResource):
+    def __init__(self, crumb, parent):
+        super().__init__(crumb)
+        self.parent = parent
+        self.title = "Help"
+
+    def element(self):
+        return VoteHelpPageElement(self)
+

@@ -1060,6 +1060,9 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def cmd_poll_expire(self, issuer, poll_id, change):
+        if not (yield self.is_vote_admin(issuer)):
+            self.bot.notice(issuer, "Only admins can change poll duration")
+            return
         res = yield self.dbpool.runQuery('SELECT status, time_end FROM Polls '
                                          'WHERE id=:id;', {"id": poll_id})
         if not res:
@@ -1069,9 +1072,6 @@ class Vote(abstract.ChannelWatcher):
         current_time_end = res[0][1]
         if status != PollStatus.RUNNING:
             self.bot.notice(issuer, "Poll #{} isn't running".format(poll_id))
-            return
-        if not (yield self.is_vote_admin(issuer)):
-            self.bot.notice(issuer, "Only admins can change poll duration")
             return
         utcnow = datetime.now(tz=timezone.utc)
         match = Vote.expireTimeRegex.match(change)

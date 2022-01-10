@@ -185,8 +185,8 @@ class UserListOptions(OptionsWithoutHandlers):
 
 class UserOptions(OptionsWithoutHandlers):
     subCommands = [
-        ['add', None, UserAddOptions, "Add a new user"],
-        ['modify', 'mod', UserModifyOptions, "Modify user name or rights"],
+        ['add', None, UserAddOptions, "Add a new user (admin only)"],
+        ['modify', 'mod', UserModifyOptions, "Modify user name or rights (admin only)"],
         ['list', 'ls', UserListOptions, "List users"]
     ]
 
@@ -302,7 +302,7 @@ class PollInfoOptions(OptionsWithoutHandlers):
 class PollOptions(OptionsWithoutHandlers):
     subCommands = [
         ['create', 'call', PollCreateOptions, "Create a new poll"],
-        ['modify', 'mod', PollModifyOptions, "Modify a poll"],
+        ['modify', 'mod', PollModifyOptions, "Modify a poll (admin only)"],
         ['cancel', None, PollCancelOptions, "Cancel a poll (vote caller only)"],
         ['veto', None, PollVetoOptions, "Veto a poll (admin only)"],
         ['decide', None, PollDecideOptions, "Decide a poll (admin only)"],
@@ -350,8 +350,8 @@ class CategoryModifyOptions(OptionsWithoutHandlers):
 
 class CategoryOptions(OptionsWithoutHandlers):
     subCommands = [
-        ['add', None, CategoryAddOptions, "Create a new category"],
-        ['modify', 'mod', CategoryModifyOptions, "Modify a category"],
+        ['add', None, CategoryAddOptions, "Create a new category (admin only)"],
+        ['modify', 'mod', CategoryModifyOptions, "Modify a category (admin only)"],
         ['list', 'ls', OptionsWithoutHandlers, "List categories"]
     ]
 

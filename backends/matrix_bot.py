@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2021>  <Sebastian Schmidt>
+# Copyright (C) <2021-2022>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@ from twisted.internet.defer import Deferred, ensureDeferred, inlineCallbacks
 from twisted.internet import reactor
 from twisted.logger import Logger
 from twisted.words.protocols import irc
-from nio import AsyncClient, MatrixRoom, RoomMessageText, RoomMessageNotice
+from nio import AsyncClient, MatrixRoom, RoomMessageText, RoomMessageNotice, RoomMemberEvent
 from nio import responses as MatrixResponses
 from nio.api import RoomPreset
 import os
@@ -46,6 +46,7 @@ class MatrixBot:
         self.load_settings()
         self.client.add_event_callback(self.on_message, RoomMessageText)
         self.client.add_event_callback(self.on_notice, RoomMessageNotice)
+        self.client.add_event_callback(self.on_memberevent, RoomMemberEvent)
 
     def on_message(self, room: MatrixRoom, event: RoomMessageText) -> None:
         MatrixBot.log.info("{room.display_name} | {event.sender} : {event.body}",
@@ -77,6 +78,33 @@ class MatrixBot:
         if room_id in self.channelwatchers:
             for watcher in self.channelwatchers[room_id]:
                 watcher.notice(event.sender, message)
+
+    def on_memberevent(self, room: MatrixRoom, event: RoomMemberEvent) -> None:
+        methodname = f"on_memberevent_{event.membership}"
+        if hasattr(self, methodname):
+            getattr(self, methodname)(room, event)
+        else:
+            MatrixBot.log.error("Unexpected RoomMemberEvent: {membership}",
+                                membership=event.membership)
+
+    def on_memberevent_invite(self, room: MatrixRoom, event: RoomMemberEvent) -> None:
+        MatrixBot.log.info("{room.display_name} : {event.state_key} was invited",
+                           room=room, event=event)
+
+    def on_memberevent_join(self, room: MatrixRoom, event: RoomMemberEvent) -> None:
+        MatrixBot.log.info("{room.display_name} : {event.state_key} joined",
+                           room=room, event=event)
+        # TODO: channelwatchers
+
+    def on_memberevent_leave(self, room: MatrixRoom, event: RoomMemberEvent) -> None:
+        MatrixBot.log.info("{room.display_name} : {event.state_key} left",
+                           room=room, event=event)
+        # TODO: channelwatchers
+
+    def on_memberevent_ban(self, room: MatrixRoom, event: RoomMemberEvent) -> None:
+        MatrixBot.log.info("{room.display_name} : {event.state_key} was banned",
+                           room=room, event=event)
+        # TODO: channelwatchers
 
     @property
     def state_filepath(self):

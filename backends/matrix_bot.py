@@ -221,7 +221,6 @@ class MatrixBot:
     @inlineCallbacks
     def msg(self, target, message, length=None):
         # direct messages will stay open until the user leaves the room
-        # TODO: leave rooms when the last user left a room
         if target.startswith("@"):
             target = yield self.get_or_create_direct_message_room(target)
         elif target.startswith("#"):
@@ -236,7 +235,6 @@ class MatrixBot:
     @inlineCallbacks
     def notice(self, target, message, length=None):
         # direct messages will stay open until the user leaves the room
-        # TODO: leave rooms when the last user left a room
         # TODO: remove this code duplication
         if target.startswith("@"):
             target = yield self.get_or_create_direct_message_room(target)

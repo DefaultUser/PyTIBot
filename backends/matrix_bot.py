@@ -103,6 +103,10 @@ class MatrixBot:
         if event.state_key != event.sender:
             self.on_memberevent_kick(room, event)
             return
+        if event.prev_membership == "ban":
+            MatrixBot.log.info("{room.display_name} : {event.state_key} was unbanned",
+                               room=room, event=event)
+            return
         MatrixBot.log.info("{room.display_name} : {event.state_key} left",
                            room=room, event=event)
         self.leave_room_if_empty(room)

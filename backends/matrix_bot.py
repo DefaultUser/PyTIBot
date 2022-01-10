@@ -92,6 +92,9 @@ class MatrixBot:
                            room=room, event=event)
 
     def on_memberevent_join(self, room: MatrixRoom, event: RoomMemberEvent) -> None:
+        if event.prev_membership == "join":
+            # displayname or avatar changed
+            return
         MatrixBot.log.info("{room.display_name} : {event.state_key} joined",
                            room=room, event=event)
         # TODO: channelwatchers

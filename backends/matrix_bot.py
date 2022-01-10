@@ -99,6 +99,9 @@ class MatrixBot:
     def on_memberevent_leave(self, room: MatrixRoom, event: RoomMemberEvent) -> None:
         MatrixBot.log.info("{room.display_name} : {event.state_key} left",
                            room=room, event=event)
+        # Leave ad-hoc rooms when all other users left and no invite is open
+        if room.is_group and room.member_count < 2:
+            self.leave(room.room_id)
         # TODO: channelwatchers
 
     def on_memberevent_ban(self, room: MatrixRoom, event: RoomMemberEvent) -> None:

@@ -1231,7 +1231,7 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def cmd_category_list(self, issuer):
-        if not (yield self.is_vote_admin(issuer)):
+        if not (yield self.is_vote_user(issuer)):
             self.bot.notice(issuer, "Insufficient permissions")
             return
         res = yield self.dbpool.runQuery(

@@ -97,12 +97,24 @@ class MatrixBot:
         # TODO: channelwatchers
 
     def on_memberevent_leave(self, room: MatrixRoom, event: RoomMemberEvent) -> None:
+        if event.state_key != event.sender:
+            self.on_memberevent_kick(room, event)
+            return
         MatrixBot.log.info("{room.display_name} : {event.state_key} left",
                            room=room, event=event)
-        # Leave ad-hoc rooms when all other users left and no invite is open
+        self.leave_room_if_empty(room)
+        # TODO: channelwatchers
+
+    def on_memberevent_kick(self, room: MatrixRoom, event: RoomMemberEvent) -> None:
+        MatrixBot.log.info("{room.display_name} : {event.state_key} was kicked "
+                           "by {event.sender}", room=room, event=event)
+        self.leave_room_if_empty(room)
+        # TODO: channelwatchers
+
+    def leave_room_if_empty(self, room: MatrixRoom) -> None:
+        """Leave ad-hoc rooms when all other users left and no invite is open"""
         if room.is_group and room.member_count < 2:
             self.leave(room.room_id)
-        # TODO: channelwatchers
 
     def on_memberevent_ban(self, room: MatrixRoom, event: RoomMemberEvent) -> None:
         MatrixBot.log.info("{room.display_name} : {event.state_key} was banned",

@@ -45,7 +45,7 @@ def _run_process(action_id, action):
     for i, arg in enumerate(args):
         if not isinstance(arg, str):
             args[i] = str(arg)
-    return async_process.start_subprocess(cmd, args, path)
+    return async_process.start_subprocess(cmd, args, path, log_name=action_id)
 
 
 def _on_process_finished(success, rungroup, d):

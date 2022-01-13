@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2021>  <Sebastian Schmidt>
+# Copyright (C) <2017-2022>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,8 +31,7 @@ import textwrap
 from util.formatting import colored, closest_irc_color, split_rgb_string,\
     good_contrast_with_black, IRCColorCodes
 from util.misc import str_to_bytes, bytes_to_str, filter_dict
-from util.internet import shorten_url, shorten_github_url, DirectAccessor,\
-    HeaderAccessor, JsonAccessor
+from util.internet import shorten_url, DirectAccessor, HeaderAccessor, JsonAccessor
 from lib import webhook_actions
 
 
@@ -70,7 +69,7 @@ class GitWebhookServer(Resource):
             users = [users]
         self.hook_report_users = users
         # URL shortener
-        self.url_shortener = None
+        self.url_shortener = defer.succeed
         url_shortener_settings = config["GitWebhook"].get("url_shortener", None)
         if url_shortener_settings:
             try:
@@ -271,18 +270,14 @@ class GitWebhookServer(Resource):
         for channel in channels:
             self.botfactory.bot.msg(channel, message)
 
-    @staticmethod
     @defer.inlineCallbacks
-    def format_commits(commits, num_commits, url_shortener=None):
+    def format_commits(self, commits, num_commits):
         msg = ""
         for i, commit in enumerate(commits):
             if i == 3 and num_commits != 4:
                 msg += "\n+{} more commits".format(num_commits - 3)
                 break
-            if url_shortener is not None:
-                url = yield url_shortener(commit["url"])
-            else:
-                url = commit["url"]
+            url = yield self.url_shortener(commit["url"])
             message = commit["message"].split("\n")[0]
             if i != 0:
                 msg += "\n"
@@ -294,7 +289,7 @@ class GitWebhookServer(Resource):
 
     @defer.inlineCallbacks
     def on_github_push(self, data):
-        url = yield shorten_github_url(data["compare"])
+        url = yield self.url_shortener(data["compare"])
         repo_name = data["repository"]["name"]
         branch = data["ref"].split("/", 2)[-1]
         action = "pushed"
@@ -318,9 +313,8 @@ class GitWebhookServer(Resource):
                        num_commits=len(data["commits"]),
                        branch=colored(branch, IRCColorCodes.dark_green),
                        compare=url))
-        commit_msgs = yield GitWebhookServer.format_commits(
-                data["commits"], len(data["commits"]),
-                url_shortener=shorten_github_url)
+        commit_msgs = yield self.format_commits(data["commits"],
+                                                len(data["commits"]))
         if commit_msgs:
             msg += "\n" + commit_msgs
         self.report_to_irc(repo_name, msg)
@@ -347,7 +341,7 @@ class GitWebhookServer(Resource):
         if action == "assigned" or action == "unassigned":
             payload = data["issue"]["assignee"]["login"]
         elif action == "labeled" or action == "unlabeled":
-            url = yield shorten_github_url(data["issue"]["html_url"])
+            url = yield self.url_shortener(data["issue"]["html_url"])
             fg, bg = self.github_label_colors(data["label"])
             payload = "{} ({})".format(colored(data["label"]["name"],
                                                fg, bg), url)
@@ -360,7 +354,7 @@ class GitWebhookServer(Resource):
         elif action == "closed":
             action = colored(action, IRCColorCodes.dark_green)
         if not payload:
-            payload = yield shorten_github_url(data["issue"]["html_url"])
+            payload = yield self.url_shortener(data["issue"]["html_url"])
         msg = ("[{repo_name}] {user} {action} Issue #{number} {title}: "
                "{payload}".format(repo_name=colored(repo_name, IRCColorCodes.blue, IRCColorCodes.gray),
                                   user=colored(data["sender"]["login"],
@@ -374,7 +368,7 @@ class GitWebhookServer(Resource):
 
     @defer.inlineCallbacks
     def on_github_issue_comment(self, data):
-        url = yield shorten_github_url(data["comment"]["html_url"])
+        url = yield self.url_shortener(data["comment"]["html_url"])
         repo_name = data["repository"]["name"]
         msg = ("[{repo_name}] {user} {action} comment on Issue #{number} "
                "{title} {url}".format(
@@ -409,7 +403,7 @@ class GitWebhookServer(Resource):
     @defer.inlineCallbacks
     def on_github_fork(self, data):
         repo_name = data["repository"]["name"]
-        url = yield shorten_github_url(data["forkee"]["html_url"])
+        url = yield self.url_shortener(data["forkee"]["html_url"])
         msg = "[{repo_name}] {user} created fork {url}".format(
             repo_name=colored(repo_name, IRCColorCodes.blue, IRCColorCodes.gray),
             user=colored(data["forkee"]["owner"]["login"], IRCColorCodes.dark_cyan),
@@ -419,7 +413,7 @@ class GitWebhookServer(Resource):
     @defer.inlineCallbacks
     def on_github_commit_comment(self, data):
         repo_name = data["repository"]["name"]
-        url = yield shorten_github_url(data["comment"]["html_url"])
+        url = yield self.url_shortener(data["comment"]["html_url"])
         msg = "[{repo_name}] {user} commented on commit {url}".format(
             repo_name=colored(repo_name, IRCColorCodes.blue, IRCColorCodes.gray),
             user=colored(data["comment"]["user"]["login"], IRCColorCodes.dark_cyan),
@@ -429,7 +423,7 @@ class GitWebhookServer(Resource):
     @defer.inlineCallbacks
     def on_github_release(self, data):
         repo_name = data["repository"]["name"]
-        url = yield shorten_github_url(data["release"]["html_url"])
+        url = yield self.url_shortener(data["release"]["html_url"])
         msg = "[{repo_name}] New release {url}".format(
             repo_name=colored(data["repository"]["name"], IRCColorCodes.blue, IRCColorCodes.gray),
             url=url)
@@ -444,7 +438,7 @@ class GitWebhookServer(Resource):
         if action == "assigned" or action == "unassigned":
             payload = data["pull_request"]["assignee"]["login"]
         elif action == "labeled" or action == "unlabeled":
-            url = yield shorten_github_url(data["pull_request"]["html_url"])
+            url = yield self.url_shortener(data["pull_request"]["html_url"])
             fg, bg = self.github_label_colors(data["label"])
             payload = "{} ({})".format(colored(data["label"]["name"],
                                                fg, bg), url)
@@ -473,7 +467,7 @@ class GitWebhookServer(Resource):
         elif action == "converted_to_draft":
             action = "converted to draft:"
         if not payload:
-            payload = yield shorten_github_url(
+            payload = yield self.url_shortener(
                 data["pull_request"]["html_url"])
         msg = ("[{repo_name}] {user} {action} Pull Request #{number} {title} "
                "({head} -> {base}): {payload}".format(
@@ -538,7 +532,7 @@ class GitWebhookServer(Resource):
             base = events[0]["pull_request"]["base"]["ref"]
             # remove duplicate urls
             full_urls = {e[type_]["html_url"] for e in events}
-            urls_defers = [shorten_github_url(url) for url in full_urls]
+            urls_defers = [self.url_shortener(url) for url in full_urls]
             results = yield defer.DeferredList(urls_defers)
             urls = [res[1] for res in results]
             self._github_PR_review_send_msg(is_comment, repo_name, user,
@@ -555,7 +549,7 @@ class GitWebhookServer(Resource):
                     GitWebhookServer.GH_ReviewFloodPrevention_Delay,
                     self.github_handle_review_flood, False)
         else:
-            url = yield shorten_github_url(data["review"]["html_url"])
+            url = yield self.url_shortener(data["review"]["html_url"])
             self._github_PR_review_send_msg(
                 False,
                 data["repository"]["name"],
@@ -577,7 +571,7 @@ class GitWebhookServer(Resource):
                     GitWebhookServer.GH_ReviewFloodPrevention_Delay,
                     self.github_handle_review_flood, True)
         else:
-            url = yield shorten_github_url(data["comment"]["html_url"])
+            url = yield self.url_shortener(data["comment"]["html_url"])
             self._github_PR_review_send_msg(
                 True,
                 data["repository"]["name"],
@@ -608,9 +602,8 @@ class GitWebhookServer(Resource):
                                                     IRCColorCodes.dark_cyan),
                                      num_commits=data["total_commits_count"],
                                      branch=colored(branch, IRCColorCodes.dark_green)))
-        commit_msgs = yield GitWebhookServer.format_commits(
-                data["commits"], int(data["total_commits_count"]),
-                url_shortener=self.url_shortener)
+        commit_msgs = yield self.format_commits(data["commits"],
+                                                int(data["total_commits_count"]))
         if commit_msgs:
             msg += "\n" + commit_msgs
         self.report_to_irc(repo_name, msg)
@@ -635,9 +628,8 @@ class GitWebhookServer(Resource):
             repo_name=colored(repo_name, IRCColorCodes.blue, IRCColorCodes.gray),
             pusher=colored(data["user_name"], IRCColorCodes.dark_cyan),
             tag=colored(data["ref"].split("/", 2)[-1], IRCColorCodes.dark_green)))
-        commit_msgs = yield GitWebhookServer.format_commits(
-                data["commits"], int(data["total_commits_count"]),
-                url_shortener=self.url_shortener)
+        commit_msgs = yield self.format_commits(data["commits"],
+                                                int(data["total_commits_count"]))
         if commit_msgs:
             msg += "\n" + commit_msgs
         self.report_to_irc(repo_name, msg)
@@ -655,10 +647,7 @@ class GitWebhookServer(Resource):
             action = colored("closed", IRCColorCodes.dark_green)
         elif action == "update":
             action = "updated"
-        if self.url_shortener:
-            url = yield self.url_shortener(attribs["url"])
-        else:
-            url = attribs["url"]
+        url = yield self.url_shortener(attribs["url"])
         msg = ("[{repo_name}] {user} {action} Issue #{number} {title} "
                "{url}".format(repo_name=colored(repo_name, IRCColorCodes.blue,
                                                 IRCColorCodes.gray),
@@ -693,10 +682,7 @@ class GitWebhookServer(Resource):
             title = data["snippet"]["title"]
         else:
             return
-        if self.url_shortener:
-            url = yield self.url_shortener(attribs["url"])
-        else:
-            url = attribs["url"]
+        url = yield self.url_shortener(attribs["url"])
         msg = ("[{repo_name}] {user} commented on {noteable_type} {number} "
                "{title} {url}".format(
                    repo_name=colored(repo_name, IRCColorCodes.blue, IRCColorCodes.gray),
@@ -724,10 +710,7 @@ class GitWebhookServer(Resource):
             action = "updated"
         elif action == "approved":
             action = colored("approved", IRCColorCodes.dark_green)
-        if self.url_shortener:
-            url = yield self.url_shortener(attribs["url"])
-        else:
-            url = attribs["url"]
+        url = yield self.url_shortener(attribs["url"])
         msg = ("[{repo_name}] {user} {action} Merge Request #{number} "
                "{title} ({source} -> {target}): {url}".format(
                    repo_name=colored(repo_name, IRCColorCodes.blue, IRCColorCodes.gray),

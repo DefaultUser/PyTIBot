@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2018-2021>  <Sebastian Schmidt>
+# Copyright (C) <2018-2022>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -93,8 +93,4 @@ def shorten_url(url, service_url, method, headers=None, post_data=None,
         log.warn("Error shortening url {url} using service {service}: {error}",
                  url=url, service=service_url, error=e)
         return url
-
-shorten_github_url = partial(shorten_url, service_url="https://git.io",
-                             method="POST", post_data={"url": "$URL"},
-                             payload_accessor=HeaderAccessor("Location"))
 

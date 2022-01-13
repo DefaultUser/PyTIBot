@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2018>  <Sebastian Schmidt>
+# Copyright (C) <2018-2022>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -74,12 +72,14 @@ class LoggingProcessProtocol(ProcessProtocol, object):
                            reason=reason)
 
 
-def start_subprocess(cmd, args=(), path=None, env=None, usePTY=True):
+def start_subprocess(cmd, args=(), path=None, env=None, usePTY=True, log_name=None):
     """
     Start a subprocess and log its output to a file in the log directory
     """
     args = list(args)
     args.insert(0, cmd)
-    proto = LoggingProcessProtocol(os.path.basename(cmd))
+    if log_name is None:
+        log_name = os.path.basename(cmd)
+    proto = LoggingProcessProtocol(log_name)
     return reactor.spawnProcess(proto, cmd, args=args, env=env, path=path,
                                 usePTY=usePTY)

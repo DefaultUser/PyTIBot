@@ -718,8 +718,6 @@ class Vote(abstract.ChannelWatcher):
                     no=formatting.colored(str(vote_count.no), Vote.Colors.no),
                     vote_count=vote_count)
         self.bot.msg(self.channel, msg)
-        if self.notification_channel:
-            self.bot.msg(self.notification_channel, msg)
         self.notify_missing_voters(poll_id)
 
     @defer.inlineCallbacks

@@ -16,6 +16,7 @@
 
 import re
 from fnmatch import fnmatch
+import itertools
 
 from twisted.logger import Logger
 
@@ -35,10 +36,21 @@ def filter_dict(data, rule):
     """
     Returns True if rule applies to the dictionary
     """
-    def _f(fragment):
+    def _f(fragment, subdata):
         key_path, cmp, val = re.split("\s*(==|!=)\s*", fragment, maxsplit=1)
-        temp = data
-        for key_frag in key_path.split("."):
+        temp = subdata
+        key_path = key_path.split(".")
+        for path_index, key_frag in enumerate(key_path):
+            if key_frag == "*":
+                if isinstance(temp, list):
+                    star_replacements = map(str, range(len(temp)))
+                else:
+                    # otherwise it's a dict
+                    star_replacements = temp.keys()
+                return all(_f(".".join([star, *key_path[path_index+1:]])+cmp+val, temp)
+                           for star in star_replacements)
+            if isinstance(temp, list) and key_frag.isnumeric():
+                key_frag = int(key_frag)
             temp = temp[key_frag]
         # values from rules are always strings
         temp = str(temp)
@@ -47,7 +59,7 @@ def filter_dict(data, rule):
         return any(fnmatch(temp, v) for v in re.split("\s*\|\s*", val))
 
     try:
-        if all(map(_f, re.split("\s+AND\s+", rule))):
+        if all(map(_f, re.split("\s+AND\s+", rule), itertools.repeat(data))):
             return True
     except Exception as e:
         logger.warn("Filter rule '{rule}' couldn't be applied: {e}",

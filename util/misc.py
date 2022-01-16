@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2021>  <Sebastian Schmidt>
+# Copyright (C) <2017-2022>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -38,12 +36,14 @@ def filter_dict(data, rule):
     Returns True if rule applies to the dictionary
     """
     def _f(fragment):
-        key_path, val = re.split("\s*==\s*", fragment, maxsplit=1)
+        key_path, cmp, val = re.split("\s*(==|!=)\s*", fragment, maxsplit=1)
         temp = data
         for key_frag in key_path.split("."):
             temp = temp[key_frag]
         # values from rules are always strings
         temp = str(temp)
+        if cmp == "!=":
+            return all(not fnmatch(temp, v) for v in re.split("\s*\|\s*", val))
         return any(fnmatch(temp, v) for v in re.split("\s*\|\s*", val))
 
     try:

@@ -387,10 +387,14 @@ GitWebhook:
   # filter out webhook shots using the following rules
   # for a single rule, 'AND' can be used to join multiple conditions
   # using 'OR' to join multiple conditions is not supported
+  # only '==' and '!=' are supported
   # use '|' to compare an element to different values
+  # values will be matched with fnmatch (https://docs.python.org/3/library/fnmatch.html)
   # example for github (API: https://developer.github.com/v3/activity/events/types/)
   - eventtype == issues AND action == pinned | unpinned
-  # use '.' to access subelements, accessing lists is not supported
+  # use '.' to access subelements
+  # list elements can be accessed by "<list>.<index>" (e.g commits.0)
+  # the element '*' will be replaced by all elements
   - eventtype == push AND pusher.name == filteredUser
   # example for gitlab (API: https://docs.gitlab.com/ce/user/project/integrations/webhooks.html)
   - eventtype == note AND object_attributes.noteable_type == Snippet

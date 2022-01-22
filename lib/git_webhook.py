@@ -204,15 +204,9 @@ class GitWebhookServer(Resource):
             hooks = projects["default"]
         else:
             return
-        branch = data["branch"]
         for hook in hooks:
-            # check for allowed branch
-            branches = hook.get("branches", "<all>")
-            if not (branches == "<all>" or branch in branches):
-                continue
-            # check for ignored users
-            ignore_users = hook.get("ignore_users", [])
-            if data["pusher"]["username"] in ignore_users:
+            filters = hook.get("filter", [])
+            if any(filter_dict(data, rule) for rule in filters):
                 continue
             action_name = hook.get("action", None)
             if not action_name:

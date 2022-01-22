@@ -418,8 +418,9 @@ GitWebhook:
     Push:
       default:
       - action: act1
-        branches: <all>
-        ignore_users: []
+        # filter out everything that matches a filter
+        filter:
+        - "branch != master"
       my_project:
       - action: do_noop # exclude my_project from the default Push hook
   Actions:

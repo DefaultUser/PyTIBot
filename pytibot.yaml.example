@@ -82,8 +82,14 @@ GitWebhook:
     Push:
       default:
       - action: act1
-        branches: <all>
-        ignore_users: []
+        filter:
+        # available data:
+        # commits: list of commits as given from github/gitlan
+        # branch
+        # project.{name,namespace,description,url,homepage}
+        # pusher.{name,username,id}
+        - "branch != master"
+        - commits.0.title == Update translation
       my_project:
       - action: do_noop # exclude my_project from the default Push hook
   Actions:

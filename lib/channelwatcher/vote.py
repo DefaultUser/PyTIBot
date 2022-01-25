@@ -904,15 +904,15 @@ class Vote(abstract.ChannelWatcher):
             poll_id = yield self.dbpool.runQuery('SELECT MAX(id) FROM Polls;')
             poll_id = poll_id[0][0]
             if category:
-                category_str = Vote.colored_category_name(category, category_color) + " "
+                category_str = f" (category: {Vote.colored_category_name(category, category_color)}"
             else:
                 category_str = ""
             url = self.poll_url(poll_id)
             if url is None:
                 url = ""
             else:
-                url = " (" + url + ")"
-            msg = "{category}New poll #{poll_id} by {user}{url}: {description}".format(
+                url = f" ({url})"
+            msg = "New poll #{poll_id}{category} by {user}{url}: {description}".format(
                     poll_id=Vote.colored_poll_id(poll_id),
                     user=Vote.colored_user(issuer),
                     url=url, category=category_str,

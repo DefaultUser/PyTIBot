@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2021>  <Sebastian Schmidt>
+# Copyright (C) <2017-2022>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -48,6 +46,7 @@ class Autokick(abstract.ChannelWatcher):
                 Autokick.logger.warn("Can't add pattern '{pattern}' to "
                                      "Autokick message whitelist: {error}",
                                      pattern=pattern, error=e)
+        self.enable_spam_check = config.get("enable_spam_check", False)
         buffer_len = config.get("buffer_length", 5)
         # number of repeating messages until a user is kicked
         self.repeat_count = config.get("repeat_count", 3)
@@ -191,6 +190,8 @@ class Autokick(abstract.ChannelWatcher):
 
     def check_spam(self, user, message):
         """Check if message is just repeated spam"""
+        if not self.enable_spam_check:
+            return False
         msg = message.lower()
         # replace nicks to prevent spam that only changes mentioned users
         for nick in self.bot.userlist[self.channel]:

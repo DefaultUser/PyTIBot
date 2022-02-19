@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2020>  <Sebastian Schmidt>
+# Copyright (C) <2015-2022>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,7 +29,7 @@ def bot_help(bot):
     thismodule = sys.modules[__name__]
 
     while True:
-        args, sender, senderhost, channel = yield
+        args, sender, channel = yield
         commands = {name: gen.__name__ for name, gen in bot.commands.items()}
         aliases = []
         for name, alias in bot.aliases.items():
@@ -56,5 +54,4 @@ def bot_help(bot):
             if aliases:
                 doc.append(formatting.colored("Aliases: ", formatting.IRCColorCodes.dark_green) +
                            ", ".join(aliases))
-        for d in doc:
-            bot.msg(channel, d, length=510)
+        bot.msg(channel, "\n".join(doc))

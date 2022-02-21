@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import asyncio
 from twisted.internet.defer import Deferred, ensureDeferred, inlineCallbacks
+from twisted.internet.task import LoopingCall
 from twisted.internet import reactor
 from twisted.logger import Logger
 from twisted.words.protocols import irc
@@ -47,6 +48,7 @@ class MatrixBot:
         self.client.add_event_callback(self.on_message, RoomMessageText)
         self.client.add_event_callback(self.on_notice, RoomMessageNotice)
         self.client.add_event_callback(self.on_memberevent, RoomMemberEvent)
+        self.sync_token_looping_call = LoopingCall(self.save_latest_sync_token)
 
     def on_message(self, room: MatrixRoom, event: RoomMessageText) -> None:
         MatrixBot.log.info("{room.display_name} | {event.sender} : {event.body}",
@@ -176,15 +178,23 @@ class MatrixBot:
     @inlineCallbacks
     def signedOn(self):
         yield future_to_deferred(asyncio.ensure_future(self.client.synced.wait()))
+        if not self.sync_token_looping_call.running:
+            self.sync_token_looping_call.start(600, now=False)
         for room in self.config["Connection"]["channels"]:
             if room not in self.client.rooms:
                 self.join(room)
 
-    def quit(self, ignored=None):
-        self.stop()
-        # save latest sync token
+    def save_latest_sync_token(self):
+        if not self.client.next_batch:
+            return
         with open(self.state_filepath, "w") as f:
             f.write(self.client.next_batch)
+
+    def quit(self, ignored=None) -> None:
+        self.stop()
+        # save latest sync token
+        self.sync_token_looping_call.stop()
+        self.save_latest_sync_token()
         MatrixBot.log.info("Shutting down")
         reactor.stop()
 

@@ -282,7 +282,7 @@ class IRCBot(irc.IRCClient, object):
             index = 1
 
         # Private Chat
-        if channel == self.nickname.lower():
+        if channel.lower() == self.nickname.lower():
             if not cmdmode:
                 cmdmode = True
                 index = 0

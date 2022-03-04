@@ -53,6 +53,7 @@ GitWebhook:
   gitlab_secret: SECRETKEY
   hook_report_users: [myadmin]
   PreventGitHubReviewFlood: false
+  HideGitHubCommitList: false # don't show individual commits for push events
   FilterRules:
   # example for github
   - eventtype == issues AND action == pinned

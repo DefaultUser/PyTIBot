@@ -52,6 +52,7 @@ class GitWebhookServer(Resource):
         self.filter_rules = config["GitWebhook"].get("FilterRules", [])
         self.prevent_github_review_flood = config["GitWebhook"].get(
                 "PreventGitHubReviewFlood", False)
+        self.hide_github_commit_list = config["GitWebhook"].get("HideGitHubCommitList", False)
         self._gh_review_buffer = []
         self._gh_review_delayed_call = None
         self._gh_review_comment_buffer = []
@@ -307,10 +308,11 @@ class GitWebhookServer(Resource):
                        num_commits=len(data["commits"]),
                        branch=colored(branch, IRCColorCodes.dark_green),
                        compare=url))
-        commit_msgs = yield self.format_commits(data["commits"],
-                                                len(data["commits"]))
-        if commit_msgs:
-            msg += "\n" + commit_msgs
+        if not self.hide_github_commit_list:
+            commit_msgs = yield self.format_commits(data["commits"],
+                                                    len(data["commits"]))
+            if commit_msgs:
+                msg += "\n" + commit_msgs
         self.report_to_irc(repo_name, msg)
         # subset of information that is common for both GitHUb and GitLab
         # only a few useful pieces of information

@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2021>  <Sebastian Schmidt>
+# Copyright (C) <2015-2022>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -85,10 +83,7 @@ class IRCBot(irc.IRCClient, object):
         self.commands = {}
 
         # load the commands
-        if self.config["Commands"]:
-            cmds = self.config["Commands"]
-        else:
-            cmds = {}
+        cmds = self.config.get("Commands", {})
         cmds.update(self._default_commands)
         for name, cmd in cmds.items():
             self.enable_command(cmd, name)
@@ -97,11 +92,7 @@ class IRCBot(irc.IRCClient, object):
         self.aliases = {}
 
         # load the aliases
-        if self.config["Aliases"]:
-            aliases = self.config["Aliases"]
-        else:
-            aliases = {}
-        for name, body in aliases.items():
+        for name, body in self.config.get("Aliases", {}).items():
             self.enable_alias(body, name)
 
         # clear the triggers
@@ -109,9 +100,8 @@ class IRCBot(irc.IRCClient, object):
         self.triggers = {}
 
         # load the triggers
-        if self.config["Triggers"]:
-            for trigger in self.config["Triggers"]:
-                self.enable_trigger(trigger)
+        for trigger in self.config.get("Triggers", []):
+            self.enable_trigger(trigger)
 
     def enable_command(self, cmd, name, add_to_config=False):
         """Enable a command - returns True at success"""
@@ -207,7 +197,7 @@ class IRCBot(irc.IRCClient, object):
 
     def signedOn(self):
         """Initial functions when signed on to server"""
-        if self.config["Auth"]:
+        if "Auth" in self.config:
             self.auth()
             self.set_own_modes()
 

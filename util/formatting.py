@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
 # PyTIBot - Formatting Helper
-# Copyright (C) <2015-2020>  <Sebastian Schmidt, Mattia Basaglia>
+# Copyright (C) <2015-2022>  <Sebastian Schmidt, Mattia Basaglia>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -286,11 +284,14 @@ def _style_dict_to_matrix(text, style_dict):
         text = "<i>"+text+"</i>"
     color = ""
     if style_dict["fg"]:
-        color += " data-mx-color=\""+IRCColorsHex[style_dict["fg"]]+"\""
+        # 'color' seems to be better supported than 'data-mx-color'
+        color += " color=\""+IRCColorsHex[style_dict["fg"]]+"\""
     if style_dict["bg"]:
+        # 'background-color' is not mentioned in the spec and doesn't seem to be
+        # supported in clients
         color += " data-mx-bg-color=\""+IRCColorsHex[style_dict["bg"]]+"\""
     if color:
-        text = "<span"+color+">"+text+"</span>"
+        text = "<font"+color+">"+text+"</font>"
     return text
 
 

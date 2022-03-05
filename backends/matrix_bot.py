@@ -24,6 +24,7 @@ from nio import responses as MatrixResponses
 from nio.api import RoomPreset
 import os
 from zope.interface import implementer
+from enum import Enum
 from typing import Optional
 
 from backends import Backends
@@ -35,6 +36,10 @@ from util import filesystem as fs
 from util import formatting
 from util.decorators import maybe_deferred
 from util.config import Config
+
+
+MessageType = Enum("MessageType", {"text": "m.text", "notice": "m.notice"})
+# TODO: emote
 
 
 @implementer(IBot)
@@ -231,7 +236,7 @@ class MatrixBot:
             return
 
     @inlineCallbacks
-    def msg(self, target: str, message: str, length=None) -> None:
+    def _send_message(self, msgtype: MessageType, target: str, message: str) -> None:
         # direct messages will stay open until the user leaves the room
         if target.startswith("@"):
             target = yield self.get_or_create_direct_message_room(target)
@@ -239,25 +244,17 @@ class MatrixBot:
             target = self.resolve_joined_room_alias(target)
         if target is None:
             return
-        content = {"msgtype": "m.text", **MatrixBot.formatted_message_content(message)}
+        content = {"msgtype": msgtype.value,
+                   **MatrixBot.formatted_message_content(message)}
         future_to_deferred(self.client.room_send(room_id=target,
                                                  message_type="m.room.message",
                                                  content=content))
 
-    @inlineCallbacks
+    def msg(self, target: str, message: str, length=None) -> None:
+        self._send_message(MessageType.text, target, message)
+
     def notice(self, target: str, message: str, length=None) -> None:
-        # direct messages will stay open until the user leaves the room
-        # TODO: remove this code duplication
-        if target.startswith("@"):
-            target = yield self.get_or_create_direct_message_room(target)
-        elif target.startswith("#"):
-            target = self.resolve_joined_room_alias(target)
-        if target is None:
-            return
-        content = {"msgtype": "m.notice", **MatrixBot.formatted_message_content(message)}
-        future_to_deferred(self.client.room_send(room_id=target,
-                                                 message_type="m.room.message",
-                                                 content=content))
+        self._send_message(MessageType.notice, target, message)
 
     def join(self, channel: str) -> None:
         future_to_deferred(self.client.join(channel))

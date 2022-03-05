@@ -24,6 +24,7 @@ from nio import responses as MatrixResponses
 from nio.api import RoomPreset
 import os
 from zope.interface import implementer
+from typing import Optional
 
 from backends import Backends
 from backends.common import setup_channelwatchers
@@ -33,13 +34,14 @@ from util.aio_compat import deferred_to_future, future_to_deferred
 from util import filesystem as fs
 from util import formatting
 from util.decorators import maybe_deferred
+from util.config import Config
 
 
 @implementer(IBot)
 class MatrixBot:
     log = Logger()
 
-    def __init__(self, config):
+    def __init__(self, config: Config) -> None:
         self.config = config
         self.client = AsyncClient(config["Connection"]["server"],
                                   config["Connection"]["username"],
@@ -131,34 +133,34 @@ class MatrixBot:
         # TODO: channelwatchers
 
     @property
-    def state_filepath(self):
+    def state_filepath(self) -> str:
         server_address = self.client.homeserver.removeprefix("http://").removeprefix("https://")
         return os.path.join(fs.adirs.user_cache_dir, f"state-{server_address}")
 
-    def load_settings(self):
+    def load_settings(self) -> None:
         MatrixBot.log.info("Loading settings from {path}", path=self.config._path)
         # TODO: setup aliases, triggers, commands
         self.channelwatchers = setup_channelwatchers(self, self.config.get("Channelmodules", {}),
                                                      Backends.MATRIX)
 
-    def reload(self):
+    def reload(self) -> None:
         self.config.load()
         self.load_settings()
 
     @maybe_deferred
-    def get_auth(self, user):
+    def get_auth(self, user: str) -> str:
         # the user handle is already unique
         return user
 
     @maybe_deferred
-    def is_user_admin(self, user):
+    def is_user_admin(self, user: str) -> bool:
         return user in self.config["Connection"]["admins"]
 
     @property
-    def userlist(self):
+    def userlist(self) -> dict[str, list[str]]:
         return {room_id: list(room.users.keys()) for room_id, room in self.client.rooms.items()}
 
-    async def start(self):
+    async def start(self) -> Deferred:
         response = await future_to_deferred(self.client.login(self.config["Connection"]["password"]))
         if isinstance(response, MatrixResponses.LoginError):
             MatrixBot.log.error("Error logging in {response}", response=response)
@@ -176,7 +178,7 @@ class MatrixBot:
         return Deferred()
 
     @inlineCallbacks
-    def signedOn(self):
+    def signedOn(self) -> None:
         yield future_to_deferred(asyncio.ensure_future(self.client.synced.wait()))
         if not self.sync_token_looping_call.running:
             self.sync_token_looping_call.start(600, now=False)
@@ -198,11 +200,11 @@ class MatrixBot:
         MatrixBot.log.info("Shutting down")
         reactor.stop()
 
-    def stop(self):
+    def stop(self) -> None:
         future_to_deferred(self.client.close())
 
     @staticmethod
-    def formatted_message_content(message):
+    def formatted_message_content(message: str) -> dict[str, str]:
         # FIXME: for now, convert IRC formatting to html
         # formatting is currently designed with only IRC in mind
         unformatted = irc.stripFormatting(message)
@@ -212,7 +214,7 @@ class MatrixBot:
                 "formatted_body": formatting.to_matrix(message).replace("\n", "<br/>")}
 
     @inlineCallbacks
-    def get_or_create_direct_message_room(self, user):
+    def get_or_create_direct_message_room(self, user: str) -> str:
         for room_id, room in self.client.rooms.items():
             if room.is_group and room.member_count == 2 and user in room.users:
                 return room_id
@@ -220,7 +222,7 @@ class MatrixBot:
             preset=RoomPreset.trusted_private_chat))
         return resp.room_id
 
-    def resolve_joined_room_alias(self, target):
+    def resolve_joined_room_alias(self, target: str) -> Optional[str]:
         for room_id, room in self.client.rooms.items():
             if room.machine_name == target:
                 return room_id
@@ -229,7 +231,7 @@ class MatrixBot:
             return
 
     @inlineCallbacks
-    def msg(self, target, message, length=None):
+    def msg(self, target: str, message: str, length=None) -> None:
         # direct messages will stay open until the user leaves the room
         if target.startswith("@"):
             target = yield self.get_or_create_direct_message_room(target)
@@ -243,7 +245,7 @@ class MatrixBot:
                                                  content=content))
 
     @inlineCallbacks
-    def notice(self, target, message, length=None):
+    def notice(self, target: str, message: str, length=None) -> None:
         # direct messages will stay open until the user leaves the room
         # TODO: remove this code duplication
         if target.startswith("@"):
@@ -257,20 +259,20 @@ class MatrixBot:
                                                  message_type="m.room.message",
                                                  content=content))
 
-    def join(self, channel):
+    def join(self, channel: str) -> None:
         future_to_deferred(self.client.join(channel))
 
     @inlineCallbacks
-    def leave(self, channel):
+    def leave(self, channel: str) -> None:
         response = yield future_to_deferred(self.client.room_leave(channel))
         if isinstance(response, MatrixResponses.RoomLeaveError):
             MatrixBot.log.error("Couldn't leave room {channel}", channel=channel)
             return
         future_to_deferred(self.client.room_forget(channel))
 
-    def kick(self, channel, user, reason=""):
+    def kick(self, channel: str, user: str, reason: str = "") -> None:
         future_to_deferred(self.client.room_kick(channel, user, reason))
 
-    def ban(self, channel, user, reason=""):
+    def ban(self, channel: str, user: str, reason: str = "") -> None:
         future_to_deferred(self.client.room_ban(channel, user, reason))
 

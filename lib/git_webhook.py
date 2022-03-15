@@ -288,15 +288,10 @@ class GitWebhookServer(Resource):
         repo_name = data["repository"]["name"]
         branch = data["ref"].split("/", 2)[-1]
         action = "pushed"
-        if data["deleted"]:
-            action = colored("deleted", IRCColorCodes.red)
-            msg = "[{repo_name}] {pusher} {action} branch {branch}".format(
-                    repo_name=colored(repo_name, IRCColorCodes.blue, IRCColorCodes.gray),
-                    pusher=colored(data["pusher"]["name"],
-                                   IRCColorCodes.dark_cyan),
-                    action=action,
-                    branch=colored(branch, IRCColorCodes.dark_green))
-        else:
+        # don't send any message to the chat if the push event was a deletion
+        # as this is already handled by the "delete" event, but still trigger
+        # the push hooks as they might be required
+        if not data["deleted"]:
             if data["forced"]:
                 action = colored("force pushed", IRCColorCodes.red)
             msg = ("[{repo_name}] {pusher} {action} {num_commits} commit(s) to "
@@ -308,12 +303,12 @@ class GitWebhookServer(Resource):
                        num_commits=len(data["commits"]),
                        branch=colored(branch, IRCColorCodes.dark_green),
                        compare=url))
-        if not self.hide_github_commit_list:
-            commit_msgs = yield self.format_commits(data["commits"],
-                                                    len(data["commits"]))
-            if commit_msgs:
-                msg += "\n" + commit_msgs
-        self.report_to_irc(repo_name, msg)
+            if not self.hide_github_commit_list:
+                commit_msgs = yield self.format_commits(data["commits"],
+                                                        len(data["commits"]))
+                if commit_msgs:
+                    msg += "\n" + commit_msgs
+            self.report_to_irc(repo_name, msg)
         # subset of information that is common for both GitHUb and GitLab
         # only a few useful pieces of information
         subset = {"commits": data["commits"],

@@ -704,8 +704,10 @@ class GitWebhookServer(Resource):
             action = colored("merged", IRCColorCodes.dark_green)
         elif action == "update":
             action = "updated"
-        elif action == "approved":
+        elif action == "approved" or action == "approval":
             action = colored("approved", IRCColorCodes.dark_green)
+        elif action == "unapproved" or action == "unapproval":
+            action = colored("unapproved", IRCColorCodes.dark_yellow)
         url = yield self.url_shortener(attribs["url"])
         msg = ("[{repo_name}] {user} {action} Merge Request #{number} "
                "{title} ({source} -> {target}): {url}".format(

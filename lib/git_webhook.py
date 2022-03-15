@@ -384,9 +384,10 @@ class GitWebhookServer(Resource):
 
     def on_github_delete(self, data):
         repo_name = data["repository"]["name"]
-        msg = "[{repo_name}] {user} deleted {ref_type} {ref}".format(
+        msg = "[{repo_name}] {user} {action} {ref_type} {ref}".format(
             repo_name=colored(repo_name, IRCColorCodes.blue, IRCColorCodes.gray),
             user=colored(data["sender"]["login"], IRCColorCodes.dark_cyan),
+            action=colored("deleted", IRCColorCodes.red),
             ref_type=data["ref_type"],
             ref=colored(data["ref"], IRCColorCodes.dark_magenta))
         self.report_to_irc(repo_name, msg)

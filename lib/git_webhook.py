@@ -132,7 +132,7 @@ class GitWebhookServer(Resource):
             secret = str_to_bytes(secret)
             if service == "github":
                 h = hmac.new(secret, body, sha1)
-                if codecs.encode(h.digest(), "hex") != sig:
+                if not hmac.compare_digest(codecs.encode(h.digest(), "hex"), sig):
                     self.log.warn("Request's signature does not correspond"
                                   " with the given secret - ignoring request")
                     request.setResponseCode(200)

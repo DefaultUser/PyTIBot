@@ -48,6 +48,7 @@ class GitWebhookServer(Resource):
         self.github_secret = config["GitWebhook"].get("github_secret", None)
         self.gitlab_secret = config["GitWebhook"].get("gitlab_secret", None)
         self.channels = config["GitWebhook"]["channels"]
+        self.confidential_channels = config["GitWebhook"].get("confidential_channels", {})
         # filter settings
         self.filter_rules = config["GitWebhook"].get("FilterRules", [])
         self.prevent_github_review_flood = config["GitWebhook"].get(
@@ -246,14 +247,15 @@ class GitWebhookServer(Resource):
         #          github_pull_request_review_comment, gitlab_note
         # TODO: issue_hooks, tag_hooks, pullrequest_hooks and comment_hooks
 
-    def report_to_irc(self, repo_name, message):
+    def report_to_irc(self, repo_name, message, confidential=False):
         if self.botfactory.bot is None:
             return
         channels = []
-        if repo_name in self.channels:
-            channels = self.channels[repo_name]
-        elif "default" in self.channels:
-            channels = self.channels["default"]
+        channel_config = self.confidential_channels if confidential else self.channels
+        if repo_name in channel_config:
+            channels = channel_config[repo_name]
+        elif "default" in channel_config:
+            channels = channel_config["default"]
         if not isinstance(channels, list):
             # don't error out if the config has a string instead of a list
             channels = [channels]
@@ -650,13 +652,14 @@ class GitWebhookServer(Resource):
                                              IRCColorCodes.dark_yellow),
                               title=attribs["title"],
                               url=url))
-        self.report_to_irc(repo_name, msg)
+        self.report_to_irc(repo_name, msg, confidential=attribs.get("confidential", False))
 
     @defer.inlineCallbacks
     def on_gitlab_note(self, data):
         repo_name = data["project"]["name"]
         attribs = data["object_attributes"]
         noteable_type = attribs["noteable_type"]
+        confidential = data["event_type"] == "confidential_note"
         if noteable_type == "Commit":
             id = attribs["commit_id"]
             title = data["commit"]["message"].split("\n")[0]
@@ -683,7 +686,7 @@ class GitWebhookServer(Resource):
                    number=colored(str(id), IRCColorCodes.dark_yellow),
                    title=title,
                    url=url))
-        self.report_to_irc(repo_name, msg)
+        self.report_to_irc(repo_name, msg, confidential=confidential)
 
     @defer.inlineCallbacks
     def on_gitlab_merge_request(self, data):

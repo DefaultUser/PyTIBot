@@ -46,6 +46,9 @@ GitWebhook:
     - "#myotherchannel"
     default:
     - "#mydefaultchannel"
+  confidential_channels: # only supported with GitLab
+    default:
+    - "#mysecretchannel"
   sslport: 4041
   certificate: /path/to/cert.pem
   privkey: /path/to/privkey.pem

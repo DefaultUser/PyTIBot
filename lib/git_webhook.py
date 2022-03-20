@@ -660,6 +660,7 @@ class GitWebhookServer(Resource):
         attribs = data["object_attributes"]
         noteable_type = attribs["noteable_type"]
         confidential = data["event_type"] == "confidential_note"
+        id_prefix = ""
         if noteable_type == "Commit":
             id = attribs["commit_id"]
             title = data["commit"]["message"].split("\n")[0]
@@ -669,20 +670,23 @@ class GitWebhookServer(Resource):
             id = data["merge_request"]["iid"]
             title = data["merge_request"]["title"]
             noteable_type = "Merge Request"
+            id_prefix = "!"
         elif noteable_type == "Issue":
             id = data["issue"]["iid"]
             title = data["issue"]["title"]
+            id_prefix = "#"
         elif noteable_type == "Snippet":
             id = data["snippet"]["id"]
             title = data["snippet"]["title"]
         else:
             return
         url = yield self.url_shortener(attribs["url"])
-        msg = ("[{repo_name}] {user} commented on {noteable_type} {number} "
+        msg = ("[{repo_name}] {user} commented on {noteable_type} {id_prefix}{number} "
                "{title} {url}".format(
                    repo_name=colored(repo_name, IRCColorCodes.blue, IRCColorCodes.gray),
                    user=colored(data["user"]["name"], IRCColorCodes.dark_cyan),
                    noteable_type=noteable_type,
+                   id_prefix=id_prefix,
                    number=colored(str(id), IRCColorCodes.dark_yellow),
                    title=title,
                    url=url))
@@ -712,7 +716,7 @@ class GitWebhookServer(Resource):
         elif action == "unapproval":
             action = colored("removed approval for", IRCColorCodes.dark_yellow)
         url = yield self.url_shortener(attribs["url"])
-        msg = ("[{repo_name}] {user} {action} Merge Request #{number} "
+        msg = ("[{repo_name}] {user} {action} Merge Request !{number} "
                "{title} ({source} -> {target}): {url}".format(
                    repo_name=colored(repo_name, IRCColorCodes.blue, IRCColorCodes.gray),
                    user=colored(data["user"]["name"], IRCColorCodes.dark_cyan),

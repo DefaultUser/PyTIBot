@@ -398,6 +398,8 @@ GitWebhook:
   - eventtype == push AND pusher.name == filteredUser
   # example for gitlab (API: https://docs.gitlab.com/ce/user/project/integrations/webhooks.html)
   - eventtype == note AND object_attributes.noteable_type == Snippet
+  # for gitlab merge_requests an "_extended_action" attribute is inserted into "object_attributes", that
+  # extends the "action" attribute by "mark_as_draft" and "mark_as_ready"
   url_shortener:
     # $URL will be replaced by the url to shorten
     service_url: "https://example.com/shorten"

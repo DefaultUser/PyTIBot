@@ -144,8 +144,8 @@ class GitWebhookServer(Resource):
                                   " with the given secret - ignoring request")
                     request.setResponseCode(200)
                     return b""
-        # filtering: inject eventtype for filtering
-        data["eventtype"] = eventtype
+        # insert pseudo keys into data for better filtering
+        GitWebhookServer.insert_pseudo_data(service, data, eventtype)
         if self.filter_event(data):
             self.log.debug("filtering out event {event}", event=data)
         elif hasattr(self, "on_{}_{}".format(service, eventtype)):
@@ -158,6 +158,29 @@ class GitWebhookServer(Resource):
         # always return 200
         request.setResponseCode(200)
         return b""
+
+    @staticmethod
+    def insert_pseudo_data(service, data, eventtype):
+        """
+        Insert additional filter data into webhook data to enable better
+        reporting and filtering for cases that are not covered by the
+        webhook APIs.
+        """
+        # filtering: inject eventtype for filtering
+        data["eventtype"] = eventtype
+        if service == "gitlab":
+            if data["object_kind"] == "merge_request":
+                action = data["object_attributes"]["action"]
+                if action == "update":
+                    if "title" in data["changes"]:
+                        previous = data["changes"]["title"]["previous"]
+                        current = data["changes"]["title"]["current"]
+                        if current == "Draft: " + previous:
+                            action = "mark_as_draft"
+                        elif previous == "Draft: " + current:
+                            action = "mark_as_ready"
+                data["object_attributes"]["_extended_action"] = action
+
 
     def filter_event(self, data):
         """
@@ -696,7 +719,7 @@ class GitWebhookServer(Resource):
     def on_gitlab_merge_request(self, data):
         attribs = data["object_attributes"]
         repo_name = attribs["target"]["name"]
-        action = attribs["action"]
+        action = attribs["_extended_action"]
         if action == "open":
             action = colored("opened", IRCColorCodes.dark_green)
         elif action == "reopen":
@@ -707,6 +730,10 @@ class GitWebhookServer(Resource):
             action = colored("merged", IRCColorCodes.dark_green)
         elif action == "update":
             action = "updated"
+        elif action == "mark_as_draft":
+            action = colored("marked as draft:", IRCColorCodes.gray)
+        elif action == "mark_as_ready":
+            action = colored("marked as ready:", IRCColorCodes.dark_green)
         elif action == "approved":
             action = colored("approved", IRCColorCodes.dark_green)
         elif action == "approval":

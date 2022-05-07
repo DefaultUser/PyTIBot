@@ -398,7 +398,6 @@ GitWebhook:
   - eventtype == push AND pusher.name == filteredUser
   # example for gitlab (API: https://docs.gitlab.com/ce/user/project/integrations/webhooks.html)
   - eventtype == note AND object_attributes.noteable_type == Snippet
-  # url shortener for gitlab
   url_shortener:
     # $URL will be replaced by the url to shorten
     service_url: "https://example.com/shorten"
@@ -444,8 +443,7 @@ GitWebhook:
 ```
 Alternatively to *sslport* you can specify *port* to create a plain HTTP server without SSL/TLS encryption. However this is only recommended with a local SSL/TLS encrypted Proxy Server.
 
-Urls in GitHub events will be shortened using `https://git.io`. This service is free, but can only be used with urls for GitHub domains. For urls in Gitlab events, you can supply a service
-of your choice. As these services tend to require access tokens and have no common API, the interface is very generic.
+You can supply an url-shortening service of your choice. As these services tend to require access tokens and have no common API, the interface is very generic.
 
 Certain Webhook events can be used to trigger actions that the bot will execute (currently only Push events are supported). Success or failure will be reported to *hook_report_users*.<br/>
 Currently these types of actions are supported:

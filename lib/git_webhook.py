@@ -440,10 +440,30 @@ class GitWebhookServer(Resource):
     @defer.inlineCallbacks
     def on_github_release(self, data):
         repo_name = data["repository"]["name"]
+        action = data["action"]
+        if action in ("published", "created", "released"):
+            action = colored(action, IRCColorCodes.dark_green)
+        elif action == "prereleased":
+            action = colored(action, IRCColorCodes.dark_cyan)
+        elif action in ("unpublished", "deleted"):
+            action = colored(action, IRCColorCodes.red)
+        type_ = ""
+        if data["release"]["draft"]:
+            type_ = " (Draft)"
+        elif data["release"]["prerelease"]:
+            type_ = " (Prerelease)"
+        release_name = data["release"]["name"] or data["release"]["tag_name"]
+        user = data["sender"]["login"]
         url = yield self.url_shortener(data["release"]["html_url"])
-        msg = "[{repo_name}] New release {url}".format(
-            repo_name=colored(data["repository"]["name"], IRCColorCodes.blue, IRCColorCodes.gray),
-            url=url)
+        msg = ("[{repo_name}] {user} {action} release {release_name}{type_} "
+               "({url})".format(user=user, action=action,
+                                release_name=colored(release_name,
+                                                     IRCColorCodes.dark_yellow),
+                                type_=type_,
+                                repo_name=colored(data["repository"]["name"],
+                                                  IRCColorCodes.blue,
+                                                  IRCColorCodes.gray),
+                                url=url))
         self.report_to_irc(repo_name, msg)
 
     @defer.inlineCallbacks

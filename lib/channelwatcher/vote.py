@@ -334,7 +334,7 @@ class CategoryModifyOptions(OptionsWithoutHandlers):
         self["value"] = " ".join(value)
 
     def postOptions(self):
-        if self["field"] not in ["description", "color", "confidential"]:
+        if self["field"] not in typing.get_args(CategoryModifyFieldType):
             raise usage.UsageError("Invalid column name specified")
         if self["field"] == "confidential":
             if self["value"].lower() in ["true", "yes", "1"]:

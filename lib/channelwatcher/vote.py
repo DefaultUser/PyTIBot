@@ -74,7 +74,8 @@ PRAGMA foreign_keys = ON;""",
     name TEXT UNIQUE NOT NULL,
     description TEXT,
     color TEXT CHECK(color in ("white", "black", "dark_blue", "dark_green", "red", "dark_red", "dark_magenta", "dark_yellow", "yellow", "green", "dark_cyan", "cyan", "blue", "magenta", "dark_gray", "gray", "")), -- IRC colors
-    confidential BOOLEAN DEFAULT false CHECK(confidential in (true, false)) -- only for filtering on website
+    confidential BOOLEAN DEFAULT false CHECK(confidential in (true, false)), -- only for filtering on website
+    default_duration_seconds INTEGER
 );"""]
 
 
@@ -93,10 +94,11 @@ UserListStatusFilter = Enum("UserListStatusFilter", typing.get_args(UserListStat
 UserModifyFieldType = typing.Literal["name", "privilege"]
 PollModifyFieldType = typing.Literal["category", "description"]
 VoteDecisionType = typing.Literal["yes", "no", "abstain"]
-CategoryModifyFieldType = typing.Literal["description", "color", "confidential"]
+CategoryModifyFieldType = typing.Literal["description", "color", "confidential", "duration"]
 
 
 IRCHelp = namedtuple("IRCHelp", "subCommands flags params pos_params")
+CategoryInfo = namedtuple("CategoryInfo", "id_ name description color confidential default_duration_seconds")
 
 
 class OptionsWithoutHandlers(usage.Options):
@@ -328,6 +330,8 @@ class CategoryAddOptions(OptionsWithoutHandlers):
 
 
 class CategoryModifyOptions(OptionsWithoutHandlers):
+    durationRegex = re.compile(r"((\d+)\s*d(?:ays?)?)?\s*(?:(\d+)\s*h(?:ours?)?)?$")
+
     def parseArgs(self, name: str, field: CategoryModifyFieldType, *value):
         self["name"] = name
         self["field"] = field
@@ -346,6 +350,17 @@ class CategoryModifyOptions(OptionsWithoutHandlers):
         elif self["field"] == "color":
             if self["value"].lower() in ["none", "null"]:
                 self["value"] = None
+        elif self["field"] == "duration":
+            self["field"] = "default_duration_seconds"
+            if self["value"].lower() in ["none", "null"] or not self["value"]:
+                self["value"] = None
+            else:
+                parsed = CategoryModifyOptions.durationRegex.match(self["value"])
+                if not parsed:
+                    raise usage.UsageError("Invalid duration given")
+                days = int(parsed.group(2) or 0)
+                hours = int(parsed.group(3) or 0)
+                self["value"] = timedelta(days=days, hours=hours)
 
 
 class CategoryOptions(OptionsWithoutHandlers):
@@ -525,6 +540,8 @@ class Vote(abstract.ChannelWatcher):
 
     @staticmethod
     def update_category_field(cursor, name, field, value):
+        if field == "default_duration_seconds" and value is not None:
+            value = value.seconds + value.days*24*60*60
         cursor.execute('UPDATE Categories '
                        'SET {field}=:value '
                        'WHERE name=:name;'.format(field=field),
@@ -886,14 +903,20 @@ class Vote(abstract.ChannelWatcher):
             if not res:
                 self.bot.notice(issuer, "Invalid category specified")
                 return
-            category_id, category_color = res[0]
+            category_id = res.id_
+            category_color = res.color
+            if res.default_duration_seconds:
+                duration = timedelta(seconds=res.default_duration_seconds)
+            else:
+                duration = self.poll_duration
         else:
             category_id = None
             category_color = None
+            duration = self.poll_duration
         with self._lock:
             try:
-                now = datetime.utcnow()
-                end = now + self.poll_duration
+                now = datetime.now(tz=timezone.utc)
+                end = now + duration
                 yield self.dbpool.runInteraction(Vote.insert_poll, issuer_auth,
                                                  description, category_id, now, end)
             except Exception as e:
@@ -920,7 +943,7 @@ class Vote(abstract.ChannelWatcher):
             self.bot.msg(self.channel, msg)
             if self.notification_channel:
                 self.bot.msg(self.notification_channel, msg)
-        self._poll_delay_call(poll_id, datetime.now(tz=timezone.utc) + Vote.PollDefaultDuration)
+        self._poll_delay_call(poll_id, end)
         if kwargs["yes"]:
             self.cmd_vote(issuer, poll_id, VoteDecision.YES, "")
         elif kwargs["no"]:
@@ -945,7 +968,7 @@ class Vote(abstract.ChannelWatcher):
             if not res:
                 self.bot.notice(issuer, "No such category")
                 return
-            value = res[0][0]
+            value = res.id_
         try:
             yield self.dbpool.runInteraction(Vote.update_poll_field, poll_id,
                                              field, value)
@@ -1188,10 +1211,18 @@ class Vote(abstract.ChannelWatcher):
             url = "N/A"
         self.bot.notice(issuer, url)
 
+    @defer.inlineCallbacks
     def get_category_info(self, category_name):
-        return self.dbpool.runQuery('SELECT id, color FROM Categories '
-                                    'WHERE name=:name;',
-                                    {"name": category_name})
+        res = yield self.dbpool.runQuery('SELECT id, description, color, confidential, '
+                                         'default_duration_seconds FROM Categories '
+                                         'WHERE name=:name;',
+                                         {"name": category_name})
+        if not res:
+            return None
+        return CategoryInfo(id_=res[0][0], name=category_name,
+                            description=res[0][1], color=res[0][2],
+                            confidential=res[0][3],
+                            default_duration_seconds=res[0][4])
 
     @defer.inlineCallbacks
     def cmd_category_add(self, issuer, name, description, color, confidential):

@@ -15,11 +15,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import asyncio
 from twisted.internet.defer import Deferred, ensureDeferred, inlineCallbacks
-from twisted.internet.task import LoopingCall
 from twisted.internet import reactor
 from twisted.logger import Logger
 from twisted.words.protocols import irc
-from nio import AsyncClient, MatrixRoom, RoomMessageText, RoomMessageNotice, RoomMemberEvent
+from nio import AsyncClient, ClientConfig, MatrixRoom, RoomMessageText, RoomMessageNotice, RoomMemberEvent
 from nio import responses as MatrixResponses
 from nio.api import RoomPreset
 import os
@@ -48,14 +47,16 @@ class MatrixBot:
 
     def __init__(self, config: Config) -> None:
         self.config = config
+        clientConfig = ClientConfig(store_sync_tokens=True)
         self.client = AsyncClient(config["Connection"]["server"],
                                   config["Connection"]["username"],
-                                  device_id=config["Connection"].get("deviceID", None))
+                                  device_id=config["Connection"].get("deviceID", None),
+                                  config=clientConfig,
+                                  store_path=fs.adirs.user_cache_dir)
         self.load_settings()
         self.client.add_event_callback(self.on_message, RoomMessageText)
         self.client.add_event_callback(self.on_notice, RoomMessageNotice)
         self.client.add_event_callback(self.on_memberevent, RoomMemberEvent)
-        self.sync_token_looping_call = LoopingCall(self.save_latest_sync_token)
 
     def on_message(self, room: MatrixRoom, event: RoomMessageText) -> None:
         MatrixBot.log.info("{room.display_name} | {event.sender} : {event.body}",
@@ -137,11 +138,6 @@ class MatrixBot:
                            room=room, event=event)
         # TODO: channelwatchers
 
-    @property
-    def state_filepath(self) -> str:
-        server_address = self.client.homeserver.removeprefix("http://").removeprefix("https://")
-        return os.path.join(fs.adirs.user_cache_dir, f"state-{server_address}")
-
     def load_settings(self) -> None:
         MatrixBot.log.info("Loading settings from {path}", path=self.config._path)
         # TODO: setup aliases, triggers, commands
@@ -174,34 +170,19 @@ class MatrixBot:
         # WARNING: don't await the signedOn method
         # it requires a first sync to know the already joined rooms
         self.signedOn()
-        sync_token = None
-        if (os.path.isfile(self.state_filepath)):
-            with open(self.state_filepath) as f:
-                sync_token = f.read().strip()
         await future_to_deferred(self.client.sync_forever(timeout=30000, loop_sleep_time=1000,
-                                                          since=sync_token, full_state=True))
+                                                          full_state=True))
         return Deferred()
 
     @inlineCallbacks
     def signedOn(self) -> None:
         yield future_to_deferred(asyncio.ensure_future(self.client.synced.wait()))
-        if not self.sync_token_looping_call.running:
-            self.sync_token_looping_call.start(600, now=False)
         for room in self.config["Connection"]["channels"]:
             if room not in self.client.rooms:
                 self.join(room)
 
-    def save_latest_sync_token(self):
-        if not self.client.next_batch:
-            return
-        with open(self.state_filepath, "w") as f:
-            f.write(self.client.next_batch)
-
     def quit(self, ignored=None) -> None:
         self.stop()
-        # save latest sync token
-        self.sync_token_looping_call.stop()
-        self.save_latest_sync_token()
         MatrixBot.log.info("Shutting down")
         reactor.stop()
 

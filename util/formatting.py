@@ -16,12 +16,14 @@
 
 from enum import IntEnum, Enum
 import re
-from collections import namedtuple
 from colormath.color_objects import sRGBColor, LabColor
 from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
+from dataclasses import dataclass
 from html import escape as htmlescape
-from twisted.web.template import tags
+from typing import Generator, NamedTuple
+from twisted.web.template import tags, Tag
+
 
 ## \brief Token to start underlined text
 _UNDERLINE = "\x1f"
@@ -101,6 +103,19 @@ ANSI_FG_START = 30
 ANSI_BG_START = 40
 ANSIColors = IntEnum("ANSIColors", "black red green yellow blue magenta cyan white",
                      start=0)
+
+
+@dataclass
+class Style:
+    underline: bool | None = None
+    bold: bool | None = None
+    italic: bool | None = None
+    fg: IRCColorCodes | None = None
+    bg: IRCColorCodes | None = None
+
+class StyledTextFragment(NamedTuple):
+    text: str
+    style: Style | None = None
 
 
 def colored(text, fgcolor, bgcolor=None, endtoken=True):
@@ -197,10 +212,8 @@ format_pattern = re.compile("(\x1f)|(\x02)|(\x03)(\\d{1,2}(,\\d{1,2})?)?|"
                             "(\x1d)|(\x0f)")
 # underline, bold, color, (fg,bg?), (,bg), italic, normal
 
-styled_text = namedtuple("StyledText", "text style")
 
-
-def _extract_irc_style(text):
+def _extract_irc_style(text: str) -> Generator[StyledTextFragment, None, None]:
     """
     \brief Extract IRC formatting information from string
     """
@@ -210,59 +223,58 @@ def _extract_irc_style(text):
     # <span style="font-style:italic">{substr}</span>
     # <span style="font-weight:bold">{substr}</span>
     substrings = format_pattern.split(text)
-    style_dict = {"underline": False, "bold": False, "fg": None, "bg": None,
-                  "italic": False}
+    style = Style()
     if len(substrings) % 8:
         # first substring has no formatting information
-        yield styled_text(text=substrings[0], style=style_dict)
+        yield StyledTextFragment(text=substrings[0], style=style)
         start = 1
     else:
         start = 0
     for i in range(start, len(substrings), 8):
         if substrings[i]:
-            style_dict["underline"] = not style_dict["underline"]
+            style.underline = not style.underline
         if substrings[i+1]:
-            style_dict["bold"] = not style_dict["bold"]
+            style.bold = not style.bold
         if substrings[i+2]:
             if not substrings[i+3]:
-                style_dict["fg"] = None
-                style_dict["bg"] = None
+                style.fg = None
+                style.bg = None
             elif "," in substrings[i+3]:
-                style_dict["fg"], style_dict["bg"] = [IRCColorCodes(val.zfill(2)) for val in
-                                                      substrings[i+3].split(",")]
+                style.fg, style.bg = [IRCColorCodes(val.zfill(2)) for val in
+                                      substrings[i+3].split(",")]
             else:
-                style_dict["fg"] = IRCColorCodes(substrings[i+3].zfill(2))
+                style.fg = IRCColorCodes(substrings[i+3].zfill(2))
         if substrings[i+5]:
-            style_dict["italic"] = not style_dict["italic"]
+            style.italic = not style.italic
         if substrings[i+6]:
             # big reset switch
-            style_dict = {"underline": False, "bold": False, "fg": None,
-                          "bg": None, "italic": False}
-        yield styled_text(text=substrings[i+7], style=style_dict)
+            style = Style()
+        yield StyledTextFragment(text=substrings[i+7], style=style)
 
-def _style_html_string(style_dict):
+def _style_html_string(style):
     styles = []
-    if style_dict["underline"]:
-        styles.append("text-decoration:underline;")
-    if style_dict["bold"]:
-        styles.append("font-weight:bold;")
-    if style_dict["fg"]:
-        styles.append("color:{};".format(IRCColorsHex[style_dict["fg"]]))
-    if style_dict["bg"]:
-        styles.append("background-color:{};".format(
-            IRCColorsHex[style_dict["bg"]]))
-    if style_dict["italic"]:
-        styles.append("font-style:italic;")
+    if style.underline:
+        styles.append("text-decoration:underline")
+    if style.bold:
+        styles.append("font-weight:bold")
+    if style.fg:
+        styles.append("color:{}".format(IRCColorsHex[style.fg]))
+    if style.bg:
+        styles.append("background-color:{}".format(
+            IRCColorsHex[style.bg]))
+    if style.italic:
+        styles.append("font-style:italic")
     return styles
 
-def _style_dict_to_html(text, style_dict, link_urls=True):
-    styles = _style_html_string(style_dict)
+def _styled_fragment_to_html(fragment: StyledTextFragment,
+                             link_urls: bool=True) -> str:
+    styles = _style_html_string(fragment.style)
     if link_urls:
-        text = url_pat.sub(r"<a href='\1'>\1</a>", text)
+        text = url_pat.sub(r"<a href='\1'>\1</a>", fragment.text)
     if styles:
         return '<span style="{style}">{text}</span>'.format(
-            style=";".join(styles), text=text)
-    return text
+            style=";".join(styles), text=fragment.text)
+    return fragment.text
 
 
 def to_html(text, link_urls=True):
@@ -271,25 +283,26 @@ def to_html(text, link_urls=True):
     """
     html = ""
     for frag in _extract_irc_style(htmlescape(text)):
-        html += _style_dict_to_html(frag.text, frag.style, link_urls)
+        html += _styled_fragment_to_html(frag, link_urls)
     return html
 
 
-def _style_dict_to_matrix(text, style_dict):
-    if style_dict["underline"]:
+def _styled_fragment_to_matrix(fragment: StyledTextFragment) -> str:
+    text, style = fragment
+    if style.underline:
         text = "<u>"+text+"</u>"
-    if style_dict["bold"]:
+    if style.bold:
         text = "<b>"+text+"</b>"
-    if style_dict["italic"]:
+    if style.italic:
         text = "<i>"+text+"</i>"
     color = ""
-    if style_dict["fg"]:
+    if style.fg:
         # 'color' seems to be better supported than 'data-mx-color'
-        color += " color=\""+IRCColorsHex[style_dict["fg"]]+"\""
-    if style_dict["bg"]:
+        color += " color=\""+IRCColorsHex[style.fg]+"\""
+    if style.bg:
         # 'background-color' is not mentioned in the spec and doesn't seem to be
         # supported in clients
-        color += " data-mx-bg-color=\""+IRCColorsHex[style_dict["bg"]]+"\""
+        color += " data-mx-bg-color=\""+IRCColorsHex[style.bg]+"\""
     if color:
         text = "<font"+color+">"+text+"</font>"
     return text
@@ -301,12 +314,14 @@ def to_matrix(text):
     """
     result = ""
     for frag in _extract_irc_style(htmlescape(text)):
-        result += _style_dict_to_matrix(frag.text, frag.style)
+        result += _styled_fragment_to_matrix(frag)
     return result
 
 
-def _style_dict_to_tags(text, style_dict, link_urls=True):
-    styles = _style_html_string(style_dict)
+def _styled_fragment_to_tags(fragment: StyledTextFragment,
+                             link_urls: bool=True) -> str | Tag:
+    text, style = fragment
+    styles = _style_html_string(style)
     if link_urls:
         if url_pat.search(text):
             frag_list = []
@@ -320,7 +335,7 @@ def _style_dict_to_tags(text, style_dict, link_urls=True):
                 frag_list.append(text[start:])
             text = frag_list
     if styles:
-        return tags.span(text, style=styles)
+        return tags.span(text, style=";".join(styles))
     return text
 
 
@@ -335,7 +350,7 @@ def to_tags(text, link_urls=True):
     # <span style="font-weight:bold">{substr}</span>
     t = []
     for frag in _extract_irc_style(text):
-        t.append(_style_dict_to_tags(frag.text, frag.style, link_urls))
+        t.append(_styled_fragment_to_tags(frag, link_urls))
     return t
 
 

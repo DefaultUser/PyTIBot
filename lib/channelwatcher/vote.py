@@ -35,7 +35,7 @@ from backends import Backends
 from util import filesystem as fs
 from util.decorators import maybe_deferred
 from util import formatting
-from util.formatting import IRCColorCodes
+from util.formatting import ColorCodes
 
 
 _INIT_DB_STATEMENTS = ["""
@@ -112,7 +112,7 @@ class OptionsWithoutHandlers(usage.Options):
         params = []
         pos_params = []
         for long, short, _, desc in getattr(cls, "subCommands", []):
-            long = formatting.colored(long, IRCColorCodes.cyan)
+            long = formatting.colored(long, ColorCodes.cyan)
             if short:
                 subCommands.append("{} ({}): {}".format(long, short, desc))
             else:
@@ -399,20 +399,20 @@ class Vote(abstract.ChannelWatcher):
     PrivilegeOrder = {"ADMIN": 0, "USER": 10, "REVOKED": 20} # Lower means shown earlier
 
     class Colors:
-        poll_id = IRCColorCodes.dark_yellow
-        user = IRCColorCodes.blue
-        description = IRCColorCodes.dark_cyan
-        comment = IRCColorCodes.cyan
-        yes = IRCColorCodes.green
-        no = IRCColorCodes.red
-        PASSED = IRCColorCodes.green
-        FAILED = IRCColorCodes.red
-        TIED = IRCColorCodes.dark_yellow
-        VETOED = IRCColorCodes.dark_red
-        DECIDED = IRCColorCodes.dark_green
-        ADMIN = IRCColorCodes.dark_green
-        USER = IRCColorCodes.green
-        REVOKED = IRCColorCodes.dark_red
+        poll_id = ColorCodes.dark_yellow
+        user = ColorCodes.blue
+        description = ColorCodes.dark_cyan
+        comment = ColorCodes.cyan
+        yes = ColorCodes.green
+        no = ColorCodes.red
+        PASSED = ColorCodes.green
+        FAILED = ColorCodes.red
+        TIED = ColorCodes.dark_yellow
+        VETOED = ColorCodes.dark_red
+        DECIDED = ColorCodes.dark_green
+        ADMIN = ColorCodes.dark_green
+        USER = ColorCodes.green
+        REVOKED = ColorCodes.dark_red
 
 
     def __init__(self, bot, channel, config):
@@ -554,11 +554,11 @@ class Vote(abstract.ChannelWatcher):
     @staticmethod
     def colored_category_name(name, colorname):
         if colorname:
-            color = IRCColorCodes[colorname]
+            color = ColorCodes[colorname]
             if formatting.good_contrast_with_black[color]:
-                fg = IRCColorCodes.black
+                fg = ColorCodes.black
             else:
-                fg = IRCColorCodes.white
+                fg = ColorCodes.white
             return formatting.colored(name, fg, color, endtoken=True)
         return name
 
@@ -1201,8 +1201,8 @@ class Vote(abstract.ChannelWatcher):
                     status=Vote.colored_poll_status(status),
                     desc=Vote.colored_description(desc),
                     creator=Vote.colored_user(creator),
-                    yes=formatting.colored(str(vote_count.yes), IRCColorCodes.green),
-                    no=formatting.colored(str(vote_count.no), IRCColorCodes.red),
+                    yes=formatting.colored(str(vote_count.yes), ColorCodes.green),
+                    no=formatting.colored(str(vote_count.no), ColorCodes.red),
                     vote_count=vote_count, category=category_str))
 
     def cmd_poll_url(self, issuer):
@@ -1337,8 +1337,8 @@ class Vote(abstract.ChannelWatcher):
         if not early_consensus:
             msg += "\nCurrent Result: YES:{yes} | NO:{no} | ABSTAINED:{vote_count.abstained} "\
                     "| NOT VOTED:{vote_count.not_voted}".format(
-                            yes=formatting.colored(str(vote_count.yes), IRCColorCodes.green),
-                            no=formatting.colored(str(vote_count.no), IRCColorCodes.red),
+                            yes=formatting.colored(str(vote_count.yes), ColorCodes.green),
+                            no=formatting.colored(str(vote_count.no), ColorCodes.red),
                             vote_count=vote_count)
         self.bot.msg(self.channel, msg)
         if early_consensus:
@@ -1395,28 +1395,28 @@ class Vote(abstract.ChannelWatcher):
                 except Exception as e:
                     self.bot.notice(user, formatting.colored(
                         "No such command: "+topic,
-                        IRCColorCodes.red))
+                        ColorCodes.red))
                     return
 
         sig = option_class.irc_help()
         if sig.subCommands:
             self.bot.notice(user, "{}: {}".format(
                 formatting.colored("Available commands",
-                                   IRCColorCodes.blue),
+                                   ColorCodes.blue),
                 " | ".join(sig.subCommands)))
             return
         help_lines = [desc]
         if sig.flags:
             help_lines.append("{}: {}".format(formatting.colored("Flags",
-                                                                 IRCColorCodes.yellow),
+                                                                 ColorCodes.yellow),
                                               "; ".join(sig.flags)))
         if sig.params:
             help_lines.append("{}: {}".format(formatting.colored("Optional parameters",
-                                                                 IRCColorCodes.yellow),
+                                                                 ColorCodes.yellow),
                                               "; ".join(sig.params)))
         if sig.pos_params:
             help_lines.append("{}: {}".format(formatting.colored("Positional parameters",
-                                                                 IRCColorCodes.green),
+                                                                 ColorCodes.green),
                                               "; ".join(sig.pos_params)))
         self.bot.notice(user, "\n".join(help_lines))
 

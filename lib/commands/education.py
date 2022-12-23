@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2021>  <Sebastian Schmidt>
+# Copyright (C) <2015-2022>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,7 +34,7 @@ list of choices"""
                 result = random.choice(args)
         except (IndexError, ValueError):
             result = formatting.colored("Invalid call - check the help",
-                                        formatting.IRCColorCodes.red)
+                                        formatting.ColorCodes.red)
         bot.msg(channel, result)
 
 

@@ -31,7 +31,7 @@ from lib.channelwatcher.vote import PollListStatusFilter, CommandOptions
 
 from util.misc import bytes_to_str
 from util import filesystem as fs
-from util.formatting import IRCColorCodes, IRCColorsHex, good_contrast_with_black, to_tags
+from util.formatting import ColorCodes, ColorsHex, good_contrast_with_black, to_tags
 
 
 log = Logger()
@@ -45,13 +45,13 @@ class VotePageElement(PageElement):
         if not color:
             return None
         try:
-            color_code = IRCColorCodes[color]
+            color_code = ColorCodes[color]
             if good_contrast_with_black[color_code]:
-                fg = IRCColorCodes.black
+                fg = ColorCodes.black
             else:
-                fg = IRCColorCodes.white
+                fg = ColorCodes.white
             return "color: {fg};background-color: {bg};".format(
-                    fg=IRCColorsHex[fg], bg=IRCColorsHex[color_code])
+                    fg=ColorsHex[fg], bg=ColorsHex[color_code])
         except Exception as e:
             log.info("Category has invalid color: {color}: {e}",
                      color=color, e=e)

@@ -41,17 +41,17 @@ def bot_help(bot):
                 if arg:
                     try:
                         _gen = getattr(thismodule, commands[arg])
-                        doc.append(formatting.colored(arg + ": ", formatting.IRCColorCodes.red) +
+                        doc.append(formatting.colored(arg + ": ", formatting.ColorCodes.red) +
                                    formatting.colored(_gen.__doc__ or "No help available",
-                                                      formatting.IRCColorCodes.dark_blue))
+                                                      formatting.ColorCodes.dark_blue))
                     except (AttributeError, KeyError):
                         doc.append(formatting.colored("No command called ",
-                                                      formatting.IRCColorCodes.red) +
-                                   formatting.colored(arg, formatting.IRCColorCodes.dark_green))
+                                                      formatting.ColorCodes.red) +
+                                   formatting.colored(arg, formatting.ColorCodes.dark_green))
         else:
-            doc = [formatting.colored("Commands: ", formatting.IRCColorCodes.dark_yellow) +
+            doc = [formatting.colored("Commands: ", formatting.ColorCodes.dark_yellow) +
                    ", ".join(commands)]
             if aliases:
-                doc.append(formatting.colored("Aliases: ", formatting.IRCColorCodes.dark_green) +
+                doc.append(formatting.colored("Aliases: ", formatting.ColorCodes.dark_green) +
                            ", ".join(aliases))
         bot.msg(channel, "\n".join(doc))

@@ -40,7 +40,8 @@ url_pat = re.compile(r"(((https?)|(ftps?)|(sftp))://[^\s\"\')]+)")
 
 ## \brief Maps color names to the corresponding mIRC numerical values
 ## (as a two-digit strings)
-IRCColorCodes = Enum("IRCColorCodes", {
+## These colors shall serve as a generic set of colors used throughout the application
+ColorCodes = Enum("ColorCodes", {
     "white": "00",
     "black": "01",
     "dark_blue": "02",
@@ -60,42 +61,42 @@ IRCColorCodes = Enum("IRCColorCodes", {
 })
 
 ## \brief hex color codes for mIRC numerical values
-IRCColorsHex = {
-    IRCColorCodes.white: "#FFFFFF",
-    IRCColorCodes.black: "#000000",
-    IRCColorCodes.dark_blue: "#00007F",
-    IRCColorCodes.dark_green: "#009300",
-    IRCColorCodes.red: "#FF0000",
-    IRCColorCodes.dark_red: "#7F0000",
-    IRCColorCodes.dark_magenta: "#9C009C",
-    IRCColorCodes.dark_yellow: "#FC7F00",
-    IRCColorCodes.yellow: "#FFFF00",
-    IRCColorCodes.green: "#00FC00",
-    IRCColorCodes.dark_cyan: "#009393",
-    IRCColorCodes.cyan: "#00FFFF",
-    IRCColorCodes.blue: "#0000FC",
-    IRCColorCodes.magenta: "#FF00FF",
-    IRCColorCodes.dark_gray: "#7F7F7F",
-    IRCColorCodes.gray: "#D2D2D2"}
+ColorsHex = {
+    ColorCodes.white: "#FFFFFF",
+    ColorCodes.black: "#000000",
+    ColorCodes.dark_blue: "#00007F",
+    ColorCodes.dark_green: "#009300",
+    ColorCodes.red: "#FF0000",
+    ColorCodes.dark_red: "#7F0000",
+    ColorCodes.dark_magenta: "#9C009C",
+    ColorCodes.dark_yellow: "#FC7F00",
+    ColorCodes.yellow: "#FFFF00",
+    ColorCodes.green: "#00FC00",
+    ColorCodes.dark_cyan: "#009393",
+    ColorCodes.cyan: "#00FFFF",
+    ColorCodes.blue: "#0000FC",
+    ColorCodes.magenta: "#FF00FF",
+    ColorCodes.dark_gray: "#7F7F7F",
+    ColorCodes.gray: "#D2D2D2"}
 
 # dict that indicates if a color is a good background for black text
 good_contrast_with_black = {
-    IRCColorCodes.white: True,
-    IRCColorCodes.black: False,
-    IRCColorCodes.dark_blue: False,
-    IRCColorCodes.dark_green: True,
-    IRCColorCodes.red: True,
-    IRCColorCodes.dark_red: True,
-    IRCColorCodes.dark_magenta: True,
-    IRCColorCodes.dark_yellow: True,
-    IRCColorCodes.yellow: True,
-    IRCColorCodes.green: True,
-    IRCColorCodes.dark_cyan: True,
-    IRCColorCodes.cyan: True,
-    IRCColorCodes.blue: True,
-    IRCColorCodes.magenta: True,
-    IRCColorCodes.dark_gray: True,
-    IRCColorCodes.gray: True
+    ColorCodes.white: True,
+    ColorCodes.black: False,
+    ColorCodes.dark_blue: False,
+    ColorCodes.dark_green: True,
+    ColorCodes.red: True,
+    ColorCodes.dark_red: True,
+    ColorCodes.dark_magenta: True,
+    ColorCodes.dark_yellow: True,
+    ColorCodes.yellow: True,
+    ColorCodes.green: True,
+    ColorCodes.dark_cyan: True,
+    ColorCodes.cyan: True,
+    ColorCodes.blue: True,
+    ColorCodes.magenta: True,
+    ColorCodes.dark_gray: True,
+    ColorCodes.gray: True
 }
 
 ANSI_CSI = "\x1b["
@@ -110,8 +111,8 @@ class Style:
     underline: bool | None = None
     bold: bool | None = None
     italic: bool | None = None
-    fg: IRCColorCodes | None = None
-    bg: IRCColorCodes | None = None
+    fg: ColorCodes | None = None
+    bg: ColorCodes | None = None
 
 class StyledTextFragment(NamedTuple):
     text: str
@@ -121,8 +122,8 @@ class StyledTextFragment(NamedTuple):
 def colored(text, fgcolor, bgcolor=None, endtoken=True):
     """
     \brief Colorize a string
-    \param fgcolor IRCColorCodes color to be used as text color
-    \param bgcolor IRCColorCodes color to be used as background color, can be None
+    \param fgcolor ColorCodes color to be used as text color
+    \param bgcolor ColorCodes color to be used as background color, can be None
     \param endtoken Send the colortoken at the end to end colored text
     \returns A string with IRC colors if color is valid
     """
@@ -147,8 +148,8 @@ def rainbow_color(factor, colors):
     return colors[int(factor*len(colors))]
 
 
-def rainbow(text, colors=[IRCColorCodes.red, IRCColorCodes.dark_yellow, IRCColorCodes.green,
-                          IRCColorCodes.cyan, IRCColorCodes.blue, IRCColorCodes.magenta]):
+def rainbow(text, colors=[ColorCodes.red, ColorCodes.dark_yellow, ColorCodes.green,
+                          ColorCodes.cyan, ColorCodes.blue, ColorCodes.magenta]):
     """
     \brief Colorize a string as a rainbow
     \param text          Input text
@@ -240,10 +241,10 @@ def _extract_irc_style(text: str) -> Generator[StyledTextFragment, None, None]:
                 style.fg = None
                 style.bg = None
             elif "," in substrings[i+3]:
-                style.fg, style.bg = [IRCColorCodes(val.zfill(2)) for val in
+                style.fg, style.bg = [ColorCodes(val.zfill(2)) for val in
                                       substrings[i+3].split(",")]
             else:
-                style.fg = IRCColorCodes(substrings[i+3].zfill(2))
+                style.fg = ColorCodes(substrings[i+3].zfill(2))
         if substrings[i+5]:
             style.italic = not style.italic
         if substrings[i+6]:
@@ -258,10 +259,10 @@ def _style_html_string(style):
     if style.bold:
         styles.append("font-weight:bold")
     if style.fg:
-        styles.append("color:{}".format(IRCColorsHex[style.fg]))
+        styles.append("color:{}".format(ColorsHex[style.fg]))
     if style.bg:
         styles.append("background-color:{}".format(
-            IRCColorsHex[style.bg]))
+            ColorsHex[style.bg]))
     if style.italic:
         styles.append("font-style:italic")
     return styles
@@ -298,11 +299,11 @@ def _styled_fragment_to_matrix(fragment: StyledTextFragment) -> str:
     color = ""
     if style.fg:
         # 'color' seems to be better supported than 'data-mx-color'
-        color += " color=\""+IRCColorsHex[style.fg]+"\""
+        color += " color=\""+ColorsHex[style.fg]+"\""
     if style.bg:
         # 'background-color' is not mentioned in the spec and doesn't seem to be
         # supported in clients
-        color += " data-mx-bg-color=\""+IRCColorsHex[style.bg]+"\""
+        color += " data-mx-bg-color=\""+ColorsHex[style.bg]+"\""
     if color:
         text = "<font"+color+">"+text+"</font>"
     return text
@@ -367,15 +368,15 @@ def from_human_readable(text):
         fg = match.group(2)
         if fg is not None:
             if fg.isdecimal():
-                fg = IRCColorCodes(fg)
+                fg = ColorCodes(fg)
             else:
-                fg = IRCColorCodes[fg]
+                fg = ColorCodes[fg]
         bg = match.group(4)
         if bg is not None:
             if bg.isdecimal():
-                bg = IRCColorCodes(bg)
+                bg = ColorCodes(bg)
             else:
-                bg = IRCColorCodes[bg]
+                bg = ColorCodes[bg]
         if fg and bg:
             col_code = fg.value + "," + bg.value
         elif fg:
@@ -436,6 +437,6 @@ def closest_irc_color(r, g, b):
         col = convert_color(sRGBColor(*split_rgb_string(val[1]),
                                       is_upscaled=True), LabColor)
         return delta_e_cie2000(color_lab1, col)
-    closest_color, closest_distance = min(IRCColorsHex.items(),
+    closest_color, closest_distance = min(ColorsHex.items(),
                                           key=sort_function)
     return closest_color

@@ -356,9 +356,7 @@ def to_tags(text, link_urls=True):
 
 
 colorpat = re.compile(r"\$COLOR(\((\d{{1,2}}|{colors})(,(\d{{1,2}}|{colors}))?\))?".format(
-    colors="|".join(["white", "black", "dark_blue", "dark_green", "red", "dark_red",
-                     "dark_magenta", "dark_yellow", "yellow", "green", "dark_cyan",
-                     "cyan", "blue", "magenta", "dark_gray", "gray"])))
+    colors="|".join([color.name for color in ColorCodes])))
 rainbowpat = re.compile(r"\$RAINBOW\(([^)]+)\)")
 def from_human_readable(text):
     """

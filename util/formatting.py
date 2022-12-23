@@ -366,13 +366,13 @@ def from_human_readable(text):
         fg = match.group(2)
         if fg is not None:
             if fg.isdecimal():
-                fg = ColorCodes(fg)
+                fg = ColorCodes(f"{fg:02}")
             else:
                 fg = ColorCodes[fg]
         bg = match.group(4)
         if bg is not None:
             if bg.isdecimal():
-                bg = ColorCodes(bg)
+                bg = ColorCodes(f"{bg:02}")
             else:
                 bg = ColorCodes[bg]
         if fg and bg:

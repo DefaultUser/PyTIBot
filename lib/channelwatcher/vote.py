@@ -34,8 +34,9 @@ from . import abstract
 from backends import Backends
 from util import filesystem as fs
 from util.decorators import maybe_deferred
-from util import formatting
-from util.formatting import ColorCodes
+from util.formatting import ColorCodes, good_contrast_with_black
+# FIXME: replace IRC formatting with internal formatting
+from util.formatting import irc as formatting
 
 
 _INIT_DB_STATEMENTS = ["""
@@ -555,7 +556,7 @@ class Vote(abstract.ChannelWatcher):
     def colored_category_name(name, colorname):
         if colorname:
             color = ColorCodes[colorname]
-            if formatting.good_contrast_with_black[color]:
+            if good_contrast_with_black[color]:
                 fg = ColorCodes.black
             else:
                 fg = ColorCodes.white

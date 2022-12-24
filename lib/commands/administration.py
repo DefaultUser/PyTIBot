@@ -14,7 +14,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from util import formatting
+from util.formatting import ColorCodes
+# FIXME: replace IRC formatting with internal formatting
+from util.formatting import irc as formatting
 
 
 def shutdown(bot):
@@ -70,7 +72,7 @@ to remove from the list, 'ls' or 'list' to show the list"""
                 else:
                     bot.notice(sender,
                                formatting.colored("Invalid call - check the"
-                                                  " help", formatting.ColorCodes.red))
+                                                  " help", ColorCodes.red))
 
     while True:
         args, sender, channel = yield

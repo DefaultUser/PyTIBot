@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2021>  <Sebastian Schmidt>
+# Copyright (C) <2017-2022>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,8 +17,9 @@
 from twisted.protocols.basic import LineOnlyReceiver
 from twisted.internet import stdio
 
-from util import formatting
-from util.formatting import ANSIColors
+from util.formatting import ansi
+# FIXME: replace IRC formatting with internal formatting
+from util.formatting import irc as formatting
 from util.misc import str_to_bytes, bytes_to_str
 
 
@@ -48,12 +49,11 @@ class STDIOReceiver(LineOnlyReceiver, object):
             try:
                 method(data)
             except Exception as e:
-                self.sendLine(formatting.ansi_colored("Error: {}".format(e),
-                                                      fg=ANSIColors.red))
+                self.sendLine(ansi.colored("Error: {}".format(e),
+                                           fg=ansi.ANSIColors.red))
         else:
-            self.sendLine(formatting.ansi_colored("Error: no such command "
-                                                  "{}.".format(command),
-                                                  fg=ANSIColors.red))
+            self.sendLine(ansi.colored("Error: no such command {}.".format(command),
+                                       fg=ansi.ANSIColors.red))
 
     def cmd_help(self, command=None):
         """Show help
@@ -61,15 +61,14 @@ class STDIOReceiver(LineOnlyReceiver, object):
         if command:
             method = getattr(self, "cmd_{}".format(command), None)
             if method:
-                self.sendLine(formatting.ansi_colored(method.__doc__,
-                                                      fg=ANSIColors.cyan))
+                self.sendLine(ansi.colored(method.__doc__,
+                                           fg=ansi.ANSIColors.cyan))
             else:
-                self.sendLine(formatting.ansi_colored(
-                    "No such command {}".format(command),
-                    fg=ANSIColors.yellow))
+                self.sendLine(ansi.colored("No such command {}".format(command),
+                                           fg=ansi.ANSIColors.yellow))
         else:
-            self.sendLine(formatting.ansi_colored("Available commands: ",
-                                                  fg=ANSIColors.blue) +
+            self.sendLine(ansi.colored("Available commands: ",
+                                       fg=ansi.ANSIColors.blue) +
                           ", ".join([member[4:] for member in dir(self)
                                      if member.startswith("cmd_")]))
 

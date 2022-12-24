@@ -28,8 +28,9 @@ import re
 import sys
 import textwrap
 
-from util.formatting import colored, closest_irc_color, split_rgb_string,\
-    good_contrast_with_black, ColorCodes
+from util.formatting import ColorCodes, good_contrast_with_black
+from util.formatting.common import closest_colorcode, split_rgb_string
+from util.formatting.irc import colored
 from util.misc import str_to_bytes, bytes_to_str, filter_dict
 from util.internet import shorten_url, DirectAccessor, HeaderAccessor, JsonAccessor
 from lib import webhook_actions
@@ -192,7 +193,7 @@ class GitWebhookServer(Resource):
     def github_label_colors(self, label):
         color = label["color"]
         try:
-            bg = closest_irc_color(*split_rgb_string(color))
+            bg = closest_colorcode(*split_rgb_string(color))
             fg = ColorCodes.black if good_contrast_with_black[bg] else ColorCodes.white
         except Exception as e:
             self.log.error("Issue label: could not find a closest IRC "

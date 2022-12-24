@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2016-2021>  <Sebastian Schmidt>
+# Copyright (C) <2016-2022>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,8 +34,9 @@ from collections import defaultdict
 from datetime import datetime, timedelta
 
 from .common import PageElement, webpage_error_handler, BaseResource
-from util import log, formatting
+from util import log
 from util import filesystem as fs
+from util.formatting import html as html_formatting
 from util.misc import bytes_to_str
 from util.whoosh_tag_formatter import WhooshTagFormatter
 
@@ -55,8 +56,8 @@ def _prepare_yaml_element(element):
     """Prepare a yaml element for display in html"""
     element["time"] = element["time"][11:]
     if "message" in element:
-        element["message"] = formatting.to_tags(element["message"],
-                                                link_urls=True)
+        element["message"] = html_formatting.to_tags(element["message"],
+                                                     link_urls=True)
 
 
 class LogPageElement(PageElement):
@@ -228,6 +229,7 @@ class SearchPage(BaseResource):
             content = []
             for element in yaml.full_load_all(f.read()):
                 if element["levelname"] == "MSG":
+                    # TODO: adapt once internal stringformat is available
                     msg = irc.stripFormatting(element["message"])
                     content.append(msg)
             datestr = name.removeprefix(self.channel.lstrip("#") + ".").removesuffix(".yaml")

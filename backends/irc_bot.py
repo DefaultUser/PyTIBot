@@ -30,7 +30,8 @@ from backends.interfaces import IBot
 from lib import commands
 from lib import triggers
 from lib import channelwatcher
-from util import decorators, formatting
+from util import decorators
+from util.formatting import irc as formatting
 from util.irc import UserInfo
 
 # WHOIS reply for AUTH name (NONSTANDARD REPLY!)

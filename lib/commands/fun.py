@@ -24,7 +24,9 @@ from bidict import bidict
 import argparse
 
 from util import filesystem as fs
-from util import formatting
+from util.formatting import ColorCodes
+# FIXME: replace IRC formatting with internal formatting
+from util.formatting import irc as formatting
 
 
 log = Logger()
@@ -166,13 +168,13 @@ allow long fortunes, -o to allow offensive fortunes"""
         except Exception as e:
             log.warn("Error parsing fortune arguments: {e}", e=e)
             bot.msg(channel, formatting.colored("Invalid input for fortune",
-                                                "red"))
+                                                ColorCodes.red))
             continue
         if unknown_options:
             log.warn("Fortune: Unknown options: {options}",
                      options=unknown_options)
             bot.msg(channel, formatting.colored("Invalid input for fortune",
-                                                formatting.ColorCodes.red))
+                                                ColorCodes.red))
             continue
         if options.list:
             fortunes = []

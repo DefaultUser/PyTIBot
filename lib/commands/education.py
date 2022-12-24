@@ -15,7 +15,10 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import random
-from util import formatting
+
+from util.formatting import ColorCodes
+# FIXME: replace IRC formatting with internal formatting
+from util.formatting import irc as formatting
 
 
 def rand(bot):
@@ -34,7 +37,7 @@ list of choices"""
                 result = random.choice(args)
         except (IndexError, ValueError):
             result = formatting.colored("Invalid call - check the help",
-                                        formatting.ColorCodes.red)
+                                        ColorCodes.red)
         bot.msg(channel, result)
 
 

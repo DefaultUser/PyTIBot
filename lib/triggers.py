@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2021>  <Sebastian Schmidt>
+# Copyright (C) <2015-2022>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,8 @@ from twisted.internet import threads
 import sys
 import random
 
-from util import formatting
+# FIXME: replace IRC formatting with internal formatting
+from util.formatting import irc as formatting
 
 
 trigger_module = sys.modules[__name__]

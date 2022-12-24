@@ -31,7 +31,8 @@ from lib.channelwatcher.vote import PollListStatusFilter, CommandOptions
 
 from util.misc import bytes_to_str
 from util import filesystem as fs
-from util.formatting import ColorCodes, ColorsHex, good_contrast_with_black, to_tags
+from util.formatting import ColorCodes, ColorsHex, good_contrast_with_black
+from util.formatting.html import to_tags
 
 
 log = Logger()

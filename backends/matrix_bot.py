@@ -32,7 +32,7 @@ from backends.interfaces import IBot
 
 from util.aio_compat import deferred_to_future, future_to_deferred
 from util import filesystem as fs
-from util import formatting
+from util.formatting import html as formatting
 from util.decorators import maybe_deferred
 from util.config import Config
 

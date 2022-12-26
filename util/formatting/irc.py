@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import dataclasses
 import re
 from typing import Generator
 
@@ -143,11 +144,13 @@ def _extract_irc_style(text: str) -> Generator[StyledTextFragment, None, None]:
     style = Style()
     if len(substrings) % 8:
         # first substring has no formatting information
-        yield StyledTextFragment(text=substrings[0], style=style)
+        if substrings[0]:
+            yield StyledTextFragment(text=substrings[0], style=style)
         start = 1
     else:
         start = 0
     for i in range(start, len(substrings), 8):
+        style = dataclasses.replace(style)
         if substrings[i]:
             style.underline = not style.underline
         if substrings[i+1]:
@@ -157,16 +160,19 @@ def _extract_irc_style(text: str) -> Generator[StyledTextFragment, None, None]:
                 style.fg = None
                 style.bg = None
             elif "," in substrings[i+3]:
+                # TODO: handle color codes > 15 better
                 style.fg, style.bg = [ColorCodes(val.zfill(2)) for val in
                                       substrings[i+3].split(",")]
             else:
+                # TODO: handle color codes > 15 better
                 style.fg = ColorCodes(substrings[i+3].zfill(2))
         if substrings[i+5]:
             style.italic = not style.italic
         if substrings[i+6]:
             # big reset switch
             style = Style()
-        yield StyledTextFragment(text=substrings[i+7], style=style)
+        if substrings[i+7]:
+            yield StyledTextFragment(text=substrings[i+7], style=style)
 
 
 _colorpat = re.compile(r"\$COLOR(\((\d{{1,2}}|{colors})(,(\d{{1,2}}|{colors}))?\))?".format(

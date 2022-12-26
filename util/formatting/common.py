@@ -105,7 +105,7 @@ class Style:
 
 class StyledTextFragment(NamedTuple):
     text: str
-    style: Style | None = None
+    style: Style = Style()
 
 
 StyledText: TypeAlias = str | list[str|StyledTextFragment]

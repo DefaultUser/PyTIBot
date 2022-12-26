@@ -98,6 +98,11 @@ class Style:
     bg: ColorCodes | None = None
     # TODO: rainbow and strike?
 
+    def __bool__(self) -> bool:
+        return (self.underline is not None or self.bold is not None or
+                self.italic is not None or self.fg is not None or
+                self.bg is not None)
+
 class StyledTextFragment(NamedTuple):
     text: str
     style: Style | None = None

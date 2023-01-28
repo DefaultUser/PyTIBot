@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2022>  <Sebastian Schmidt>
+# Copyright (C) <2017-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -70,6 +70,7 @@ class GitWebhookServer(Resource):
                           "'hook_report_users', but got a single string")
             users = [users]
         self.hook_report_users = users
+        self.hook_report_success = config["GitWebhook"].get("hook_report_success", True)
         # URL shortener
         self.url_shortener = defer.succeed
         url_shortener_settings = config["GitWebhook"].get("url_shortener", None)
@@ -211,9 +212,11 @@ class GitWebhookServer(Resource):
             message = "Hook {} failed: {}".format(colored(actionname, IRCColorCodes.blue,
                                                           IRCColorCodes.gray),
                                                   success.getErrorMessage())
-        else:
+        elif self.hook_report_success:
             message = "Hook {} finished without errors".format(
                 colored(actionname, IRCColorCodes.blue, IRCColorCodes.gray))
+        else:
+            return
         for user in self.hook_report_users:
             self.botfactory.bot.msg(user, message)
 

@@ -55,6 +55,7 @@ GitWebhook:
   github_secret: SECRETKEY
   gitlab_secret: SECRETKEY
   hook_report_users: [myadmin]
+  hook_report_success: false # defaults to true
   PreventGitHubReviewFlood: false
   HideGitHubCommitList: false # don't show individual commits for push events
   FilterRules:

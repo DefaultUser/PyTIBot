@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2020-2022>  <Sebastian Schmidt>
+# Copyright (C) <2020-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -556,10 +556,7 @@ class Vote(abstract.ChannelWatcher):
     def colored_category_name(name, colorname):
         if colorname:
             color = ColorCodes[colorname]
-            if good_contrast_with_black[color]:
-                fg = ColorCodes.black
-            else:
-                fg = ColorCodes.white
+            fg = ColorCodes.black if good_contrast_with_black(color) else ColorCodes.white
             return formatting.colored(name, fg, color, endtoken=True)
         return name
 

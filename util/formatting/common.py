@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from bidict import bidict
-from colormath.color_objects import sRGBColor, LabColor
+from colormath.color_objects import sRGBColor, LabColor, HSVColor
 from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
 from dataclasses import dataclass, asdict
@@ -69,25 +69,17 @@ ColorsHex = bidict({
     ColorCodes.dark_gray: "#7F7F7F",
     ColorCodes.gray: "#D2D2D2"})
 
-# dict that indicates if a color is a good background for black text
-good_contrast_with_black = {
-    ColorCodes.white: True,
-    ColorCodes.black: False,
-    ColorCodes.dark_blue: False,
-    ColorCodes.dark_green: True,
-    ColorCodes.red: True,
-    ColorCodes.dark_red: True,
-    ColorCodes.dark_magenta: True,
-    ColorCodes.dark_yellow: True,
-    ColorCodes.yellow: True,
-    ColorCodes.green: True,
-    ColorCodes.dark_cyan: True,
-    ColorCodes.cyan: True,
-    ColorCodes.blue: True,
-    ColorCodes.magenta: True,
-    ColorCodes.dark_gray: True,
-    ColorCodes.gray: True
-}
+
+def good_contrast_with_black(color: str|ColorCodes) -> bool:
+    """
+    Indicates if a color has good contrast with black. This is achieved by
+    looking at the `Value` in `HSV` color space
+    """
+    if isinstance(color, ColorCodes):
+        color = ColorsHex[color]
+    return convert_color(sRGBColor(*split_rgb_string(color), is_upscaled=True),
+                         HSVColor).hsv_v > 0.5
+
 
 @dataclass
 class Style:

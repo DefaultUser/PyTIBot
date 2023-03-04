@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2021-2022>  <Sebastian Schmidt>
+# Copyright (C) <2021-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -47,10 +47,7 @@ class VotePageElement(PageElement):
             return None
         try:
             color_code = ColorCodes[color]
-            if good_contrast_with_black[color_code]:
-                fg = ColorCodes.black
-            else:
-                fg = ColorCodes.white
+            fg = ColorCodes.black if good_contrast_with_black(color_code) else ColorCodes.white
             return "color: {fg};background-color: {bg};".format(
                     fg=ColorsHex[fg], bg=ColorsHex[color_code])
         except Exception as e:

@@ -196,7 +196,7 @@ class GitWebhookServer(Resource):
             if not color.startswith("#"):
                 color = "#" + color
             bg = closest_colorcode(color)
-            fg = ColorCodes.black if good_contrast_with_black[bg] else ColorCodes.white
+            fg = ColorCodes.black if good_contrast_with_black(bg) else ColorCodes.white
         except Exception as e:
             self.log.error("Issue label: could not find a closest IRC "
                            "color for colorcode '{color}' ({error})",

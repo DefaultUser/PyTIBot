@@ -1,5 +1,5 @@
 # PyTIBot - Formatting Helper
-# Copyright (C) <2015-2022>  <Sebastian Schmidt>
+# Copyright (C) <2015-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@ from bidict import bidict
 from colormath.color_objects import sRGBColor, LabColor
 from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from enum import Enum
 import re
 from typing import NamedTuple, TypeAlias
@@ -94,14 +94,12 @@ class Style:
     underline: bool | None = None
     bold: bool | None = None
     italic: bool | None = None
-    fg: ColorCodes | None = None
-    bg: ColorCodes | None = None
-    # TODO: rainbow and strike?
+    strike: bool | None = None
+    fg: ColorCodes | str | None = None
+    bg: ColorCodes | str | None = None
 
     def __bool__(self) -> bool:
-        return (self.underline is not None or self.bold is not None or
-                self.italic is not None or self.fg is not None or
-                self.bg is not None)
+        return any(asdict(self).values())
 
 class StyledTextFragment(NamedTuple):
     text: str

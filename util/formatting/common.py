@@ -127,7 +127,7 @@ def split_rgb_string(hex_string: str) -> tuple[int]:
     raise ValueError("Needs a string of form 'rgb' or 'rrggbb")
 
 
-def closest_colorcode(r: int, g: int, b: int) -> ColorCodes:
+def closest_colorcode_from_rgb(r: int, g: int, b: int) -> ColorCodes:
     """
     \brief Find the closest color code
     \param r Red value (0-255)
@@ -144,4 +144,23 @@ def closest_colorcode(r: int, g: int, b: int) -> ColorCodes:
     closest_color, closest_distance = min(ColorsHex.items(),
                                           key=sort_function)
     return closest_color
+
+
+def closest_colorcode(color: str) -> ColorCodes:
+    """
+    \brief Find the closest color code
+    \param color Color definition either as hex string or color name
+    """
+    if color.startswith("#"):
+        if color in ColorsHex.inv:
+            return ColorsHex.inv[color]
+        return closest_colorcode_from_rgb(*split_rgb_string(color))
+    if color in [e.name for e in ColorCodes]:
+        return ColorCodes[color]
+    if color == "darkorange":
+        return ColorCodes.dark_yellow
+    color = color.replace("dark", "dark_")
+    if color in [e.name for e in ColorCodes]:
+        return ColorCodes[color]
+    raise ValueError("Invalid color definition")
 

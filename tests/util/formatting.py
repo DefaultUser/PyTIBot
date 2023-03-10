@@ -5,8 +5,107 @@ from typing import Any
 from twisted.web.template import Tag, tags, slot
 
 from util.formatting import ColorCodes
-from util.formatting import html as htmlformatting
-from util.formatting import irc as ircformatting
+from util.formatting import common
+from util.formatting import html
+from util.formatting import irc
+
+
+class PlaintextFormattingTestCase(unittest.TestCase):
+    def _test_formatting(self, input_value, expected_outcome):
+        result = common.to_plaintext(input_value)
+        self.assertEqual(result, expected_outcome)
+
+    def test_simple_string(self):
+        input_string = "foo"
+        self._test_formatting(input_string, input_string)
+
+    def test_simple_bold(self):
+        msg = Tag("")(tags.b("foo"))
+        self._test_formatting(msg, "foo")
+
+    def test_simple_fgcolor(self):
+        fg = ColorCodes.red
+        msg = Tag("")(tags.font("foo", color=fg))
+        self._test_formatting(msg, "foo")
+
+    def test_simple_bgcolor(self):
+        fg = ColorCodes.red
+        bg = ColorCodes.blue
+        msg = Tag("")(tags.font("foo", **{"color": fg, "background-color": bg}))
+        self._test_formatting(msg, "foo")
+
+    def test_simple_italic(self):
+        msg = Tag("")(tags.i("foo"))
+        self._test_formatting(msg, "foo")
+
+    def test_simple_underlined(self):
+        msg = Tag("")(tags.u("foo"))
+        self._test_formatting(msg, "foo")
+
+    def test_simple_newline(self):
+        msg = Tag("")("foo\nbar")
+        self._test_formatting(msg, "foo\nbar")
+        msg = Tag("")("foo", tags.br(), "bar")
+        self._test_formatting(msg, "foo\nbar")
+        msg = Tag("")(tags.br(), "bar")
+        self._test_formatting(msg, "bar")
+
+    def test_simple_rainbow(self):
+        msg = Tag("")(Tag("rainbow")("abcdef"))
+        self._test_formatting(msg, "abcdef")
+        msg = Tag("")(Tag("rainbow")("abc", tags.b("def")))
+        self._test_formatting(msg, "abcdef")
+
+    def test_simple_href(self):
+        msg = Tag("")(tags.a("foo", href="example.com"))
+        self._test_formatting(msg, "foo (example.com)")
+
+    def test_newline_styled(self):
+        msg = Tag("")("foo", tags.b("bar\nbaz"))
+        self._test_formatting(msg, "foobar\nbaz")
+        msg = Tag("")("foo", tags.b("bar", tags.br(), "baz"))
+        self._test_formatting(msg, "foobar\nbaz")
+        msg = Tag("")(tags.b(tags.i("bar", tags.br(), "baz")))
+        self._test_formatting(msg, "bar\nbaz")
+        msg = Tag("")(tags.b(tags.br(), "foo"))
+        self._test_formatting(msg, "foo")
+
+    def test_simple_display_blocks(self):
+        msg = Tag("")("foo", tags.p("bar"), "baz")
+        self._test_formatting(msg, "foo\nbar\nbaz")
+        msg = Tag("")(tags.div("bar"), "baz")
+        self._test_formatting(msg, "bar\nbaz")
+        msg = Tag("")(tags.div("foo"))
+        self._test_formatting(msg, "foo")
+
+    def test_sequential_tags(self):
+        msg = Tag("")(tags.b("foo"), tags.i("bar"))
+        self._test_formatting(msg, "foobar")
+
+    def test_nested_tags(self):
+        msg = Tag("")(tags.b(tags.b("foo")))
+        self._test_formatting(msg, "foo")
+        msg = Tag("")(tags.b(tags.i("foo"), tags.b("bar")))
+        self._test_formatting(msg, "foobar")
+        # colors
+        fg = ColorCodes.red
+        bg = ColorCodes.blue
+        msg = Tag("")(tags.font("foo", tags.font("bar", color=fg), color=fg))
+        self._test_formatting(msg, "foobar")
+        # bg color
+        msg = Tag("")(tags.font("foo", tags.font("bar", color=fg),
+                                    **{"color": fg, "background-color": bg}))
+        self._test_formatting(msg, "foobar")
+
+    def test_nested_with_href(self):
+        msg = Tag("")("foo", tags.a(tags.b("foo"), href="example.com"))
+        self._test_formatting(msg, "foofoo (example.com)")
+
+    def test_slot(self):
+        msg = Tag("")("foo", tags.b(slot("slt"), "bar").fillSlots(slt=" "))
+        self._test_formatting(msg, "foo bar")
+        msg = Tag("")("foo", tags.b(slot("slt"), "bar"))
+        self.assertRaises(KeyError, common.to_plaintext, msg)
 
 
 def _compare_tags(testcase: unittest.TestCase, item1: Any, item2: Any):
@@ -36,11 +135,11 @@ def _compare_styled_string(testcase: unittest.TestCase, l1: list[Tag|str],
 
 class HTMLParserTestCase(unittest.TestCase):
     def _test_parser(self, input_value, expected_outcome):
-        parse_result = htmlformatting.parse_html(input_value)
+        parse_result = html.parse_html(input_value)
         _compare_tags(self, parse_result, expected_outcome)
 
     def _test_parser_with_slots(self, input_value, expected_outcome):
-        parse_result = htmlformatting.parse_html(input_value, allow_slots=True)
+        parse_result = html.parse_html(input_value, allow_slots=True)
         _compare_tags(self, parse_result, expected_outcome)
 
     def test_simple_string(self):
@@ -121,14 +220,14 @@ class HTMLParserTestCase(unittest.TestCase):
                                                        color=Tag("")(slot("slt")))))
 
     def test_invalid_html(self):
-        self.assertRaises(htmlformatting.HTMLParseError,
-                          htmlformatting.parse_html,
+        self.assertRaises(html.HTMLParseError,
+                          html.parse_html,
                           '<font color="red">foo')
 
 
 class IRCParserTestCase(unittest.TestCase):
     def _test_parser(self, input_value, expected_outcome):
-        parse_result = ircformatting.parse_irc(input_value)
+        parse_result = irc.parse_irc(input_value)
         _compare_tags(self, parse_result, expected_outcome)
 
     def test_simple_string(self):

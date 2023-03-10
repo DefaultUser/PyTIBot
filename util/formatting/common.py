@@ -148,6 +148,44 @@ class ITagProcessor(interface.Interface):
         """Called when a tag is closed"""
 
 
+@interface.implementer(ITagProcessor)
+class TagToPlainFormatter:
+    # TODO: support <hn> (markdown style)
+    def __init__(self):
+        self.buffer = ""
+        self._slotDataStack = []
+
+    def handle_newline(self):
+        if self.buffer:
+            self.buffer += "\n"
+
+    def handle_slot(self, slt: slot):
+        for slotData in self._slotDataStack[::-1]:
+            if slotData and slt.name in slotData:
+                self.handle_data(slotData[slt.name])
+                return
+        raise KeyError(f"Unfilled Slot {slt.name}")
+
+    def handle_starttag(self, tag: Tag):
+        self._slotDataStack.append(tag.slotData)
+        if tag.tagName == "br" or is_display_block(tag):
+            self.handle_newline()
+
+    def handle_data(self, data: str):
+        fragments = data.split("\n")
+        self.buffer += fragments[0]
+        for item in fragments[1:]:
+            self.handle_newline()
+            self.buffer += item
+
+    def handle_endtag(self, tag: Tag):
+        self._slotDataStack.pop()
+        if tag.tagName == "a" and (href:=tag.attributes.get("href", None)):
+            self.buffer += f" ({href})"
+        if is_display_block(tag):
+            self.handle_newline()
+
+
 def _processStyledText(data: Tag, processor: ITagProcessor):
     stack = deque()
     close_tag_stack = deque()
@@ -172,6 +210,21 @@ def _processStyledText(data: Tag, processor: ITagProcessor):
     while close_tag_stack:
         close_tag = close_tag_stack.pop()
         processor.handle_endtag(close_tag[0])
+
+
+def to_plaintext(data: Tag|str) -> str:
+    if isinstance(data, str):
+        return data
+    formatter = TagToPlainFormatter()
+    _processStyledText(data, formatter)
+    result = formatter.buffer
+    while "\n" in result:
+        beginning, last_line = result.rsplit("\n", 1)
+        if last_line == "":
+            result = beginning
+        else:
+            break
+    return result
 
 
 def split_rgb_string(hex_string: str) -> tuple[int]:

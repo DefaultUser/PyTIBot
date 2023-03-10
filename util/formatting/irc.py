@@ -1,5 +1,5 @@
 # PyTIBot - Formatting Helper
-# Copyright (C) <2015-2022>  <Sebastian Schmidt, Mattia Basaglia>
+# Copyright (C) <2015-2023>  <Sebastian Schmidt, Mattia Basaglia>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,12 +14,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from collections import deque
 import dataclasses
 import re
+from twisted.web.template import Tag
 from typing import Generator
 
 from util.formatting.common import ColorCodes, Style, StyledTextFragment
 
+# https://modern.ircdocs.horse/formatting.html
 
 ## \brief Token to start underlined text
 _UNDERLINE = "\x1f"
@@ -29,8 +32,98 @@ _BOLD = "\x02"
 _COLOR = "\x03"
 ## \brief Token to start italic text
 _ITALIC = "\x1d"
+## \brief Token to start striked text
+_STRIKE = "\x1e"
 ## \brief Token to end formatted text
 _NORMAL = "\x0f"
+
+
+_irc_parser_pattern = re.compile("(\x1f)|(\x02)|(\x03)(\\d{1,2}(,\\d{1,2})?)?|"
+                                 "(\x1d)|(\x1e)|(\x0f)")
+
+def parse_irc(message: str) -> Tag:
+    result = Tag("")
+    stack = deque()
+    stack.append(result)
+    style = Style()
+
+    def append_new_tag(tagName: str):
+        new_tag = Tag(tagName)
+        stack[-1].children.append(new_tag)
+        stack.append(new_tag)
+
+    def pop_last_of(tagName: str):
+        temp_stack = deque()
+        while stack and stack[-1].tagName != tagName:
+            temp_stack.append(stack.pop())
+        stack.pop()
+        while temp_stack:
+            old_tag = temp_stack.pop()
+            append_new_tag(old_tag.tagName)
+            stack[-1].attributes = old_tag.attributes
+
+    substrings = _irc_parser_pattern.split(message)
+    if len(substrings) % 9:
+        if substrings[0]:
+             result.children.append(substrings[0])
+        start = 1
+    else:
+        start = 0
+    for i in range(start, len(substrings), 9):
+        if substrings[i]:
+            if style.underline:
+                pop_last_of("u")
+            else:
+                append_new_tag("u")
+            style.underline = not style.underline
+        if substrings[i+1]:
+            if style.bold:
+                pop_last_of("b")
+            else:
+                append_new_tag("b")
+            style.bold = not style.bold
+        if substrings[i+2]:
+            if not substrings[i+3] and (style.fg or style.bg):
+                pop_last_of("font")
+                style.fg = None
+                style.bg = None
+            elif "," in substrings[i+3]:
+                if style.fg or style.bg:
+                    pop_last_of("font")
+                # TODO: handle color codes > 15 better
+                style.fg, style.bg = [ColorCodes(val.zfill(2)) for val in
+                                      substrings[i+3].split(",")]
+                append_new_tag("font")
+                stack[-1].attributes["color"] = style.fg
+                stack[-1].attributes["background-color"] = style.bg
+            else:
+                if style.fg or style.bg:
+                    pop_last_of("font")
+                # TODO: handle color codes > 15 better
+                style.fg = ColorCodes(substrings[i+3].zfill(2))
+                append_new_tag("font")
+                stack[-1].attributes["color"] = style.fg
+                if style.bg:
+                    stack[-1].attributes["background-color"] = style.bg
+        if substrings[i+5]:
+            if style.italic:
+                pop_last_of("i")
+            else:
+                append_new_tag("i")
+            style.italic = not style.italic
+        if substrings[i+6]:
+            if style.strike:
+                pop_last_of("del")
+            else:
+                append_new_tag("del")
+            style.strike = not style.strike
+        if substrings[i+7]:
+            style = Style()
+            stack.clear()
+            stack.append(result)
+        if substrings[i+8]:
+            stack[-1].children.append(substrings[i+8])
+    return result
 
 
 # TODO: refactor so that it returns internal representation and move to __init__.py

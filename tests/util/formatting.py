@@ -6,6 +6,7 @@ from twisted.web.template import Tag, tags, slot
 
 from util.formatting import ColorCodes
 from util.formatting import html as htmlformatting
+from util.formatting import irc as ircformatting
 
 
 def _compare_tags(testcase: unittest.TestCase, item1: Any, item2: Any):
@@ -118,4 +119,83 @@ class HTMLParserTestCase(unittest.TestCase):
                                      '<t:slot name="slt" /></t:attr>bar</font>',
                                      Tag("")(tags.font("bar",
                                                        color=Tag("")(slot("slt")))))
+
+
+class IRCParserTestCase(unittest.TestCase):
+    def _test_parser(self, input_value, expected_outcome):
+        parse_result = ircformatting.parse_irc(input_value)
+        _compare_tags(self, parse_result, expected_outcome)
+
+    def test_simple_string(self):
+        self._test_parser("foo", Tag("")("foo"))
+
+    def test_simple_bold(self):
+        self._test_parser("\x02foo", Tag("")(tags.b("foo")))
+        self._test_parser("\x02foo\x02", Tag("")(tags.b("foo")))
+        self._test_parser("bar \x02foo", Tag("")("bar ", tags.b("foo")))
+        self._test_parser("bar \x02foo\x02", Tag("")("bar ", tags.b("foo")))
+        self._test_parser("bar \x02foo\x02 baz", Tag("")("bar ", tags.b("foo"), " baz"))
+
+    def test_simple_italic(self):
+        self._test_parser("\x1dfoo", Tag("")(tags.i("foo")))
+        self._test_parser("\x1dfoo\x1d", Tag("")(tags.i("foo")))
+        self._test_parser("bar \x1dfoo", Tag("")("bar ", tags.i("foo")))
+        self._test_parser("bar \x1dfoo\x1d", Tag("")("bar ", tags.i("foo")))
+        self._test_parser("bar \x1dfoo\x1d baz", Tag("")("bar ", tags.i("foo"), " baz"))
+
+    def test_simple_underline(self):
+        self._test_parser("\x1ffoo", Tag("")(tags.u("foo")))
+        self._test_parser("\x1ffoo\x1f", Tag("")(tags.u("foo")))
+        self._test_parser("bar \x1ffoo", Tag("")("bar ", tags.u("foo")))
+        self._test_parser("bar \x1ffoo\x1f", Tag("")("bar ", tags.u("foo")))
+        self._test_parser("bar \x1ffoo\x1f baz", Tag("")("bar ", tags.u("foo"), " baz"))
+
+    def test_simple_strike(self):
+        self._test_parser("\x1efoo", Tag("")(Tag("del")("foo")))
+        self._test_parser("\x1efoo\x1e", Tag("")(Tag("del")("foo")))
+        self._test_parser("bar \x1efoo", Tag("")("bar ", Tag("del")("foo")))
+        self._test_parser("bar \x1efoo\x1e", Tag("")("bar ", Tag("del")("foo")))
+        self._test_parser("bar \x1efoo\x1e baz", Tag("")("bar ", Tag("del")("foo"), " baz"))
+
+    def test_simple_color(self):
+        self._test_parser("\x0312foo",
+                          Tag("")(tags.font("foo", color=ColorCodes("12"))))
+        self._test_parser("\x0312foo\x03",
+                          Tag("")(tags.font("foo", color=ColorCodes("12"))))
+        self._test_parser("bar \x0312foo",
+                          Tag("")("bar ", tags.font("foo", color=ColorCodes("12"))))
+        self._test_parser("bar \x0312foo\x03",
+                          Tag("")("bar ", tags.font("foo", color=ColorCodes("12"))))
+        self._test_parser("bar \x0312foo\x03 baz",
+                          Tag("")("bar ", tags.font("foo", color=ColorCodes("12")),
+                                  " baz"))
+        self._test_parser("\x0312,04foo",
+                          Tag("")(tags.font("foo", **{"color": ColorCodes("12"),
+                                                      "background-color": ColorCodes("04")})))
+
+    def test_simple_reset_all(self):
+        self._test_parser("\x02foo\x0f bar", Tag("")(tags.b("foo"), " bar"))
+        self._test_parser("\x02foo\x1dbaz\x0f bar",
+                          Tag("")(tags.b("foo", tags.i("baz")), " bar"))
+
+    def test_nested_formatting(self):
+        self._test_parser("\x02foo\x1fbar\x02baz",
+                          Tag("")(tags.b("foo", tags.u("bar")), tags.u("baz")))
+        self._test_parser("\x02foo\x1fbar\x1fbaz",
+                          Tag("")(tags.b("foo", tags.u("bar"), "baz")))
+
+    def test_nested_color(self):
+        self._test_parser("\x0312foo\x0304bar",
+                          Tag("")(tags.font("foo", color=ColorCodes("12")),
+                                  tags.font("bar", color=ColorCodes("04"))))
+        self._test_parser("\x0312,01foo\x0304bar",
+                          Tag("")(tags.font("foo", **{"color": ColorCodes("12"),
+                                                      "background-color": ColorCodes("01")}),
+                                  tags.font("bar", **{"color": ColorCodes("04"),
+                                                      "background-color": ColorCodes("01")})))
+        self._test_parser("\x0312,01foo\x0304,12bar",
+                          Tag("")(tags.font("foo", **{"color": ColorCodes("12"),
+                                                      "background-color": ColorCodes("01")}),
+                                  tags.font("bar", **{"color": ColorCodes("04"),
+                                                      "background-color": ColorCodes("12")})))
 

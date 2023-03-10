@@ -104,6 +104,36 @@ class StyledTextFragment(NamedTuple):
 StyledText: TypeAlias = str | list[str|StyledTextFragment]
 
 
+def is_bold(tag: Tag) -> bool:
+    return (tag.tagName in ("b", "strong") or
+            tag.attributes.get("bold", False))
+
+
+def is_italic(tag: Tag) -> bool:
+    return (tag.tagName in ("i", "em", "cite") or
+            tag.attributes.get("italic", False))
+
+
+def is_del(tag: Tag) -> bool:
+    return (tag.tagName in ("del", "strike", "s") or
+            tag.attributes.get("strike", False))
+
+
+def is_underlined(tag: Tag) -> bool:
+    return (tag.tagName == "u" or
+            tag.attributes.get("underline", False))
+
+
+def is_display_block(tag: Tag) -> bool:
+    return tag.tagName in ("p", "div")
+
+
+def is_colored(tag: Tag) -> bool:
+    return (tag.tagName in ("font", "span", "div") and
+            ("color" in tag.attributes or
+             "background-color" in tag.attributes))
+
+
 class ITagProcessor(interface.Interface):
     def handle_slot(slt: slot):
         """Called when a slot is encountered"""

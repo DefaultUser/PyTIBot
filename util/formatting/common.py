@@ -15,13 +15,16 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from bidict import bidict
+from collections import deque
 from colormath.color_objects import sRGBColor, LabColor, HSVColor
 from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
 from dataclasses import dataclass, asdict
 from enum import Enum
 import re
+from twisted.web.template import Tag, slot
 from typing import NamedTuple, TypeAlias
+from zope import interface
 
 
 url_pat = re.compile(r"(((https?)|(ftps?)|(sftp))://[^\s\"\')]+)")
@@ -99,6 +102,46 @@ class StyledTextFragment(NamedTuple):
 
 
 StyledText: TypeAlias = str | list[str|StyledTextFragment]
+
+
+class ITagProcessor(interface.Interface):
+    def handle_slot(slt: slot):
+        """Called when a slot is encountered"""
+
+    def handle_starttag(tag: Tag):
+        """Called when a tag is opened"""
+
+    def handle_data(data: str):
+        """Called with a tag's text data"""
+
+    def handle_endtag(tag: Tag):
+        """Called when a tag is closed"""
+
+
+def _processStyledText(data: Tag, processor: ITagProcessor):
+    stack = deque()
+    close_tag_stack = deque()
+    stack.append((data, 0))
+    while stack:
+        item, depth = stack.pop()
+        while close_tag_stack and depth <= close_tag_stack[-1][1]:
+            close_tag = close_tag_stack.pop()
+            processor.handle_endtag(close_tag[0])
+        if isinstance(item, str):
+            processor.handle_data(item)
+            continue
+        if isinstance(item, slot):
+            processor.handle_slot(item)
+            continue
+        tagName = item.tagName
+        close_tag_stack.append((item, depth))
+        processor.handle_starttag(item)
+        for child in reversed(item.children):
+            stack.append((child, depth+1))
+    # Close all tags
+    while close_tag_stack:
+        close_tag = close_tag_stack.pop()
+        processor.handle_endtag(close_tag[0])
 
 
 def split_rgb_string(hex_string: str) -> tuple[int]:

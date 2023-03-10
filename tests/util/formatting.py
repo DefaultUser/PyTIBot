@@ -26,6 +26,31 @@ from util.formatting import html
 from util.formatting import irc
 
 
+def _compare_tags(testcase: unittest.TestCase, item1: Any, item2: Any):
+    testcase.assertEqual(type(item1), type(item2))
+    if isinstance(item1, slot):
+        testcase.assertEqual(item1.name, item2.name)
+    elif not isinstance(item1, Tag):
+        testcase.assertEqual(item1, item2)
+    else:
+        testcase.assertEqual(item1.tagName, item2.tagName)
+        testcase.assertEqual(item1.attributes.keys(), item2.attributes.keys())
+        for key in item1.attributes.keys():
+            _compare_tags(testcase, item1.attributes[key],
+                          item2.attributes[key])
+        testcase.assertEqual(item1.slotData, item2.slotData)
+        testcase.assertEqual(len(item1.children), len(item2.children))
+        for child_of_item1, child_of_item2 in zip(item1.children,
+                                                  item2.children):
+            _compare_tags(testcase, child_of_item1, child_of_item2)
+
+def _compare_styled_string(testcase: unittest.TestCase, l1: list[Tag|str],
+                           l2: list[Tag|str]):
+    testcase.assertEqual(len(l1), len(l2))
+    for item1, item2 in zip(l1, l2):
+        _compare_tags(testcase, item1, item2)
+
+
 class PlaintextFormattingTestCase(unittest.TestCase):
     def _test_formatting(self, input_value, expected_outcome):
         result = common.to_plaintext(input_value)
@@ -432,29 +457,58 @@ class MatrixFormattingTestCase(unittest.TestCase):
                               'e</font><font color="#2b00fd">f</font>')
 
 
-def _compare_tags(testcase: unittest.TestCase, item1: Any, item2: Any):
-    testcase.assertEqual(type(item1), type(item2))
-    if isinstance(item1, slot):
-        testcase.assertEqual(item1.name, item2.name)
-    elif not isinstance(item1, Tag):
-        testcase.assertEqual(item1, item2)
-    else:
-        testcase.assertEqual(item1.tagName, item2.tagName)
-        testcase.assertEqual(item1.attributes.keys(), item2.attributes.keys())
-        for key in item1.attributes.keys():
-            _compare_tags(testcase, item1.attributes[key],
-                          item2.attributes[key])
-        testcase.assertEqual(item1.slotData, item2.slotData)
-        testcase.assertEqual(len(item1.children), len(item2.children))
-        for child_of_item1, child_of_item2 in zip(item1.children,
-                                                  item2.children):
-            _compare_tags(testcase, child_of_item1, child_of_item2)
+RAINBOW_STYLE_CSS = ("background:linear-gradient(to right, red, darkorange, "
+                     "green, cyan, blue, magenta);color:transparent;"
+                     "background-clip:text;-webkit-background-clip:text")
 
-def _compare_styled_string(testcase: unittest.TestCase, l1: list[Tag|str],
-                           l2: list[Tag|str]):
-    testcase.assertEqual(len(l1), len(l2))
-    for item1, item2 in zip(l1, l2):
-        _compare_tags(testcase, item1, item2)
+
+class HTMLTagModernizerTestCase(unittest.TestCase):
+    def _test_formatting(self, input_value, expected_outcome):
+        result = html.modernize_html(input_value)
+        _compare_tags(self, result, expected_outcome)
+
+    def test_simple_string(self):
+        input_string = "foo"
+        self._test_formatting(input_string, input_string)
+
+    def test_attributes(self):
+        msg = Tag("")(tags.font("foo", color=ColorCodes.red))
+        self._test_formatting(msg, Tag("")(tags.span("foo", style="color:red;")))
+        msg = Tag("")(tags.font("foo", color=ColorCodes.dark_yellow))
+        self._test_formatting(msg, Tag("")(tags.span("foo", style="color:darkorange;")))
+        msg = Tag("")(tags.font("foo", color="#ff00ff"))
+        self._test_formatting(msg, Tag("")(tags.span("foo", style="color:#ff00ff;")))
+        msg = Tag("")(tags.div("foo", bold=True))
+        self._test_formatting(msg, Tag("")(tags.div("foo", style="font-weight:bold;")))
+        msg = Tag("")(tags.div("foo", italic=True))
+        self._test_formatting(msg, Tag("")(tags.div("foo", style="font-style:italic;")))
+        msg = Tag("")(tags.div("foo", strike=True))
+        self._test_formatting(msg, Tag("")(tags.div("foo", style="text-decoration:line-through;")))
+        msg = Tag("")(tags.div("foo", underline=True))
+        self._test_formatting(msg, Tag("")(tags.div("foo", style="text-decoration:underline;")))
+
+    def test_simple_rainbow(self):
+        msg = Tag("")(Tag("rainbow")("abc", tags.b("def")))
+        self._test_formatting(msg, Tag("")(tags.span("abc", tags.b("def"),
+                                                         style=RAINBOW_STYLE_CSS)))
+
+    def test_slot(self):
+        msg = Tag("")("foo ", tags.b(slot("slt"), " bar"))
+        self._test_formatting(msg, Tag("")("foo ", tags.b(slot("slt"), " bar")))
+
+    def test_attr_slot(self):
+        msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))))
+        self._test_formatting(msg,
+                              Tag("")(tags.span("foo", style=Tag("")(
+                                  "color:", slot("slt"), ";"))))
+        msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt")))).fillSlots(slt="red")
+        self._test_formatting(msg,
+                              Tag("")(tags.span("foo", style=Tag("")(
+                                  "color:", slot("slt"), ";"))).fillSlots(slt="red"))
+        msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt")))).fillSlots(slt=ColorCodes.red)
+        self._test_formatting(msg,
+                              Tag("")(tags.span("foo", style=Tag("")(
+                                  "color:", slot("slt"), ";"))).fillSlots(slt="red"))
 
 
 class HTMLParserTestCase(unittest.TestCase):

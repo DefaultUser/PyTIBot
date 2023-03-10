@@ -441,6 +441,95 @@ def to_matrix(data: Tag|str) -> str:
     return formatter.buffer
 
 
+rainbow_style = ("background:linear-gradient(to right, " +
+                 f"{', '.join(html_color_name(c) for c in common.RAINBOW_COLORS)});" +
+                 "color:transparent;background-clip:text;-webkit-background-clip:text")
+
+
+@interface.implementer(common.ITagProcessor)
+class TagModernizer:
+    def __init__(self):
+        self.root = None
+        self._parent_stack = deque()
+
+    def handle_slot(self, slt: slot):
+        self._parent_stack[-1].children.append(slot(slt.name))
+
+    def handle_starttag(self, tag: Tag):
+        tagName = tag.tagName
+        attributes = {}
+        style = []
+        if tagName == "rainbow":
+            tagName = "span"
+            style = [rainbow_style]
+        elif tagName == "font":
+            tagName = "span"
+        new_tag = Tag(tagName)
+        if self.root is None:
+            self.root = new_tag
+        if color := tag.attributes.get("color", None):
+            style.append("color:")
+            if isinstance(color, Tag):
+                for child in color.children:
+                    if isinstance(child, slot):
+                        style.append(slot(child.name))
+                    else:
+                        style.append(color_to_string(child))
+            else:
+                style.append(color_to_string(color))
+            style.append(";")
+        if color := tag.attributes.get("background-color", None):
+            style.append("background-color:")
+            if isinstance(color, Tag):
+                for child in color.children:
+                    if isinstance(child, slot):
+                        style.append(slot(child.name))
+                    else:
+                        style.append(color_to_string(child))
+            else:
+                style.append(color_to_string(color))
+            style.append(";")
+        if tag.attributes.get("bold", False):
+            style.append("font-weight:bold;")
+        if tag.attributes.get("italic", False):
+            style.append("font-style:italic;")
+        if tag.attributes.get("underline", False):
+            style.append("text-decoration:underline;")
+        if tag.attributes.get("strike", False):
+            style.append("text-decoration:line-through;")
+        if href := tag.attributes.get("href", None):
+            attributes["href"] = href
+        if style:
+            if any(map(lambda x: not isinstance(x, str), style)):
+                attributes["style"] = Tag("")(*style)
+            else:
+                attributes["style"] = "".join(style)
+        new_tag.attributes = attributes
+        if tag.slotData:
+            for key, value in tag.slotData.items():
+                if isinstance(value, ColorCodes):
+                    value = value.name
+                new_tag.fillSlots(**{key: value})
+        if self._parent_stack:
+            self._parent_stack[-1].children.append(new_tag)
+        self._parent_stack.append(new_tag)
+
+    def handle_data(self, data: str):
+        if self._parent_stack:
+            self._parent_stack[-1].children.append(data)
+
+    def handle_endtag(self, tag: Tag):
+        self._parent_stack.pop()
+
+
+def modernize_html(data: Tag|str) -> Tag|str:
+    if isinstance(data, str):
+        return data
+    processor = TagModernizer()
+    common._processStyledText(data, processor)
+    return processor.root
+
+
 def _style_html_string(style: Style) -> str:
     # TODO: handle hex colors
     styles = []

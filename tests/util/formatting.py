@@ -120,6 +120,11 @@ class HTMLParserTestCase(unittest.TestCase):
                                      Tag("")(tags.font("bar",
                                                        color=Tag("")(slot("slt")))))
 
+    def test_invalid_html(self):
+        self.assertRaises(htmlformatting.HTMLParseError,
+                          htmlformatting.parse_html,
+                          '<font color="red">foo')
+
 
 class IRCParserTestCase(unittest.TestCase):
     def _test_parser(self, input_value, expected_outcome):

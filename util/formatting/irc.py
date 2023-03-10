@@ -17,9 +17,12 @@
 from collections import deque
 import dataclasses
 import re
-from twisted.web.template import Tag
+from twisted.web.template import Tag, slot
+from twisted.words.protocols.irc import stripFormatting as stripIrcFormatting
 from typing import Generator
+from zope import interface
 
+from util.formatting import common
 from util.formatting.common import ColorCodes, Style, StyledTextFragment
 
 # https://modern.ircdocs.horse/formatting.html
@@ -123,6 +126,164 @@ def parse_irc(message: str) -> Tag:
             stack.append(result)
         if substrings[i+8]:
             stack[-1].children.append(substrings[i+8])
+    return result
+
+
+@interface.implementer(common.ITagProcessor)
+class TagToIrcFormatter:
+    # TODO: support <hn>
+    def __init__(self):
+        self.buffer = ""
+        self._style_stack = deque()
+        self._style_stack.append(Style())
+        self._slotDataStack = deque()
+        self._slotDataStack.append({})
+        self._rainbow_position = 0
+        self._rainbow_content_length = 0
+        self._rainbow_tag_depth = -1
+
+    def handle_slot(self, slt: slot):
+        self.handle_data(self._slotDataStack[-1][slt.name])
+
+    def handle_newline(self):
+        if stripIrcFormatting(self.buffer) == "":
+            return
+        style = self._style_stack[-1]
+        self.buffer += "\n"
+        if style.bold:
+            self.buffer += _BOLD
+        if style.italic:
+            self.buffer += _ITALIC
+        if style.underline:
+            self.buffer += _UNDERLINE
+        if style.strike:
+            self.buffer += _UNDERLINE
+        if style.fg:
+            self.buffer += _COLOR + style.fg.value
+            if style.bg:
+                self.buffer += "," + style.bg.value
+
+    def handle_starttag(self, tag: Tag):
+        style = dataclasses.replace(self._style_stack[-1])
+        slotData = {**self._slotDataStack[-1], **(tag.slotData or {})}
+        self._slotDataStack.append(slotData)
+        tagName = tag.tagName
+        if common.is_bold(tag) and not style.bold:
+            style.bold = True
+            self.buffer += _BOLD
+        if common.is_italic(tag) and not style.italic:
+            style.italic = True
+            self.buffer += _ITALIC
+        if common.is_del(tag) and not style.strike:
+            style.strike = True
+            self.buffer += _STRIKE
+        if common.is_underlined(tag) and not style.underline:
+            style.underline = True
+            self.buffer += _UNDERLINE
+        elif tagName == "rainbow":
+            self._rainbow_content_length = len(common.to_plaintext(
+                tag.clone().fillSlots(**slotData)))
+            self._rainbow_tag_depth = len(self._style_stack)
+        # TODO: same for <hn>
+        if common.is_display_block(tag):
+            self.handle_newline()
+        if (common.is_colored(tag) and self._rainbow_content_length == 0):
+            fg = tag.attributes.get("color", None)
+            bg = tag.attributes.get("background-color", None)
+            if fg and not (fg == style.fg and bg == style.bg):
+                if isinstance(fg, Tag):
+                    fg = common.handle_attribute_tag(fg, self._slotDataStack)
+                if not isinstance(fg, ColorCodes):
+                    fg = common.closest_colorcode(fg)
+                self.buffer += _COLOR + fg.value
+                style.fg = fg
+                if bg:
+                    if isinstance(bg, Tag):
+                        bg = common.handle_attribute_tag(bg, self._slotDataStack)
+                    if not isinstance(bg, ColorCodes):
+                        bg = common.closest_colorcode(bg)
+                    self.buffer += "," + bg.value
+                    style.bg = bg
+        elif tagName == "br":
+            self.handle_newline()
+        self._style_stack.append(style)
+
+    def handle_data(self, data: str):
+        def prepare_text_fragment(fragment):
+            style = self._style_stack[-1]
+            if self._rainbow_content_length == 0:
+                return fragment
+            ret = ""
+            for char in fragment:
+                new_color = rainbow_color(
+                        self._rainbow_position/self._rainbow_content_length,
+                        common.RAINBOW_COLORS)
+                self._rainbow_position += 1
+                if new_color != style.fg:
+                    ret += _COLOR + new_color.value
+                    # set the color for all styles in the stack after the rainbow tag
+                    for i in range(self._rainbow_tag_depth, len(self._style_stack)):
+                        self._style_stack[i].fg = new_color
+                ret += char
+            return ret
+
+        fragments = data.split("\n")
+        self.buffer += prepare_text_fragment(fragments[0])
+        for item in fragments[1:]:
+            self.handle_newline()
+            self.buffer += prepare_text_fragment(item)
+
+    def handle_endtag(self, tag: Tag):
+        style = self._style_stack.pop()
+        self._slotDataStack.pop()
+        parent_style = self._style_stack[-1]
+        control_char = None
+        tagName = tag.tagName
+        if common.is_bold(tag) and not parent_style.bold:
+            control_char = _BOLD
+        if common.is_italic(tag) and not parent_style.italic:
+            control_char = _ITALIC
+        if common.is_del(tag) and not parent_style.strike:
+            control_char = _STRIKE
+        if common.is_underlined(tag) and not parent_style.underline:
+            control_char = _UNDERLINE
+        if common.is_colored(tag) or tag.tagName == "rainbow":
+            current_fg = style.fg
+            current_bg = style.bg
+            parent_fg = parent_style.fg
+            parent_bg = parent_style.bg
+            if parent_fg is None and current_fg is not None:
+                control_char = _COLOR
+            elif parent_fg is not None:
+                if parent_bg is None and current_bg is not None:
+                    control_char = _COLOR*2 + parent_fg.value
+                elif parent_bg is not None and current_bg != parent_bg:
+                    control_char = _COLOR + parent_fg.value + "," + parent_bg.value
+                elif parent_fg != current_fg and parent_bg == current_bg:
+                    control_char = _COLOR + parent_fg.value
+        if control_char:
+            self.buffer += control_char
+        if common.is_display_block(tag):
+            self.handle_newline()
+        if tag.tagName == "rainbow":
+            self._rainbow_position = 0
+            self._rainbow_content_length = 0
+        elif tag.tagName == "a" and (href:=tag.attributes.get("href", None)):
+            self.buffer += f" ({href})"
+
+
+def to_irc(data: Tag|str) -> str:
+    if isinstance(data, str):
+        return data
+    formatter = TagToIrcFormatter()
+    common._processStyledText(data, formatter)
+    result = formatter.buffer
+    while "\n" in result:
+        beginning, last_line = result.rsplit("\n", 1)
+        if stripIrcFormatting(last_line) == "":
+            result = beginning
+        else:
+            break
     return result
 
 

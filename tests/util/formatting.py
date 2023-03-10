@@ -124,6 +124,243 @@ class PlaintextFormattingTestCase(unittest.TestCase):
         self.assertRaises(KeyError, common.to_plaintext, msg)
 
 
+class IrcFormattingTestCase(unittest.TestCase):
+    def _test_formatting(self, input_value, expected_outcome):
+        result = irc.to_irc(input_value)
+        self.assertEqual(result, expected_outcome)
+
+    def test_simple_string(self):
+        input_string = "foo"
+        self._test_formatting(input_string, input_string)
+
+    def test_simple_display_blocks(self):
+        msg = Tag("")("foo", tags.p("bar"), "baz")
+        self._test_formatting(msg, "foo\nbar\nbaz")
+        msg = Tag("")(tags.div("bar"), "baz")
+        self._test_formatting(msg, "bar\nbaz")
+        msg = Tag("")(tags.div("foo"))
+        self._test_formatting(msg, "foo")
+
+    def test_simple_bold(self):
+        msg = Tag("")(tags.b("foo"))
+        self._test_formatting(msg, "\x02foo\x02")
+        msg = Tag("")(tags.strong("foo"))
+        self._test_formatting(msg, "\x02foo\x02")
+        msg = Tag("")(tags.span("foo", bold=True))
+        self._test_formatting(msg, "\x02foo\x02")
+
+    def test_simple_fgcolor(self):
+        fg = ColorCodes.red
+        msg = Tag("")(tags.font("foo", color=fg))
+        self._test_formatting(msg, "\x03" + fg.value + "foo\x03")
+        msg = Tag("")(tags.span("foo", color=fg))
+        self._test_formatting(msg, "\x03" + fg.value + "foo\x03")
+
+    def test_simple_fgcolor_named(self):
+        fg = "red"
+        msg = Tag("")(tags.font("foo", color=fg))
+        self._test_formatting(msg, "\x0304foo\x03")
+
+    def test_simple_fgcolor_hex(self):
+        fg = "#ff0000"
+        msg = Tag("")(tags.font("foo", color=fg))
+        self._test_formatting(msg, "\x0304foo\x03")
+        fg = "#fe0000"
+        msg = Tag("")(tags.font("foo", color=fg))
+        self._test_formatting(msg, "\x0304foo\x03")
+        fg = "#e00"
+        msg = Tag("")(tags.font("foo", color=fg))
+        self._test_formatting(msg, "\x0304foo\x03")
+
+    def test_simple_bgcolor(self):
+        fg = ColorCodes.red
+        bg = ColorCodes.blue
+        msg = Tag("")(tags.font("foo", **{"color": fg,
+                                              "background-color": bg}))
+        self._test_formatting(msg,
+                              "\x03" + fg.value + "," + bg.value + "foo\x03")
+
+    def test_bgcolor_without_fgcolor(self):
+        # bgcolor can only be shown in conjunction with fgcolor
+        bg = ColorCodes.blue
+        msg = Tag("")(tags.font("foo", **{"background-color": bg}))
+        self._test_formatting(msg, "foo")
+
+    def test_simple_italic(self):
+        msg = Tag("")(tags.i("foo"))
+        self._test_formatting(msg, "\x1dfoo\x1d")
+        msg = Tag("")(tags.em("foo"))
+        self._test_formatting(msg, "\x1dfoo\x1d")
+        msg = Tag("")(tags.cite("foo"))
+        self._test_formatting(msg, "\x1dfoo\x1d")
+        msg = Tag("")(tags.span("foo", italic=True))
+        self._test_formatting(msg, "\x1dfoo\x1d")
+
+    def test_simple_strike(self):
+        msg = Tag("")(Tag("del")("foo"))
+        self._test_formatting(msg, "\x1efoo\x1e")
+        msg = Tag("")(tags.strike("foo"))
+        self._test_formatting(msg, "\x1efoo\x1e")
+        msg = Tag("")(tags.s("foo"))
+        self._test_formatting(msg, "\x1efoo\x1e")
+        msg = Tag("")(tags.span("foo", strike=True))
+        self._test_formatting(msg, "\x1efoo\x1e")
+
+    def test_simple_underlined(self):
+        msg = Tag("")(tags.u("foo"))
+        self._test_formatting(msg, "\x1ffoo\x1f")
+        msg = Tag("")(tags.span("foo", underline=True))
+        self._test_formatting(msg, "\x1ffoo\x1f")
+
+    def test_simple_newline(self):
+        msg = Tag("")("foo\nbar")
+        self._test_formatting(msg, "foo\nbar")
+        msg = Tag("")("foo", tags.br(), "bar")
+        self._test_formatting(msg, "foo\nbar")
+        msg = Tag("")(tags.br(), "bar")
+        self._test_formatting(msg, "bar")
+
+    def test_simple_rainbow(self):
+        msg = Tag("")(Tag("rainbow")("abcdef"))
+        self._test_formatting(msg,
+                              "\x0304a\x0307b\x0309c\x0311d\x0312e\x0313f\x03")
+
+    def test_simple_href(self):
+        msg = Tag("")(tags.a("foo", href="example.com"))
+        self._test_formatting(msg, "foo (example.com)")
+
+    def test_newline_styled(self):
+        msg = Tag("")("foo", tags.b("bar\nbaz"))
+        self._test_formatting(msg, "foo\x02bar\n\x02baz\x02")
+        msg = Tag("")("foo", tags.b("bar", tags.br(), "baz"))
+        self._test_formatting(msg, "foo\x02bar\n\x02baz\x02")
+        msg = Tag("")(tags.b(tags.i("bar", tags.br(), "baz")))
+        self._test_formatting(msg, "\x02\x1dbar\n\x02\x1dbaz\x1d\x02")
+        msg = Tag("")(tags.b(tags.br(), "foo"))
+        self._test_formatting(msg, "\x02foo\x02")
+        fg = ColorCodes.red
+        bg = ColorCodes.blue
+        msg = Tag("")(tags.font(" ", tags.br(), "foo",
+                                    **{"color": fg, "background-color": bg}))
+        self._test_formatting(msg,
+                              "\x03" + fg.value + "," + bg.value + " \n\x03" +
+                              fg.value + "," + bg.value + "foo\x03")
+
+    def test_sequential_tags(self):
+        msg = Tag("")(tags.b("foo"), tags.i("bar"))
+        self._test_formatting(msg, "\x02foo\x02\x1dbar\x1d")
+        msg = Tag("")(tags.b("foo"), tags.b("bar"))
+        self._test_formatting(msg, "\x02foo\x02\x02bar\x02")
+
+    def test_nested_repeated_tags(self):
+        msg = Tag("")(tags.b(tags.b("foo")))
+        self._test_formatting(msg, "\x02foo\x02")
+        msg = Tag("")(tags.b(tags.b("foo"), tags.b("bar")))
+        self._test_formatting(msg, "\x02foobar\x02")
+        msg = Tag("")(tags.b(tags.i("foo"), tags.b("bar")))
+        self._test_formatting(msg, "\x02\x1dfoo\x1dbar\x02")
+
+    def test_nested_color_tags(self):
+        fg = ColorCodes.red
+        fg2 = ColorCodes.green
+        bg = ColorCodes.blue
+        # same fg and bg color
+        msg = Tag("")(tags.font("foo", tags.font("bar", color=fg),
+                                    color=fg))
+        self._test_formatting(msg, "\x03" + fg.value + "foobar\x03")
+        # outer has fg and bg, inner only the same fg
+        msg = Tag("")(tags.font("foo", tags.font("bar", color=fg),
+                                    **{"color": fg, "background-color": bg}))
+        self._test_formatting(msg,
+                              "\x03" + fg.value + "," + bg.value + "foo\x03" +
+                              fg.value + "bar\x03")
+        # outer has fg and bg, inner only another fg
+        msg = Tag("")(tags.font("foo", tags.font("bar", color=fg2), "baz",
+                                    **{"color": fg, "background-color": bg}))
+        self._test_formatting(msg,
+                              "\x03" + fg.value + "," + bg.value + "foo\x03" +
+                              fg2.value + "bar\x03" + fg.value + "baz\x03")
+        # outer has no bg color -> after inner tag,
+        # all color info has to be cleared and reset to outer style
+        msg = Tag("")(tags.font("foo", tags.font("bar",
+                                                     **{"color": fg2,
+                                                        "background-color": bg}),
+                                    "spam", color=fg))
+        self._test_formatting(msg,
+                              "\x03" + fg.value + "foo\x03" + fg2.value + "," +
+                              bg.value + "bar\x03\x03" + fg.value + "spam\x03")
+        # same as above, but the outer font tag has no final text child
+        # the end could be optimized away, but for now this is good enough
+        msg = Tag("")(tags.font("foo", tags.font("bar",
+                                                     **{"color": fg,
+                                                        "background-color": bg}),
+                                    color=fg))
+        self._test_formatting(msg,
+                              "\x03" + fg.value + "foo\x03" + fg.value + "," +
+                              bg.value + "bar\x03\x03" + fg.value + "\x03")
+
+    def test_nested_rainbow(self):
+        msg = Tag("")(Tag("rainbow")("abc", tags.b("def")))
+        self._test_formatting(msg,
+                              "\x0304a\x0307b\x0309c\x02\x0311d\x0312e"
+                              "\x0313f\x02\x03")
+        # rainbow inhibits inner tag's color information
+        fg = ColorCodes.green
+        msg = Tag("")(Tag("rainbow")("abc", tags.font("def", color=fg)))
+        self._test_formatting(msg,
+                              "\x0304a\x0307b\x0309c\x0311d\x0312e\x0313f\x03")
+        # rainbow inside a colored block, not the same color as rainbow start or end
+        fg = ColorCodes.green
+        msg = Tag("")(tags.font("foo ", Tag("rainbow")("abcdef"), " bar",
+                                    color=fg))
+        self._test_formatting(msg,
+                              "\x03" + fg.value +
+                              "foo \x0304a\x0307b\x0309c\x0311d\x0312e\x0313f\x03" +
+                              fg.value + " bar\x03")
+        # rainbow inside a colored block, the same color as rainbow start
+        fg = ColorCodes.red
+        msg = Tag("")(tags.font("foo ", Tag("rainbow")("abcdef"), " bar",
+                                    color=fg))
+        self._test_formatting(msg,
+                              "\x03" + fg.value +
+                              "foo a\x0307b\x0309c\x0311d\x0312e\x0313f\x03" +
+                              fg.value + " bar\x03")
+        # rainbow inside a colored block, the same color as rainbow end
+        fg = ColorCodes.magenta
+        msg = Tag("")(tags.font("foo ", Tag("rainbow")("abcdef"), " bar",
+                                    color=fg))
+        self._test_formatting(msg,
+                              "\x03" + fg.value + "foo \x0304a\x0307b\x0309c"
+                              "\x0311d\x0312e\x0313f bar\x03")
+
+    def test_nested_with_href(self):
+        msg = Tag("")("foo", tags.a(tags.b("foo"), href="example.com"))
+        self._test_formatting(msg, "foo\x02foo\x02 (example.com)")
+        msg = Tag("")("foo", tags.b(tags.a("foo", href="example.com")))
+        self._test_formatting(msg, "foo\x02foo (example.com)\x02")
+
+    def test_slot(self):
+        msg = Tag("")("foo", tags.b(slot("slt"), "bar").fillSlots(slt=" "))
+        self._test_formatting(msg, "foo\x02 bar\x02")
+        msg = Tag("")("foo", tags.b(slot("slt"), "bar"))
+        self.assertRaises(KeyError, irc.to_irc, msg)
+
+    def test_attr_slot(self):
+        msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))).fillSlots(slt="red"))
+        self._test_formatting(msg, "\x0304foo\x03")
+        msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt")))).fillSlots(slt="red")
+        self._test_formatting(msg, "\x0304foo\x03")
+        msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))).fillSlots(slt=ColorCodes.red))
+        self._test_formatting(msg, "\x0304foo\x03")
+        msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))))
+        self.assertRaises(KeyError, irc.to_irc, msg)
+
+    def test_rainbow_with_slot(self):
+        msg = Tag("")(Tag("rainbow")("abc", slot("slt"))).fillSlots(slt="def")
+        self._test_formatting(msg,
+                              "\x0304a\x0307b\x0309c\x0311d\x0312e\x0313f\x03")
+
+
 def _compare_tags(testcase: unittest.TestCase, item1: Any, item2: Any):
     testcase.assertEqual(type(item1), type(item2))
     if isinstance(item1, slot):

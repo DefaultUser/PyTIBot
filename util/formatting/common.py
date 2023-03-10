@@ -84,6 +84,10 @@ def good_contrast_with_black(color: str|ColorCodes) -> bool:
                          HSVColor).hsv_v > 0.5
 
 
+RAINBOW_COLORS = (ColorCodes.red, ColorCodes.dark_yellow, ColorCodes.green,
+                  ColorCodes.cyan, ColorCodes.blue, ColorCodes.magenta)
+
+
 @dataclass
 class Style:
     underline: bool | None = None
@@ -132,6 +136,21 @@ def is_colored(tag: Tag) -> bool:
     return (tag.tagName in ("font", "span", "div") and
             ("color" in tag.attributes or
              "background-color" in tag.attributes))
+
+
+def handle_attribute_tag(attr: Tag, slotDataStack: deque):
+    if len(attr.children) == 1:
+        item = attr.children[0]
+        if isinstance(item, slot):
+            return slotDataStack[-1][item.name]
+        return item
+    temp = []
+    for child in attr.children:
+        if isinstance(child, slot):
+            temp.append(slotDataStack[-1][item.name])
+        else:
+            temp.append(child)
+    return "".join(temp)
 
 
 class ITagProcessor(interface.Interface):

@@ -235,7 +235,6 @@ class TagToIrcFormatter:
 
     def handle_endtag(self, tag: Tag):
         style = self._style_stack.pop()
-        self._slotDataStack.pop()
         parent_style = self._style_stack[-1]
         control_char = None
         tagName = tag.tagName
@@ -269,7 +268,10 @@ class TagToIrcFormatter:
             self._rainbow_position = 0
             self._rainbow_content_length = 0
         elif tag.tagName == "a" and (href:=tag.attributes.get("href", None)):
+            if isinstance(href, Tag):
+                href = common.handle_attribute_tag(href, self._slotDataStack)
             self.buffer += f" ({href})"
+        self._slotDataStack.pop()
 
 
 def to_irc(data: Tag|str) -> str:

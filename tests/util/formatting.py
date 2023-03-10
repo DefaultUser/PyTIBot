@@ -377,6 +377,8 @@ class IrcFormattingTestCase(unittest.TestCase):
         self._test_formatting(msg, "\x0304foo\x03")
         msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))).fillSlots(slt=ColorCodes.red))
         self._test_formatting(msg, "\x0304foo\x03")
+        msg = Tag("")(tags.a("foo", href=Tag("")(slot("slt"))).fillSlots(slt="example.com"))
+        self._test_formatting(msg, "foo (example.com)")
         msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))))
         self.assertRaises(KeyError, irc.to_irc, msg)
 

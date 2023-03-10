@@ -197,7 +197,7 @@ class MatrixBot:
         if unformatted == message:
             return {"body": message}
         return {"body": unformatted, "format": "org.matrix.custom.html",
-                "formatted_body": formatting.to_matrix(message).replace("\n", "<br/>")}
+                "formatted_body": formatting.to_matrix_deprecated(message).replace("\n", "<br>")}
 
     @inlineCallbacks
     def get_or_create_direct_message_room(self, user: str) -> str:

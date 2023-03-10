@@ -16,7 +16,7 @@
 
 from bidict import bidict
 from collections import deque
-from colormath.color_objects import sRGBColor, LabColor, HSVColor
+from colormath.color_objects import ColorBase, sRGBColor, LabColor, HSVColor
 from colormath.color_conversions import convert_color
 from colormath.color_diff import delta_e_cie2000
 from dataclasses import dataclass, asdict
@@ -262,6 +262,25 @@ def split_rgb_string(hex_string: str) -> tuple[int]:
                                              range(0, len(hex_string), 2)])
         return r, g, b
     raise ValueError("Needs a string of form 'rgb' or 'rrggbb")
+
+
+def interpolate_color(color1: ColorCodes|str, color2: ColorCodes|str,
+                      factor: float, colorspace: ColorBase = sRGBColor) -> str:
+    if isinstance(color1, ColorCodes):
+        color1 = ColorsHex[color1]
+    if isinstance(color2, ColorCodes):
+        color2 = ColorsHex[color2]
+    color1 = convert_color(sRGBColor(*split_rgb_string(color1),
+                                     is_upscaled=True),
+                           colorspace).get_value_tuple()
+    color2 = convert_color(sRGBColor(*split_rgb_string(color2),
+                                     is_upscaled=True),
+                           colorspace).get_value_tuple()
+    val = []
+    for i in range(3):
+        val.append(color1[i] + (color2[i]-color1[i])*factor)
+    out_color = convert_color(colorspace(*val), sRGBColor)
+    return out_color.get_rgb_hex()
 
 
 def closest_colorcode_from_rgb(r: int, g: int, b: int) -> ColorCodes:

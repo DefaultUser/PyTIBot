@@ -361,6 +361,77 @@ class IrcFormattingTestCase(unittest.TestCase):
                               "\x0304a\x0307b\x0309c\x0311d\x0312e\x0313f\x03")
 
 
+class MatrixFormattingTestCase(unittest.TestCase):
+    def _test_formatting(self, input_value, expected_outcome):
+        result = html.to_matrix(input_value)
+        self.assertEqual(result, expected_outcome)
+
+    def test_simple_string(self):
+        input_string = "foo"
+        self._test_formatting(input_string, input_string)
+
+    def test_attributes(self):
+        msg = Tag("")(tags.font("foo", color=ColorCodes.red))
+        self._test_formatting(msg, '<font color="red">foo</font>')
+        msg = Tag("")(tags.font("foo", color=ColorCodes.dark_yellow))
+        self._test_formatting(msg, '<font color="darkorange">foo</font>')
+        msg = Tag("")(tags.font("foo", color="#ff00ff"))
+        self._test_formatting(msg, '<font color="#ff00ff">foo</font>')
+        msg = Tag("")(tags.font("foo", **{"background-color": "#ff00ff"}))
+        self._test_formatting(msg,
+                              '<font data-mx-bg-color="#ff00ff">foo</font>')
+        msg = Tag("")(tags.div("foo", color=ColorCodes.red))
+        self._test_formatting(msg, '<font color="red">foo</font>')
+
+    def test_multiple_attributes(self):
+        msg = Tag("")(tags.span("foo", bold=True, strike=True))
+        self._test_formatting(msg, '<b><del><span>foo</span></del></b>')
+        msg = Tag("")(tags.span("foo", bold=True, strike=True,
+                                    color=ColorCodes.red))
+        self._test_formatting(msg,
+                              '<b><del><font color="red">foo</font></del></b>')
+
+    def test_simple_rainbow(self):
+        msg = Tag("")(Tag("rainbow")("abcdef"))
+        self._test_formatting(msg,
+                              '<font color="#ff0000">a</font><font color="#fd6a00">'
+                              'b</font><font color="#54d200">c</font>'
+                              '<font color="#00fe80">d</font><font color="#00aafe">'
+                              'e</font><font color="#2b00fd">f</font>')
+
+    def test_nested_rainbow(self):
+        msg = Tag("")("foo", Tag("rainbow")("abc", tags.b("def")))
+        self._test_formatting(msg,
+                              'foo<font color="#ff0000">a</font><font color="#fd6a00">'
+                              'b</font><font color="#54d200">c</font><b>'
+                              '<font color="#00fe80">d</font><font color="#00aafe">'
+                              'e</font><font color="#2b00fd">f</font></b>')
+
+    def test_slot(self):
+        msg = Tag("")("foo ", tags.b(slot("slt"), " bar").fillSlots(slt="baz"))
+        self._test_formatting(msg, "foo <b>baz bar</b>")
+        msg = Tag("")("foo", tags.b(slot("slt"), "bar"))
+        self.assertRaises(KeyError, html.to_matrix, msg)
+
+    def test_attr_slot(self):
+        msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))).fillSlots(
+            slt="red"))
+        self._test_formatting(msg, '<font color="red">foo</font>')
+        msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))).fillSlots(
+            slt=ColorCodes.red))
+        self._test_formatting(msg, '<font color="red">foo</font>')
+        msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))))
+        self.assertRaises(KeyError, html.to_matrix, msg)
+
+    def test_rainbow_with_slot(self):
+        msg = Tag("")(Tag("rainbow")("abc", slot("slt"))).fillSlots(slt="def")
+        self._test_formatting(msg,
+                              '<font color="#ff0000">a</font><font color="#fd6a00">'
+                              'b</font><font color="#54d200">c</font>'
+                              '<font color="#00fe80">d</font><font color="#00aafe">'
+                              'e</font><font color="#2b00fd">f</font>')
+
+
 def _compare_tags(testcase: unittest.TestCase, item1: Any, item2: Any):
     testcase.assertEqual(type(item1), type(item2))
     if isinstance(item1, slot):

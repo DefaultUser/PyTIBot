@@ -18,8 +18,11 @@ from collections import deque
 from html import escape as htmlescape
 from html import parser as htmlparser
 from twisted.web.template import tags, Tag, slot
+from zope import interface
 
-from util.formatting.common import ColorsHex, Style, StyledTextFragment, url_pat
+from util.formatting import common
+from util.formatting.common import ColorCodes, ColorsHex, Style,\
+        StyledTextFragment, url_pat
 from util.formatting.irc import _extract_irc_style
 
 
@@ -175,6 +178,14 @@ HTMLColors = {
         "whitesmoke": "#f5f5f5",
         "yellowgreen": "#9acd32"
         }
+
+
+def html_color_name(color: ColorCodes) -> str:
+    return color.name.replace("dark_yellow", "darkorange").replace("_", "")
+
+
+def color_to_string(color: ColorCodes|str) -> str:
+    return html_color_name(color) if isinstance(color, ColorCodes) else color
 
 
 class HTMLParseError(Exception):
@@ -339,6 +350,97 @@ def parse_html(data: str, allow_slots=False) -> Tag:
     return p.root
 
 
+@interface.implementer(common.ITagProcessor)
+class TagToMatrixFormatter:
+    styled_tagnames = {"bold": "b", "italic": "i", "underline": "u",
+                       "strike": "del"}
+    style_attr_order = ("bold", "italic", "underline", "strike")
+
+    def __init__(self):
+        self.buffer = ""
+        self._slotDataStack = deque()
+        self._slotDataStack.append({})
+        self._rainbow_position = 0
+        self._rainbow_content_length = 0
+
+    def handle_slot(self, slt: slot):
+        self.handle_data(self._slotDataStack[-1][slt.name])
+
+    def handle_starttag(self, tag: Tag):
+        tagName = tag.tagName
+        if tagName == "rainbow":
+            slotData = {}
+            self._rainbow_content_length = len(common.to_plaintext(
+                tag.clone().fillSlots(**self._slotDataStack[-1])))
+            return
+        slotData = {**self._slotDataStack[-1], **(tag.slotData or {})}
+        self._slotDataStack.append(slotData)
+        attributes = {}
+        for attr in TagToMatrixFormatter.style_attr_order:
+            if attr in tag.attributes:
+                self.buffer += f"<{TagToMatrixFormatter.styled_tagnames[attr]}>"
+        if color := tag.attributes.get("color", None):
+            if isinstance(color, Tag):
+                color = common.handle_attribute_tag(color, self._slotDataStack)
+            attributes["color"] = color_to_string(color)
+            tagName = "font"
+        if color := tag.attributes.get("background-color", None):
+            if isinstance(color, Tag):
+                color = common.handle_attribute_tag(color, self._slotDataStack)
+            attributes["data-mx-bg-color"] = color_to_string(color)
+            tagName = "font"
+        if href := tag.attributes.get("href", None):
+            attributes["href"] = href
+        if not tagName:
+            return
+        self.buffer += "<" + tagName
+        for key, value in attributes.items():
+            self.buffer += f" {key}=\"{value}\""
+        self.buffer += ">"
+
+    def handle_data(self, data: str):
+        def rainbow_color_at(relative_position: float) -> str:
+            if relative_position > 1 or relative_position < 0:
+                raise ValueError("relative position in rainbow has to be in [0,1]")
+            index = int(relative_position*(len(common.RAINBOW_COLORS)-1))
+            current_color = common.RAINBOW_COLORS[index]
+            next_color = common.RAINBOW_COLORS[index+1]
+            blend_factor = relative_position*(len(common.RAINBOW_COLORS)-1) - index
+            return common.interpolate_color(current_color, next_color, blend_factor)
+
+        if self._rainbow_content_length:
+            for char in data:
+                color = rainbow_color_at(self._rainbow_position/self._rainbow_content_length)
+                self._rainbow_position += 1
+                self.buffer += f"<font color=\"{color}\">{char}</font>"
+        else:
+            self.buffer += data
+
+    def handle_endtag(self, tag: Tag):
+        if tag.tagName == "rainbow":
+            self._rainbow_content_length = 0
+            return
+        if not tag.tagName:
+            return
+        if (tag.attributes.get("color", None) or
+                tag.attributes.get("background-color", None)):
+            tagName = "font"
+        else:
+            tagName = tag.tagName
+        self.buffer += f"</{tagName}>"
+        for attr in TagToMatrixFormatter.style_attr_order[::-1]:
+            if attr in tag.attributes:
+                self.buffer += f"</{TagToMatrixFormatter.styled_tagnames[attr]}>"
+
+
+def to_matrix(data: Tag|str) -> str:
+    if isinstance(data, str):
+        return data
+    formatter = TagToMatrixFormatter()
+    common._processStyledText(data, formatter)
+    return formatter.buffer
+
+
 def _style_html_string(style: Style) -> str:
     # TODO: handle hex colors
     styles = []
@@ -399,7 +501,7 @@ def _styled_fragment_to_matrix(fragment: StyledTextFragment) -> str:
     return text
 
 
-def to_matrix(text: str) -> str:
+def to_matrix_deprecated(text: str) -> str:
     """
     \brief Convert a string with IRC formatting information to matrix format
     """

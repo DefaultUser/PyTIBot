@@ -44,12 +44,6 @@ def _compare_tags(testcase: unittest.TestCase, item1: Any, item2: Any):
                                                   item2.children):
             _compare_tags(testcase, child_of_item1, child_of_item2)
 
-def _compare_styled_string(testcase: unittest.TestCase, l1: list[Tag|str],
-                           l2: list[Tag|str]):
-    testcase.assertEqual(len(l1), len(l2))
-    for item1, item2 in zip(l1, l2):
-        _compare_tags(testcase, item1, item2)
-
 
 class PlaintextFormattingTestCase(unittest.TestCase):
     def _test_formatting(self, input_value, expected_outcome):

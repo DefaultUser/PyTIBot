@@ -17,7 +17,7 @@
 from collections import deque
 import dataclasses
 import re
-from twisted.web.template import Tag, slot
+from twisted.web.template import Tag, tags, slot
 from twisted.words.protocols.irc import stripFormatting as stripIrcFormatting
 from typing import Generator
 from zope import interface
@@ -44,7 +44,7 @@ _NORMAL = "\x0f"
 _irc_parser_pattern = re.compile("(\x1f)|(\x02)|(\x03)(\\d{1,2}(,\\d{1,2})?)?|"
                                  "(\x1d)|(\x1e)|(\x0f)")
 
-def parse_irc(message: str) -> Tag:
+def parse_irc(message: str, link_urls: bool=True) -> Tag:
     result = Tag("")
     stack = deque()
     stack.append(result)
@@ -65,10 +65,22 @@ def parse_irc(message: str) -> Tag:
             append_new_tag(old_tag.tagName)
             stack[-1].attributes = old_tag.attributes
 
+    def append_text(text: str):
+        start = 0
+        if link_urls:
+            for match in common.url_pat.finditer(text):
+                if match.start() > start:
+                    stack[-1].children.append(text[start:match.start()])
+                link = match.group(0)
+                stack[-1].children.append(tags.a(link, href=link))
+                start = match.end()
+        if start < len(text):
+            stack[-1].children.append(text[start:])
+
+
     substrings = _irc_parser_pattern.split(message)
     if len(substrings) % 9:
-        if substrings[0]:
-             result.children.append(substrings[0])
+        append_text(substrings[0])
         start = 1
     else:
         start = 0
@@ -124,8 +136,8 @@ def parse_irc(message: str) -> Tag:
             style = Style()
             stack.clear()
             stack.append(result)
-        if substrings[i+8]:
-            stack[-1].children.append(substrings[i+8])
+        if text:=substrings[i+8]:
+            append_text(text)
     return result
 
 

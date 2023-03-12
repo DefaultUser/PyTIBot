@@ -681,3 +681,18 @@ class IRCParserTestCase(unittest.TestCase):
                                   tags.font("bar", **{"color": ColorCodes("04"),
                                                       "background-color": ColorCodes("12")})))
 
+    def test_automatic_links(self):
+        self._test_parser("foo http://example.com bar",
+                          Tag("")("foo ",
+                                  tags.a("http://example.com", href="http://example.com"),
+                                  " bar"))
+        self._test_parser("\x02foo \x02http://example.com bar",
+                          Tag("")(tags.b("foo "),
+                                  tags.a("http://example.com", href="http://example.com"),
+                                  " bar"))
+        self._test_parser("\x02foo http://example.com\x02 bar",
+                          Tag("")(tags.b("foo ",
+                                         tags.a("http://example.com",
+                                                href="http://example.com")),
+                                  " bar"))
+

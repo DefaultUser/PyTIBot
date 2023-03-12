@@ -602,6 +602,10 @@ class HTMLParserTestCase(unittest.TestCase):
                           html.parse_html,
                           '<font color="red">foo')
 
+    def test_escaped_html(self):
+        self._test_parser("<span>&lt;b&gt;foo&lt;/b&gt;</span>",
+                          Tag("")(tags.span("<b>foo</b>")))
+
 
 class IRCParserTestCase(unittest.TestCase):
     def _test_parser(self, input_value, expected_outcome):

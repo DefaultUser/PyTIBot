@@ -44,7 +44,7 @@ _NORMAL = "\x0f"
 _irc_parser_pattern = re.compile("(\x1f)|(\x02)|(\x03)(\\d{1,2}(,\\d{1,2})?)?|"
                                  "(\x1d)|(\x1e)|(\x0f)")
 
-def parse_irc(message: str, link_urls: bool=True) -> Tag:
+def parse_irc(message: str, link_urls: bool=True) -> Tag|str:
     result = Tag("")
     stack = deque()
     stack.append(result)
@@ -138,6 +138,8 @@ def parse_irc(message: str, link_urls: bool=True) -> Tag:
             stack.append(result)
         if text:=substrings[i+8]:
             append_text(text)
+    if len(result.children) == 1 and isinstance(result.children[0], str):
+        return result.children[0]
     return result
 
 

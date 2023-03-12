@@ -609,7 +609,7 @@ class IRCParserTestCase(unittest.TestCase):
         _compare_tags(self, parse_result, expected_outcome)
 
     def test_simple_string(self):
-        self._test_parser("foo", Tag("")("foo"))
+        self._test_parser("foo", "foo")
 
     def test_simple_bold(self):
         self._test_parser("\x02foo", Tag("")(tags.b("foo")))

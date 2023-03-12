@@ -291,7 +291,7 @@ class GitWebhookServer(Resource):
         #          github_pull_request_review_comment, gitlab_note
         # TODO: issue_hooks, tag_hooks, pullrequest_hooks and comment_hooks
 
-    def report_to_irc(self, repo_name, message, confidential=False):
+    def report_to_chat(self, repo_name, message, confidential=False):
         if self.botfactory.bot is None:
             return
         channels = []
@@ -356,7 +356,7 @@ class GitWebhookServer(Resource):
                                                         len(data["commits"]))
                 msg.children.append(tags.br)
                 msg.children.append(commit_msgs)
-            self.report_to_irc(repo_name, msg)
+            self.report_to_chat(repo_name, msg)
         # subset of information that is common for both GitHUb and GitLab
         # only a few useful pieces of information
         subset = {"commits": data["commits"],
@@ -401,7 +401,7 @@ class GitWebhookServer(Resource):
         if payload:
             msg.children.append(": ")
             msg.children.append(payload)
-        self.report_to_irc(repo_name, msg)
+        self.report_to_chat(repo_name, msg)
 
     @defer.inlineCallbacks
     def on_github_issue_comment(self, data):
@@ -422,21 +422,21 @@ class GitWebhookServer(Resource):
                       issue_title=data["issue"]["title"],
                       issue_url=issue_url,
                       comment_url=comment_url)
-        self.report_to_irc(repo_name, msg)
+        self.report_to_chat(repo_name, msg)
 
     def on_github_create(self, data):
         repo_name = data["repository"]["name"]
         msg = GitWebhookServer.create_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["sender"]["login"],
                       ref_type=data["ref_type"], ref=data["ref"])
-        self.report_to_irc(repo_name, msg)
+        self.report_to_chat(repo_name, msg)
 
     def on_github_delete(self, data):
         repo_name = data["repository"]["name"]
         msg = GitWebhookServer.delete_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["sender"]["login"],
                       ref_type=data["ref_type"], ref=data["ref"])
-        self.report_to_irc(repo_name, msg)
+        self.report_to_chat(repo_name, msg)
 
     @defer.inlineCallbacks
     def on_github_fork(self, data):
@@ -446,7 +446,7 @@ class GitWebhookServer(Resource):
         msg.fillSlots(repo_name=repo_name,
                       user=data["forkee"]["owner"]["login"],
                       url=url)
-        self.report_to_irc(repo_name, msg)
+        self.report_to_chat(repo_name, msg)
 
     @defer.inlineCallbacks
     def on_github_commit_comment(self, data):
@@ -455,7 +455,7 @@ class GitWebhookServer(Resource):
         msg = GitWebhookServer.commit_comment_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["comment"]["user"]["login"],
                       commit_id=data["comment"]["commit_id"], url=url)
-        self.report_to_irc(repo_name, msg)
+        self.report_to_chat(repo_name, msg)
 
     @defer.inlineCallbacks
     def on_github_release(self, data):
@@ -479,7 +479,7 @@ class GitWebhookServer(Resource):
         msg.fillSlots(repo_name=repo_name, user=user, action=action,
                       actioncolor=actioncolor, release_name=release_name,
                       url=url)
-        self.report_to_irc(repo_name, msg)
+        self.report_to_chat(repo_name, msg)
 
     @defer.inlineCallbacks
     def on_github_pull_request(self, data):
@@ -531,7 +531,7 @@ class GitWebhookServer(Resource):
         if payload:
             msg.children.append(": ")
             msg.children.append(payload)
-        self.report_to_irc(repo_name, msg)
+        self.report_to_chat(repo_name, msg)
 
     def _github_PR_review_send_msg(self, is_comment, repo_name, user,
                                    pr_number, title, action, head, base, urls):
@@ -542,7 +542,7 @@ class GitWebhookServer(Resource):
                       head=head, base=base)
         for i, url in enumerate(urls):
             msg.children.append(tags.a(str(i), href=url))
-        self.report_to_irc(repo_name, msg)
+        self.report_to_chat(repo_name, msg)
 
     @defer.inlineCallbacks
     def github_handle_review_flood(self, is_comment):
@@ -645,7 +645,7 @@ class GitWebhookServer(Resource):
         if commit_msgs:
             msg.children.append(tags.br)
             msg.children.append(commit_msgs)
-        self.report_to_irc(repo_name, msg)
+        self.report_to_chat(repo_name, msg)
         # subset of information that is common for both GitHUb and GitLab
         # only a few useful pieces of information
         subset = {"commits": data["commits"],
@@ -671,7 +671,7 @@ class GitWebhookServer(Resource):
         if commit_msgs:
             msg.children.append(tags.br)
             msg.children.append(commit_msgs)
-        self.report_to_irc(repo_name, msg)
+        self.report_to_chat(repo_name, msg)
 
     @defer.inlineCallbacks
     def on_gitlab_issue(self, data):
@@ -697,7 +697,8 @@ class GitWebhookServer(Resource):
                       issue_id=str(attribs["iid"]),
                       issue_title=attribs["title"],
                       issue_url=url)
-        self.report_to_irc(repo_name, msg, confidential=attribs.get("confidential", False))
+        self.report_to_chat(repo_name, msg,
+                            confidential=attribs.get("confidential", False))
 
     @defer.inlineCallbacks
     def on_gitlab_note(self, data):
@@ -729,7 +730,7 @@ class GitWebhookServer(Resource):
         msg.fillSlots(repo_name=repo_name, user=data["user"]["name"],
                       noteable_type=noteable_type, id_prefix=id_prefix, id=id,
                       title=title, url=url)
-        self.report_to_irc(repo_name, msg, confidential=confidential)
+        self.report_to_chat(repo_name, msg, confidential=confidential)
 
     @defer.inlineCallbacks
     def on_gitlab_merge_request(self, data):
@@ -777,4 +778,4 @@ class GitWebhookServer(Resource):
                       source=attribs["source_branch"],
                       target=attribs["target_branch"],
                       url=url)
-        self.report_to_irc(repo_name, msg)
+        self.report_to_chat(repo_name, msg)

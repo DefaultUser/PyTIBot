@@ -98,7 +98,7 @@ VoteDecisionType = typing.Literal["yes", "no", "abstain"]
 CategoryModifyFieldType = typing.Literal["description", "color", "confidential", "duration"]
 
 
-IRCHelp = namedtuple("IRCHelp", "subCommands flags params pos_params")
+ChatHelp = namedtuple("ChatHelp", "subCommands flags params pos_params")
 CategoryInfo = namedtuple("CategoryInfo", "id_ name description color confidential default_duration_seconds")
 
 
@@ -107,7 +107,7 @@ class OptionsWithoutHandlers(usage.Options):
         return [], '', {}, {}, {}, {}
 
     @classmethod
-    def irc_help(cls):
+    def chat_help(cls):
         subCommands = []
         flags = []
         params = []
@@ -150,8 +150,8 @@ class OptionsWithoutHandlers(usage.Options):
                     if p.default is not Parameter.empty:
                         parameter_description += f" (default {p.default})"
                     pos_params.append(parameter_description)
-        return IRCHelp(subCommands=subCommands, flags=flags, params=params,
-                       pos_params=pos_params)
+        return ChatHelp(subCommands=subCommands, flags=flags, params=params,
+                        pos_params=pos_params)
 
 
 class UserAddOptions(OptionsWithoutHandlers):
@@ -1398,7 +1398,7 @@ class Vote(abstract.ChannelWatcher):
                         ColorCodes.red))
                     return
 
-        sig = option_class.irc_help()
+        sig = option_class.chat_help()
         if sig.subCommands:
             msg = Tag("")(formatting.colored("Available commands",
                                              ColorCodes.blue), ": ")

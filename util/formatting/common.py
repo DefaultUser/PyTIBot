@@ -23,7 +23,7 @@ from dataclasses import dataclass, asdict
 from enum import Enum
 import re
 from twisted.web.template import Tag, slot
-from typing import NamedTuple, TypeAlias
+from typing import NamedTuple
 import yaml
 from zope import interface
 

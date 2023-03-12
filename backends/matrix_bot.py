@@ -24,7 +24,7 @@ from nio.api import RoomPreset
 import os
 from zope.interface import implementer
 from enum import Enum
-from typing import Optional
+from typing import Optional, Union
 
 from backends import Backends
 from backends.common import setup_channelwatchers
@@ -192,7 +192,7 @@ class MatrixBot:
         future_to_deferred(self.client.close())
 
     @staticmethod
-    def formatted_message_content(message: Tag|str) -> dict[str, str]:
+    def formatted_message_content(message: Union[Tag, str]) -> dict[str, str]:
         if isinstance(message, str):
             return {"body": message}
         unformatted = to_plaintext(message)
@@ -218,7 +218,7 @@ class MatrixBot:
             return
 
     @inlineCallbacks
-    def _send_message(self, msgtype: MessageType, target: str, message: Tag|str) -> None:
+    def _send_message(self, msgtype: MessageType, target: str, message: Union[Tag, str]) -> None:
         # direct messages will stay open until the user leaves the room
         if target.startswith("@"):
             target = yield self.get_or_create_direct_message_room(target)
@@ -232,10 +232,10 @@ class MatrixBot:
                                                  message_type="m.room.message",
                                                  content=content))
 
-    def msg(self, target: str, message: Tag|str, length=None) -> None:
+    def msg(self, target: str, message: Union[Tag, str], length=None) -> None:
         self._send_message(MessageType.text, target, message)
 
-    def notice(self, target: str, message: Tag|str, length=None) -> None:
+    def notice(self, target: str, message: Union[Tag, str], length=None) -> None:
         self._send_message(MessageType.notice, target, message)
 
     def join(self, channel: str) -> None:

@@ -18,6 +18,7 @@ from collections import deque
 from html import escape as htmlescape
 from html import parser as htmlparser
 from twisted.web.template import tags, Tag, slot
+from typing import Union
 from zope import interface
 
 from util.formatting import common
@@ -178,7 +179,7 @@ HTMLColors = {
         }
 
 
-def color_to_string(color: ColorCodes|str) -> str:
+def color_to_string(color: Union[ColorCodes, str]) -> str:
     return color.name if isinstance(color, ColorCodes) else color
 
 
@@ -219,7 +220,7 @@ class SanetizingHTMLParser(htmlparser.HTMLParser):
         self._allow_slots = allow_slots
 
     @staticmethod
-    def parse_html_color(color: str) -> ColorCodes | str:
+    def parse_html_color(color: str) -> Union[ColorCodes, str]:
         try:
             temp = ColorCodes[color]
             return temp
@@ -426,7 +427,7 @@ class TagToMatrixFormatter:
                 self.buffer += f"</{TagToMatrixFormatter.styled_tagnames[attr]}>"
 
 
-def to_matrix(data: Tag|str) -> str:
+def to_matrix(data: Union[Tag, str]) -> str:
     if isinstance(data, str):
         return data
     formatter = TagToMatrixFormatter()
@@ -515,7 +516,7 @@ class TagModernizer:
         self._parent_stack.pop()
 
 
-def modernize_html(data: Tag|str) -> Tag|str:
+def modernize_html(data: Union[Tag, str]) -> Union[Tag, str]:
     if isinstance(data, str):
         return data
     processor = TagModernizer()

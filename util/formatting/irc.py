@@ -19,6 +19,7 @@ import dataclasses
 import re
 from twisted.web.template import Tag, tags, slot
 from twisted.words.protocols.irc import stripFormatting as stripIrcFormatting
+from typing import Union
 from zope import interface
 
 from util.formatting import common
@@ -43,7 +44,7 @@ _NORMAL = "\x0f"
 _irc_parser_pattern = re.compile("(\x1f)|(\x02)|(\x03)(\\d{1,2}(,\\d{1,2})?)?|"
                                  "(\x1d)|(\x1e)|(\x0f)")
 
-def parse_irc(message: str, link_urls: bool=True) -> Tag|str:
+def parse_irc(message: str, link_urls: bool=True) -> Union[Tag, str]:
     result = Tag("")
     stack = deque()
     stack.append(result)
@@ -287,7 +288,7 @@ class TagToIrcFormatter:
         self._slotDataStack.pop()
 
 
-def to_irc(data: Tag|str) -> str:
+def to_irc(data: Union[Tag, str]) -> str:
     if isinstance(data, str):
         return data
     formatter = TagToIrcFormatter()

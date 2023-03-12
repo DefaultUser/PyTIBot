@@ -23,7 +23,7 @@ from dataclasses import dataclass, asdict
 from enum import Enum
 import re
 from twisted.web.template import Tag, slot
-from typing import NamedTuple
+from typing import NamedTuple, Union, Optional
 import yaml
 from zope import interface
 
@@ -73,7 +73,7 @@ ColorsHex = bidict({
     ColorCodes.gray: "#D2D2D2"})
 
 
-def good_contrast_with_black(color: str|ColorCodes) -> bool:
+def good_contrast_with_black(color: Union[str,ColorCodes]) -> bool:
     """
     Indicates if a color has good contrast with black. This is achieved by
     looking at the `Value` in `HSV` color space
@@ -90,12 +90,12 @@ RAINBOW_COLORS = (ColorCodes.red, ColorCodes.darkorange, ColorCodes.green,
 
 @dataclass
 class Style:
-    underline: bool | None = None
-    bold: bool | None = None
-    italic: bool | None = None
-    strike: bool | None = None
-    fg: ColorCodes | str | None = None
-    bg: ColorCodes | str | None = None
+    underline: Optional[bool] = None
+    bold: Optional[bool] = None
+    italic: Optional[bool] = None
+    strike: Optional[bool] = None
+    fg: Optional[Union[ColorCodes, str]] = None
+    bg: Optional[Union[ColorCodes, str]] = None
 
     def __bool__(self) -> bool:
         return any(asdict(self).values())
@@ -224,7 +224,7 @@ def _processStyledText(data: Tag, processor: ITagProcessor):
         processor.handle_endtag(close_tag[0])
 
 
-def to_plaintext(data: Tag|str) -> str:
+def to_plaintext(data: Union[Tag, str]) -> str:
     if isinstance(data, str):
         return data
     formatter = TagToPlainFormatter()
@@ -257,7 +257,7 @@ def split_rgb_string(hex_string: str) -> tuple[int]:
     raise ValueError("Needs a string of form 'rgb' or 'rrggbb")
 
 
-def interpolate_color(color1: ColorCodes|str, color2: ColorCodes|str,
+def interpolate_color(color1: Union[ColorCodes, str], color2: Union[ColorCodes, str],
                       factor: float, colorspace: ColorBase = sRGBColor) -> str:
     if isinstance(color1, ColorCodes):
         color1 = ColorsHex[color1]

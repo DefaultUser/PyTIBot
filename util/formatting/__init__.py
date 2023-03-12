@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from twisted.web.template import Tag, tags
+from typing import Optional, Union
 
 from util.formatting.common import ColorCodes, ColorsHex, good_contrast_with_black
 from util.formatting.common import to_plaintext
@@ -26,30 +27,31 @@ def from_human_readable(text: str) -> Tag:
     return parse_html(text, allow_slots=True)
 
 
-def colored(text: Tag|str, fg: ColorCodes|str, bg: ColorCodes|str|None = None) -> Tag:
+def colored(text: Union[Tag, str], fg: Union[ColorCodes, str],
+            bg: Optional[Union[ColorCodes, str]] = None) -> Tag:
     new_tag = tags.font(text, color=fg)
     if bg:
         new_tag.attributes["background-color"] = bg
     return new_tag
 
 
-def rainbow(text: Tag|str) -> Tag:
+def rainbow(text: Union[Tag, str]) -> Tag:
     return Tag("rainbow")(text)
 
 
-def underlined(text: Tag|str) -> Tag:
+def underlined(text: Union[Tag, str]) -> Tag:
     return tags.u(text)
 
 
-def italic(text: Tag|str) -> Tag:
+def italic(text: Union[Tag, str]) -> Tag:
     return tags.i(text)
 
 
-def bold(text: Tag|str) -> Tag:
+def bold(text: Union[Tag, str]) -> Tag:
     return tags.b(text)
 
 
-def strike(text: Tag|str) -> Tag:
+def strike(text: Union[Tag, str]) -> Tag:
     return Tag("del")(text)
 
 

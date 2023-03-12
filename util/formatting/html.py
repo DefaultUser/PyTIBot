@@ -178,12 +178,8 @@ HTMLColors = {
         }
 
 
-def html_color_name(color: ColorCodes) -> str:
-    return color.name.replace("dark_yellow", "darkorange").replace("_", "")
-
-
 def color_to_string(color: ColorCodes|str) -> str:
-    return html_color_name(color) if isinstance(color, ColorCodes) else color
+    return color.name if isinstance(color, ColorCodes) else color
 
 
 class HTMLParseError(Exception):
@@ -224,10 +220,8 @@ class SanetizingHTMLParser(htmlparser.HTMLParser):
 
     @staticmethod
     def parse_html_color(color: str) -> ColorCodes | str:
-        if color == "darkorange":
-            return ColorCodes.dark_yellow
         try:
-            temp = ColorCodes[color.replace("dark", "dark_")]
+            temp = ColorCodes[color]
             return temp
         except KeyError:
             color = HTMLColors.get(color, color)
@@ -441,7 +435,7 @@ def to_matrix(data: Tag|str) -> str:
 
 
 rainbow_style = ("background:linear-gradient(to right, " +
-                 f"{', '.join(html_color_name(c) for c in common.RAINBOW_COLORS)});" +
+                 f"{', '.join(c.name for c in common.RAINBOW_COLORS)});" +
                  "color:transparent;background-clip:text;-webkit-background-clip:text")
 
 

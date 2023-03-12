@@ -37,40 +37,39 @@ url_pat = re.compile(r"(((https?)|(ftps?)|(sftp))://[^\s\"\')]+)")
 ColorCodes = Enum("ColorCodes", {
     "white": "00",
     "black": "01",
-    "dark_blue": "02",
-    "dark_green": "03",
+    "darkblue": "02",
+    "darkgreen": "03",
     "red": "04",
-    "dark_red": "05",
-    "dark_magenta": "06",
-    "dark_yellow": "07",
+    "darkred": "05",
+    "darkmagenta": "06",
+    "darkorange": "07",
     "yellow": "08",
     "green": "09",
-    "dark_cyan": "10",
+    "darkcyan": "10",
     "cyan": "11",
     "blue": "12",
     "magenta": "13",
-    "dark_gray": "14",
+    "darkgray": "14",
     "gray": "15"
 })
-# TODO: ColorCodes -> HTML: code.name.replace("_", "").replace("darkyellow", "darkorange")
 
 ## \brief hex color codes for mIRC numerical values
 ColorsHex = bidict({
     ColorCodes.white: "#FFFFFF",
     ColorCodes.black: "#000000",
-    ColorCodes.dark_blue: "#00007F",
-    ColorCodes.dark_green: "#009300",
+    ColorCodes.darkblue: "#00007F",
+    ColorCodes.darkgreen: "#009300",
     ColorCodes.red: "#FF0000",
-    ColorCodes.dark_red: "#7F0000",
-    ColorCodes.dark_magenta: "#9C009C",
-    ColorCodes.dark_yellow: "#FC7F00",
+    ColorCodes.darkred: "#7F0000",
+    ColorCodes.darkmagenta: "#9C009C",
+    ColorCodes.darkorange: "#FC7F00",
     ColorCodes.yellow: "#FFFF00",
     ColorCodes.green: "#00FC00",
-    ColorCodes.dark_cyan: "#009393",
+    ColorCodes.darkcyan: "#009393",
     ColorCodes.cyan: "#00FFFF",
     ColorCodes.blue: "#0000FC",
     ColorCodes.magenta: "#FF00FF",
-    ColorCodes.dark_gray: "#7F7F7F",
+    ColorCodes.darkgray: "#7F7F7F",
     ColorCodes.gray: "#D2D2D2"})
 
 
@@ -85,7 +84,7 @@ def good_contrast_with_black(color: str|ColorCodes) -> bool:
                          HSVColor).hsv_v > 0.5
 
 
-RAINBOW_COLORS = (ColorCodes.red, ColorCodes.dark_yellow, ColorCodes.green,
+RAINBOW_COLORS = (ColorCodes.red, ColorCodes.darkorange, ColorCodes.green,
                   ColorCodes.cyan, ColorCodes.blue, ColorCodes.magenta)
 
 
@@ -301,17 +300,12 @@ def closest_colorcode(color: str) -> ColorCodes:
     \brief Find the closest color code
     \param color Color definition either as hex string or color name
     """
+    if color in [e.name for e in ColorCodes]:
+        return ColorCodes[color]
     if color.startswith("#"):
         if color in ColorsHex.inv:
             return ColorsHex.inv[color]
         return closest_colorcode_from_rgb(*split_rgb_string(color))
-    if color in [e.name for e in ColorCodes]:
-        return ColorCodes[color]
-    if color == "darkorange":
-        return ColorCodes.dark_yellow
-    color = color.replace("dark", "dark_")
-    if color in [e.name for e in ColorCodes]:
-        return ColorCodes[color]
     raise ValueError("Invalid color definition")
 
 

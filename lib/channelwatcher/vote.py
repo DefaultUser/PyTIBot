@@ -427,20 +427,20 @@ class Vote(abstract.ChannelWatcher):
     already_voted_stub = from_human_readable(f'You already voted for this poll (<font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}), please confirm, with \'<t:slot name="prefix"/>yes\' or \'<t:slot name="prefix"/>no\'')
 
     class Colors:
-        poll_id = ColorCodes.dark_yellow
+        poll_id = ColorCodes.darkorange
         user = ColorCodes.blue
-        description = ColorCodes.dark_cyan
+        description = ColorCodes.darkcyan
         comment = ColorCodes.cyan
         yes = ColorCodes.green
         no = ColorCodes.red
         PASSED = ColorCodes.green
         FAILED = ColorCodes.red
-        TIED = ColorCodes.dark_yellow
-        VETOED = ColorCodes.dark_red
-        DECIDED = ColorCodes.dark_green
-        ADMIN = ColorCodes.dark_green
+        TIED = ColorCodes.darkorange
+        VETOED = ColorCodes.darkred
+        DECIDED = ColorCodes.darkgreen
+        ADMIN = ColorCodes.darkgreen
         USER = ColorCodes.green
-        REVOKED = ColorCodes.dark_red
+        REVOKED = ColorCodes.darkred
 
 
     def __init__(self, bot, channel, config):
@@ -599,7 +599,7 @@ class Vote(abstract.ChannelWatcher):
             return Vote.Colors.VETOED
         if poll_status == PollStatus.DECIDED:
             return Vote.Colors.DECIDED
-        return ColorCodes.dark_gray
+        return ColorCodes.darkgray
 
     @staticmethod
     def colored_user_status(user_status):

@@ -47,16 +47,16 @@ def bot_help(bot):
                         _gen = getattr(thismodule, commands[arg])
                         doc += [formatting.colored(arg + ": ", ColorCodes.red),
                                 formatting.colored(_gen.__doc__ or "No help available",
-                                                   ColorCodes.dark_blue)]
+                                                   ColorCodes.darkblue)]
                     except (AttributeError, KeyError):
                         doc += [formatting.colored("No command called ",
                                                    ColorCodes.red),
-                                formatting.colored(arg, ColorCodes.dark_green)]
+                                formatting.colored(arg, ColorCodes.darkgreen)]
         else:
-            doc = [formatting.colored("Commands: ", ColorCodes.dark_yellow),
+            doc = [formatting.colored("Commands: ", ColorCodes.darkorange),
                    ", ".join(commands)]
             if aliases:
                 doc += [tags.br, formatting.colored("Aliases: ",
-                                                    ColorCodes.dark_green),
+                                                    ColorCodes.darkgreen),
                         ", ".join(aliases)]
         bot.msg(channel, Tag("")(*doc))

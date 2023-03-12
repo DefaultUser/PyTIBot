@@ -393,7 +393,7 @@ class MatrixFormattingTestCase(unittest.TestCase):
     def test_attributes(self):
         msg = Tag("")(tags.font("foo", color=ColorCodes.red))
         self._test_formatting(msg, '<font color="red">foo</font>')
-        msg = Tag("")(tags.font("foo", color=ColorCodes.dark_yellow))
+        msg = Tag("")(tags.font("foo", color=ColorCodes.darkorange))
         self._test_formatting(msg, '<font color="darkorange">foo</font>')
         msg = Tag("")(tags.font("foo", color="#ff00ff"))
         self._test_formatting(msg, '<font color="#ff00ff">foo</font>')
@@ -473,7 +473,7 @@ class HTMLTagModernizerTestCase(unittest.TestCase):
     def test_attributes(self):
         msg = Tag("")(tags.font("foo", color=ColorCodes.red))
         self._test_formatting(msg, Tag("")(tags.span("foo", style="color:red;")))
-        msg = Tag("")(tags.font("foo", color=ColorCodes.dark_yellow))
+        msg = Tag("")(tags.font("foo", color=ColorCodes.darkorange))
         self._test_formatting(msg, Tag("")(tags.span("foo", style="color:darkorange;")))
         msg = Tag("")(tags.font("foo", color="#ff00ff"))
         self._test_formatting(msg, Tag("")(tags.span("foo", style="color:#ff00ff;")))
@@ -542,9 +542,9 @@ class HTMLParserTestCase(unittest.TestCase):
         self._test_parser('<font color="red">foo</font>',
                           Tag("")(tags.font("foo", color=ColorCodes.red)))
         self._test_parser('<font color="darkgreen">foo</font>',
-                          Tag("")(tags.font("foo", color=ColorCodes.dark_green)))
+                          Tag("")(tags.font("foo", color=ColorCodes.darkgreen)))
         self._test_parser('<font color="darkorange">foo</font>',
-                          Tag("")(tags.font("foo", color=ColorCodes.dark_yellow)))
+                          Tag("")(tags.font("foo", color=ColorCodes.darkorange)))
         self._test_parser('<font color="silver">foo</font>',
                           Tag("")(tags.font("foo", color="#c0c0c0")))
         self._test_parser('<font color="#123">foo</font>',

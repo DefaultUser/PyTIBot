@@ -340,7 +340,7 @@ class GitWebhookServer(Resource):
         # as this is already handled by the "delete" event, but still trigger
         # the push hooks as they might be required
         if not data["deleted"]:
-            actioncolor = ColorCodes.dark_green
+            actioncolor = ColorCodes.darkgreen
             if data["forced"]:
                 action = "force pushed"
                 actioncolor = ColorCodes.red
@@ -377,7 +377,7 @@ class GitWebhookServer(Resource):
         action = data["action"]
         payload = None
         repo_name = data["repository"]["name"]
-        actioncolor = ColorCodes.dark_yellow
+        actioncolor = ColorCodes.darkorange
         if action == "assigned" or action == "unassigned":
             payload = data["issue"]["assignee"]["login"]
         elif action == "labeled" or action == "unlabeled":
@@ -391,7 +391,7 @@ class GitWebhookServer(Resource):
         elif action == "reopened":
             actioncolor = ColorCodes.red
         elif action == "closed":
-            actioncolor = ColorCodes.dark_green
+            actioncolor = ColorCodes.darkgreen
         msg = GitWebhookServer.issue_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["sender"]["login"],
                       action=action, actioncolor=actioncolor,
@@ -410,9 +410,9 @@ class GitWebhookServer(Resource):
         repo_name = data["repository"]["name"]
         action = data["action"]
         if action == "created":
-            actioncolor = ColorCodes.dark_green
+            actioncolor = ColorCodes.darkgreen
         elif action == "edited":
-            actioncolor = ColorCodes.dark_yellow
+            actioncolor = ColorCodes.darkorange
         else:
             actioncolor = ColorCodes.red
         msg = GitWebhookServer.issue_comment_stub.clone()
@@ -461,11 +461,11 @@ class GitWebhookServer(Resource):
     def on_github_release(self, data):
         repo_name = data["repository"]["name"]
         action = data["action"]
-        actioncolor = ColorCodes.dark_yellow
+        actioncolor = ColorCodes.darkorange
         if action in ("published", "created", "released"):
-            actioncolor= ColorCodes.dark_green
+            actioncolor= ColorCodes.darkgreen
         elif action == "prereleased":
-            actioncolor = ColorCodes.dark_cyan
+            actioncolor = ColorCodes.darkcyan
         elif action in ("unpublished", "deleted"):
             actioncolor = ColorCodes.red
         release_name = data["release"]["name"] or data["release"]["tag_name"]
@@ -487,7 +487,7 @@ class GitWebhookServer(Resource):
         payload = None
         repo_name = data["repository"]["name"]
         user = data["sender"]["login"]
-        actioncolor = ColorCodes.dark_yellow
+        actioncolor = ColorCodes.darkorange
         if action == "assigned" or action == "unassigned":
             payload = data["pull_request"]["assignee"]["login"]
         elif action == "labeled" or action == "unlabeled":
@@ -504,13 +504,13 @@ class GitWebhookServer(Resource):
             action = "removed review request for"
             payload = data["requested_reviewer"]["login"]
         elif action == "opened":
-            actioncolor = ColorCodes.dark_green
+            actioncolor = ColorCodes.darkgreen
         elif action == "reopened":
-            actioncolor = ColorCodes.dark_green
+            actioncolor = ColorCodes.darkgreen
         elif action == "closed":
             if data["pull_request"]["merged"]:
                 action = "merged"
-                actioncolor = ColorCodes.dark_green
+                actioncolor = ColorCodes.darkgreen
                 user = data["pull_request"]["merged_by"]["login"]
             else:
                 actioncolor = ColorCodes.red
@@ -678,7 +678,7 @@ class GitWebhookServer(Resource):
         repo_name = data["project"]["name"]
         attribs = data["object_attributes"]
         action = attribs["action"]
-        actioncolor = ColorCodes.dark_yellow
+        actioncolor = ColorCodes.darkorange
         if action == "open":
             action = "opened"
             actioncolor = ColorCodes.red
@@ -687,7 +687,7 @@ class GitWebhookServer(Resource):
             actioncolor = ColorCodes.red
         elif action == "close":
             action = "closed"
-            actioncolor = ColorCodes.dark_green
+            actioncolor = ColorCodes.darkgreen
         elif action == "update":
             action = "updated"
         url = yield self.url_shortener(attribs["url"])
@@ -737,19 +737,19 @@ class GitWebhookServer(Resource):
         attribs = data["object_attributes"]
         repo_name = attribs["target"]["name"]
         action = attribs["_extended_action"]
-        actioncolor = ColorCodes.dark_yellow
+        actioncolor = ColorCodes.darkorange
         if action == "open":
             action = "opened"
-            actioncolor = ColorCodes.dark_green
+            actioncolor = ColorCodes.darkgreen
         elif action == "reopen":
             action = "reopened"
-            actioncolor = ColorCodes.dark_green
+            actioncolor = ColorCodes.darkgreen
         elif action == "close":
             action = "closed"
             actioncolor = ColorCodes.red
         elif action == "merge":
             action = "merged"
-            actioncolor = ColorCodes.dark_green
+            actioncolor = ColorCodes.darkgreen
         elif action == "update":
             action = "updated"
         elif action == "mark_as_draft":
@@ -757,19 +757,19 @@ class GitWebhookServer(Resource):
             actioncolor = ColorCodes.gray
         elif action == "mark_as_ready":
             action = "marked as ready:"
-            actioncolor = ColorCodes.dark_green
+            actioncolor = ColorCodes.darkgreen
         elif action == "approved":
             action = "approved"
-            actioncolor = ColorCodes.dark_green
+            actioncolor = ColorCodes.darkgreen
         elif action == "approval":
             action = "added approval for"
-            actioncolor = ColorCodes.dark_green
+            actioncolor = ColorCodes.darkgreen
         elif action == "unapproved":
             action = "unapproved"
-            actioncolor = ColorCodes.dark_yellow
+            actioncolor = ColorCodes.darkorange
         elif action == "unapproval":
             action = "removed approval for"
-            actioncolor = ColorCodes.dark_yellow
+            actioncolor = ColorCodes.darkorange
         url = yield self.url_shortener(attribs["url"])
         msg = GitWebhookServer.gitlab_mr_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["user"]["name"],

@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2021-2022>  <Sebastian Schmidt>
+# Copyright (C) <2021-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,8 +20,7 @@ from twisted.logger import Logger
 from txdbus import client, objects, error
 from txdbus.interface import DBusInterface, Method
 
-# FIXME: replace IRC formatting with internal formatting
-from util.formatting import irc as formatting
+from util import formatting
 
 
 log = Logger()

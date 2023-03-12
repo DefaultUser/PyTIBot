@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2021-2022>  <Sebastian Schmidt>
+# Copyright (C) <2021-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ from backends.interfaces import IBot
 
 from util.aio_compat import deferred_to_future, future_to_deferred
 from util import filesystem as fs
-from util.formatting import html as formatting
+from util.formatting import to_matrix, to_plaintext, Tag
 from util.decorators import maybe_deferred
 from util.config import Config
 
@@ -63,6 +63,7 @@ class MatrixBot:
                            room=room, event=event)
         room_id = room.room_id
         message = event.body
+        # TODO: parse formatted body
         try:
             if event.source['content']['m.relates_to']['rel_type'] == "m.replace":
                 message = message.removeprefix("* ")
@@ -79,6 +80,7 @@ class MatrixBot:
                            room=room, event=event)
         room_id = room.room_id
         message = event.body
+        # TODO: parse formatted body
         try:
             if event.source['content']['m.relates_to']['rel_type'] == "m.replace":
                 message = message.removeprefix("* ")
@@ -190,14 +192,13 @@ class MatrixBot:
         future_to_deferred(self.client.close())
 
     @staticmethod
-    def formatted_message_content(message: str) -> dict[str, str]:
-        # FIXME: for now, convert IRC formatting to html
-        # formatting is currently designed with only IRC in mind
-        unformatted = irc.stripFormatting(message)
-        if unformatted == message:
+    def formatted_message_content(message: Tag|str) -> dict[str, str]:
+        if isinstance(message, str):
             return {"body": message}
+        unformatted = to_plaintext(message)
+        formatted = to_matrix(message)
         return {"body": unformatted, "format": "org.matrix.custom.html",
-                "formatted_body": formatting.to_matrix_deprecated(message).replace("\n", "<br>")}
+                "formatted_body": formatted}
 
     @inlineCallbacks
     def get_or_create_direct_message_room(self, user: str) -> str:
@@ -217,7 +218,7 @@ class MatrixBot:
             return
 
     @inlineCallbacks
-    def _send_message(self, msgtype: MessageType, target: str, message: str) -> None:
+    def _send_message(self, msgtype: MessageType, target: str, message: Tag|str) -> None:
         # direct messages will stay open until the user leaves the room
         if target.startswith("@"):
             target = yield self.get_or_create_direct_message_room(target)
@@ -231,10 +232,10 @@ class MatrixBot:
                                                  message_type="m.room.message",
                                                  content=content))
 
-    def msg(self, target: str, message: str, length=None) -> None:
+    def msg(self, target: str, message: Tag|str, length=None) -> None:
         self._send_message(MessageType.text, target, message)
 
-    def notice(self, target: str, message: str, length=None) -> None:
+    def notice(self, target: str, message: Tag|str, length=None) -> None:
         self._send_message(MessageType.notice, target, message)
 
     def join(self, channel: str) -> None:

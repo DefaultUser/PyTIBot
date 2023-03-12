@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2021>  <Sebastian Schmidt>
+# Copyright (C) <2017-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,6 +20,7 @@ import os
 from . import abstract
 from backends import Backends
 from util import log
+from util.formatting import to_matrix
 
 
 class ChannelLogger(abstract.ChannelWatcher):
@@ -31,15 +30,15 @@ class ChannelLogger(abstract.ChannelWatcher):
         super(ChannelLogger, self).__init__(bot, channel, config)
         name = channel.lstrip("#")
         if bot.config["Logging"]:
-            use_yaml = bot.config["Logging"].get("yaml", True)
+            self._yaml = bot.config["Logging"].get("yaml", True)
             if bot.config["Logging"].get("log_minor", False):
                 log_level = log.TOPIC
             else:
                 log_level = log.NOTICE
         else:
-            use_yaml = True
+            self._yaml = True
             log_level = log.NOTICE
-        if use_yaml:
+        if self._yaml:
             name += ".yaml"
         else:
             name += ".txt"
@@ -55,7 +54,7 @@ class ChannelLogger(abstract.ChannelWatcher):
                 os.makedirs(log_dir)
             log_handler = log.TimedRotatingFileHandler(os.path.join(
                 log_dir, name), when="midnight")
-            if use_yaml:
+            if self._yaml:
                 log_handler.setFormatter(log.yaml_formatter)
                 log_handler.namer = log.yaml_namer
             else:
@@ -64,6 +63,8 @@ class ChannelLogger(abstract.ChannelWatcher):
             self.logger.addHandler(log_handler)
 
     def topic(self, user, topic):
+        if not self._yaml:
+            message = to_matrix(message)
         self.logger.log(log.TOPIC, log.msg_templates[log.TOPIC],
                         {"user": user, "topic": topic})
 
@@ -87,14 +88,20 @@ class ChannelLogger(abstract.ChannelWatcher):
                          "message": message})
 
     def notice(self, user, message):
+        if not self._yaml:
+            message = to_matrix(message)
         self.logger.log(log.NOTICE, log.msg_templates[log.NOTICE],
                         {"user": user, "message": message})
 
     def action(self, user, data):
+        if not self._yaml:
+            message = to_matrix(message)
         self.logger.log(log.ACTION, log.msg_templates[log.ACTION],
                         {"user": user, "data": data})
 
     def msg(self, user, message):
+        if not self._yaml:
+            message = to_matrix(message)
         self.logger.log(log.MSG, log.msg_templates[log.MSG],
                         {"user": user, "message": message})
 

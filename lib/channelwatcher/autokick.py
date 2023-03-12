@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2022>  <Sebastian Schmidt>
+# Copyright (C) <2017-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@ from twisted.internet import defer, reactor
 
 from . import abstract
 from backends import Backends
+from util import formatting
 
 
 class Autokick(abstract.ChannelWatcher):
@@ -215,6 +216,7 @@ class Autokick(abstract.ChannelWatcher):
         return False
 
     def notice(self, user, message):
+        message = formatting.to_plaintext(message)
         if self.check_msg(user, message):
             self.kick_or_ban(user)
 
@@ -222,6 +224,7 @@ class Autokick(abstract.ChannelWatcher):
         pass
 
     def msg(self, user, message):
+        message = formatting.to_plaintext(message)
         if self.check_msg(user, message):
             self.kick_or_ban(user)
 

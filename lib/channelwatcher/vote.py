@@ -18,6 +18,7 @@ from twisted.enterprise import adbapi
 from twisted.internet import defer, reactor
 from twisted.logger import Logger
 from twisted.python import usage
+from twisted.web.template import Tag, tags
 import os
 from collections import namedtuple, defaultdict
 from datetime import datetime, timedelta, timezone
@@ -34,9 +35,8 @@ from . import abstract
 from backends import Backends
 from util import filesystem as fs
 from util.decorators import maybe_deferred
-from util.formatting import ColorCodes, good_contrast_with_black
-# FIXME: replace IRC formatting with internal formatting
-from util.formatting import irc as formatting
+from util.formatting import ColorCodes, good_contrast_with_black, from_human_readable
+from util import formatting
 
 
 _INIT_DB_STATEMENTS = ["""
@@ -115,9 +115,9 @@ class OptionsWithoutHandlers(usage.Options):
         for long, short, _, desc in getattr(cls, "subCommands", []):
             long = formatting.colored(long, ColorCodes.cyan)
             if short:
-                subCommands.append("{} ({}): {}".format(long, short, desc))
+                subCommands.append(Tag("")(long, f" ({short}): {desc}"))
             else:
-                subCommands.append("{}: {}".format(long, desc))
+                subCommands.append(Tag("")(long, f": {desc}"))
         for long, short, desc in getattr(cls, "optFlags", []):
             if short:
                 flags.append("--{}, -{}: {}".format(long, short, desc))
@@ -399,6 +399,33 @@ class Vote(abstract.ChannelWatcher):
     description_length = 150
     PrivilegeOrder = {"ADMIN": 0, "USER": 10, "REVOKED": 20} # Lower means shown earlier
 
+    poll_id_stub = 'Poll #<font color="darkorange"><t:slot name="poll_id"/></font>'
+    poll_status_stub = '<font><t:attr name="color"><t:slot name="status_color"/></t:attr><t:slot name="status"/></font>'
+    category_stub = '<font><t:attr name="color"><t:slot name="category_fg"/></t:attr><t:attr name="background-color"><t:slot name="category_bg"/></t:attr><t:slot name="category"/></font>'
+    description_stub = '<font color="darkcyan"><t:slot name="description"/></font>'
+    creator_stub = '<font color="blue"><t:slot name="creator"/></font>'
+    user_stub = '<font color="blue"><t:slot name="user"/></font>'
+    comment_stub = '<font color="cyan"><t:slot name="comment"/></font>'
+    standing_stub = 'YES:<font color="green"><t:slot name="yes"/></font> | NO:<font color="red"><t:slot name="no"/></font> | ABSTAINED:<t:slot name="abstained"/> | OPEN:<t:slot name="not_voted"/>'
+    final_standing_stub = 'YES:<font color="green"><t:slot name="yes"/></font> | NO:<font color="red"><t:slot name="no"/></font> | ABSTAINED:<t:slot name="abstained"/> | NOT VOTED:<t:slot name="not_voted"/>'
+
+    missing_voter_stub = from_human_readable(f'Your vote is required in channel <t:slot name="channel"/> for poll #<font color="darkorange"><t:slot name="poll_id"/></font>')
+    user_added_stub = from_human_readable(f'Successfully added user <font color="blue"><t:slot name="user"/></font> (<t:slot name="auth"/>)')
+    user_modified_stub = from_human_readable(f'Successfully modified user <font color="blue"><t:slot name="user"/></font>')
+    new_poll_stub = from_human_readable(f'New {poll_id_stub} by {creator_stub}: <a><t:attr name="href"><t:slot name="url"/></t:attr>{description_stub}</a>')
+    poll_description_change_stub = from_human_readable(f'{poll_id_stub}: description changed to <t:slot name="description"/>')
+    poll_vetoed_stub = from_human_readable(f'{poll_id_stub}: vetoed')
+    poll_decided_stub = from_human_readable(f'{poll_id_stub}: decided')
+    poll_cancelled_stub = from_human_readable(f'{poll_id_stub}: cancelled')
+    warn_poll_end_stub = from_human_readable(f'{poll_id_stub} is running out soon: {description_stub} by {creator_stub}: {standing_stub}')
+    poll_end_stub = from_human_readable(f'{poll_id_stub} {poll_status_stub}: {description_stub} by {creator_stub}: {final_standing_stub}')
+    poll_list_stub = from_human_readable(f'{poll_id_stub} by {creator_stub} ({poll_status_stub}): {description_stub}')
+    poll_info_stub = from_human_readable(f'{poll_id_stub} by {creator_stub} ({poll_status_stub}): {description_stub}<br/>{standing_stub}')
+    vote_changed_stub = from_human_readable(f'{poll_id_stub}: {user_stub} changed vote from <font><t:attr name="color"><t:slot name="previous_decision_color"/></t:attr><t:slot name="previous_decision"/></font> to <font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}')
+    new_vote_stub = from_human_readable(f'{poll_id_stub}: {user_stub} voted <font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}')
+    current_result_stub = from_human_readable(f'Current Result: {standing_stub}')
+    already_voted_stub = from_human_readable(f'You already voted for this poll (<font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}), please confirm, with \'<t:slot name="prefix"/>yes\' or \'<t:slot name="prefix"/>no\'')
+
     class Colors:
         poll_id = ColorCodes.dark_yellow
         user = ColorCodes.blue
@@ -557,22 +584,22 @@ class Vote(abstract.ChannelWatcher):
         if colorname:
             color = ColorCodes[colorname]
             fg = ColorCodes.black if good_contrast_with_black(color) else ColorCodes.white
-            return formatting.colored(name, fg, color, endtoken=True)
+            return formatting.colored(name, fg, color)
         return name
 
     @staticmethod
-    def colored_poll_status(poll_status):
+    def poll_status_color(poll_status: PollStatus) -> ColorCodes:
         if poll_status == PollStatus.PASSED:
-            return formatting.colored(poll_status.name, Vote.Colors.PASSED)
+            return Vote.Colors.PASSED
         if poll_status == PollStatus.FAILED:
-            return formatting.colored(poll_status.name, Vote.Colors.FAILED)
+            return Vote.Colors.FAILED
         if poll_status == PollStatus.TIED:
-            return formatting.colored(poll_status.name, Vote.Colors.TIED)
+            return Vote.Colors.TIED
         if poll_status == PollStatus.VETOED:
-            return formatting.colored(poll_status.name, Vote.Colors.VETOED)
+            return Vote.Colors.VETOED
         if poll_status == PollStatus.DECIDED:
-            return formatting.colored(poll_status.name, Vote.Colors.DECIDED)
-        return poll_status.name
+            return Vote.Colors.DECIDED
+        return ColorCodes.dark_gray
 
     @staticmethod
     def colored_user_status(user_status):
@@ -589,27 +616,12 @@ class Vote(abstract.ChannelWatcher):
         return formatting.colored(str(poll_id), Vote.Colors.poll_id)
 
     @staticmethod
-    def colored_description(desc):
-        return formatting.colored(textwrap.shorten(desc, Vote.description_length),
-                                  Vote.Colors.description)
-
-    @staticmethod
-    def colored_user(user):
-        return formatting.colored(user, Vote.Colors.user)
-
-    @staticmethod
-    def colored_vote_decision(decision):
+    def vote_decision_color(decision: VoteDecision) -> ColorCodes:
         if decision == VoteDecision.YES:
-            return formatting.colored(decision.name, Vote.Colors.yes)
+            return Vote.Colors.yes
         if decision == VoteDecision.NO:
-            return formatting.colored(decision.name, Vote.Colors.no)
-        return decision.name
-
-    @staticmethod
-    def colored_vote_comment(comment):
-        return formatting.colored(textwrap.shorten(comment or "No comment",
-                                                   Vote.description_length),
-                                  Vote.Colors.comment)
+            return Vote.Colors.no
+        return ColorCodes.gray
 
     @defer.inlineCallbacks
     def get_user_privilege(self, name):
@@ -709,8 +721,9 @@ class Vote(abstract.ChannelWatcher):
             if not auth:
                 continue
             if auth in missing_voter_auths:
-                self.bot.notice(user, "Your vote is required in channel {} for poll #{}".format(
-                    self.channel, Vote.colored_poll_id(poll_id)))
+                msg = Vote.missing_voter_stub.clone()
+                msg.fillSlots(channel=self.channel, poll_id=str(poll_id))
+                self.bot.notice(user, msg)
 
     @defer.inlineCallbacks
     def warn_end_poll(self, poll_id):
@@ -724,14 +737,11 @@ class Vote(abstract.ChannelWatcher):
             return
         desc, creator = res[0]
         vote_count = yield self.count_votes(poll_id, True)
-        msg = "Poll #{poll_id} is running out soon: {desc} by {creator}: YES:{yes} | NO:{no} "\
-                "| ABSTAINED:{vote_count.abstained} | OPEN:{vote_count.not_voted}".format(
-                    poll_id=Vote.colored_poll_id(poll_id),
-                    desc=Vote.colored_description(desc),
-                    creator=Vote.colored_user(creator),
-                    yes=formatting.colored(str(vote_count.yes), Vote.Colors.yes),
-                    no=formatting.colored(str(vote_count.no), Vote.Colors.no),
-                    vote_count=vote_count)
+        msg = Vote.warn_poll_end_stub.clone()
+        msg.fillSlots(poll_id=str(poll_id), description=desc, creator=creator,
+                      yes=str(vote_count.yes), no=str(vote_count.no),
+                      abstained=str(vote_count.abstained),
+                      not_voted=str(vote_count.not_voted))
         self.bot.msg(self.channel, msg)
         self.notify_missing_voters(poll_id)
 
@@ -754,15 +764,12 @@ class Vote(abstract.ChannelWatcher):
         else:
             result = PollStatus.FAILED
         self.dbpool.runInteraction(Vote.update_poll_status, poll_id, result)
-        msg = "Poll #{poll_id} {result}: {desc} by {creator}: YES:{yes} | NO:{no} | "\
-                "ABSTAINED:{vote_count.abstained} | NOT VOTED:{vote_count.not_voted}".format(
-                    poll_id=Vote.colored_poll_id(poll_id),
-                    result=Vote.colored_poll_status(result),
-                    desc=Vote.colored_description(desc),
-                    creator=Vote.colored_user(creator),
-                    yes=formatting.colored(str(vote_count.yes), Vote.Colors.yes),
-                    no=formatting.colored(str(vote_count.no), Vote.Colors.no),
-                    vote_count=vote_count)
+        msg = Vote.poll_end_stub.clone()
+        msg.fillSlots(poll_id=str(poll_id), status_color=Vote.poll_status_color(result),
+                      status=result.name, description=desc, creator=creator,
+                      yes=str(vote_count.yes), no=str(vote_count.no),
+                      abstained=str(vote_count.abstained),
+                      not_voted=str(vote_count.not_voted))
         self.bot.msg(self.channel, msg)
         if self.notification_channel:
             self.bot.msg(self.notification_channel, msg)
@@ -809,8 +816,9 @@ class Vote(abstract.ChannelWatcher):
                              error=e)
             return
         self._num_active_users += 1
-        self.bot.notice(issuer, "Successfully added User {} ({})".format(
-            Vote.colored_user(user), auth))
+        msg = Vote.user_added_stub.clone()
+        msg.fillSlots(user=user, auth=auth)
+        self.bot.notice(issuer, msg)
 
     @defer.inlineCallbacks
     def cmd_user_modify(self, issuer, user, field, value, **kwargs):
@@ -844,8 +852,9 @@ class Vote(abstract.ChannelWatcher):
         # query DB instead of modifying remembered count directly
         # a DB query is required anyways (for the current permissions)
         self.query_active_user_count()
-        self.bot.notice(issuer, "Successfully modified User {}".format(
-            Vote.colored_user(user)))
+        msg = Vote.user_modified_stub.clone()
+        msg.fillSlots(user=user)
+        self.bot.notice(issuer, msg)
 
     @defer.inlineCallbacks
     def cmd_user_list(self, issuer, filter):
@@ -874,11 +883,12 @@ class Vote(abstract.ChannelWatcher):
             return
         users_raw = sorted(users_raw, key=lambda x: Vote.PrivilegeOrder[x[1]])
         messages = []
+        msg = Tag("")
         for privilege, userlist in itertools.groupby(users_raw, lambda x: x[1]):
-            messages.append("{privilege}: {users}".format(
-                privilege=Vote.colored_user_status(UserPrivilege[privilege]),
-                users=", ".join(x[0] for x in userlist)))
-        self.bot.notice(issuer, "\n".join(messages))
+            msg.children.append(Vote.colored_user_status(UserPrivilege[privilege]))
+            msg.children.append(": " + ", ".join(x[0] for x in userlist))
+            msg.children.append(tags.br)
+        self.bot.notice(issuer, msg)
 
     @defer.inlineCallbacks
     def is_poll_running(self, poll_id):
@@ -924,20 +934,14 @@ class Vote(abstract.ChannelWatcher):
                 return
             poll_id = yield self.dbpool.runQuery('SELECT MAX(id) FROM Polls;')
             poll_id = poll_id[0][0]
-            if category:
-                category_str = f" (category: {Vote.colored_category_name(category, category_color)}"
-            else:
-                category_str = ""
             url = self.poll_url(poll_id)
             if url is None:
                 url = ""
-            else:
-                url = f" ({url})"
-            msg = "New poll #{poll_id}{category} by {user}{url}: {description}".format(
-                    poll_id=Vote.colored_poll_id(poll_id),
-                    user=Vote.colored_user(issuer),
-                    url=url, category=category_str,
-                    description=Vote.colored_description(description))
+            msg = Vote.new_poll_stub.clone()
+            msg.fillSlots(poll_id=str(poll_id), creator=issuer, url=url, description=description)
+            if category:
+                msg.children.insert(0, " ")
+                msg.children.insert(0, Vote.colored_category_name(category, category_color))
             self.bot.msg(self.channel, msg)
             if self.notification_channel:
                 self.bot.msg(self.notification_channel, msg)
@@ -975,8 +979,8 @@ class Vote(abstract.ChannelWatcher):
             self.bot.notice(issuer, "Couldn't modify poll ({})".format(e))
             return
         if field == "description":
-            msg = "Poll #{}: description changed to: {}".format(
-                    Vote.colored_poll_id(poll_id), value)
+            msg = Vote.poll_description_change_stub.clone()
+            msg.fillSlots(poll_id=str(poll_id), description=value)
             self.bot.notice(self.channel, msg)
             if self.notification_channel:
                 self.bot.notice(self.notification_channel, msg)
@@ -1007,7 +1011,7 @@ class Vote(abstract.ChannelWatcher):
                 Vote.logger.warn("Error vetoing poll #{id}: {error}",
                                  id=poll_id, error=e)
                 return
-            msg = "Poll #{} vetoed".format(Vote.colored_poll_id(poll_id))
+            msg = Vote.poll_vetoed_stub.clone().fillSlots(poll_id=str(poll_id))
             self.bot.msg(self.channel, msg)
             if self.notification_channel:
                 self.bot.msg(self.notification_channel, msg)
@@ -1035,7 +1039,7 @@ class Vote(abstract.ChannelWatcher):
                 Vote.logger.warn("Error deciding poll #{id}: {error}",
                                  id=poll_id, error=e)
                 return
-            msg = "Poll #{} decided".format(Vote.colored_poll_id(poll_id))
+            msg = Vote.poll_decided_stub.clone().fillSlots(poll_id=str(poll_id))
             self.bot.msg(self.channel, msg)
             if self.notification_channel:
                 self.bot.msg(self.notification_channel, msg)
@@ -1071,7 +1075,7 @@ class Vote(abstract.ChannelWatcher):
                 Vote.logger.warn("Error cancelling poll #{id}: {error}",
                                  id=poll_id, error=e)
                 return
-            msg = "Poll #{} cancelled".format(Vote.colored_poll_id(poll_id))
+            msg = Vote.poll_cancelled_stub.clone().fillSlots(poll_id=str(poll_id))
             self.bot.msg(self.channel, msg)
             if self.notification_channel:
                 self.bot.msg(self.notification_channel, msg)
@@ -1117,8 +1121,8 @@ class Vote(abstract.ChannelWatcher):
             time_end = utcnow
         else:
             self._poll_delay_call(poll_id, time_end)
-            msg = "Poll #{} will end at {}".format(Vote.colored_poll_id(poll_id),
-                                                   time_end.isoformat())
+            msg = Tag("")("Poll #", Vote.colored_poll_id(poll_id),
+                          " will end at ", time_end.isoformat())
             self.bot.msg(self.channel, msg)
             if self.notification_channel:
                 self.bot.msg(self.notification_channel, msg)
@@ -1163,17 +1167,14 @@ class Vote(abstract.ChannelWatcher):
                             prefix=self.prefix))
                 if not confirm:
                     return
+            msg = Vote.poll_list_stub.clone()
+            msg.fillSlots(poll_id=str(poll_id), creator=creator, status=status.name,
+                          status_color=Vote.poll_status_color(status),
+                          description=desc)
             if category:
-                category_str = Vote.colored_category_name(category, color) + " "
-            else:
-                category_str = ""
-            self.bot.notice(issuer, "{category}#{poll_id} by {creator} ({status}): "
-                            "{description}".format(
-                                poll_id=Vote.colored_poll_id(poll_id),
-                                creator=Vote.colored_user(creator),
-                                status=Vote.colored_poll_status(PollStatus[poll_status]),
-                                category=category_str,
-                                description=Vote.colored_description(desc)))
+                msg.children.insert(0, " ")
+                msg.children.insert(0, Vote.colored_category_name(category, color))
+            self.bot.notice(issuer, msg)
 
     @defer.inlineCallbacks
     def cmd_poll_info(self, issuer, poll_id):
@@ -1187,21 +1188,17 @@ class Vote(abstract.ChannelWatcher):
             return
         status, desc, creator, category, color = result[0]
         status = PollStatus[status]
-        if category:
-            category_str = Vote.colored_category_name(category, color) + " "
-        else:
-            category_str = ""
         vote_count = yield self.count_votes(poll_id, status==PollStatus.RUNNING)
-        self.bot.notice(issuer, "{category}Poll #{poll_id} by {creator} {status}: {desc}: "
-                "YES:{yes} | NO:{no} | ABSTAINED:{vote_count.abstained} | "
-                "NOT VOTED:{vote_count.not_voted}".format(
-                    poll_id=Vote.colored_poll_id(poll_id),
-                    status=Vote.colored_poll_status(status),
-                    desc=Vote.colored_description(desc),
-                    creator=Vote.colored_user(creator),
-                    yes=formatting.colored(str(vote_count.yes), ColorCodes.green),
-                    no=formatting.colored(str(vote_count.no), ColorCodes.red),
-                    vote_count=vote_count, category=category_str))
+        msg = Vote.poll_info_stub.clone()
+        msg.fillSlots(poll_id=str(poll_id), creator=creator, status=status.name,
+                      status_color=Vote.poll_status_color(status),
+                      description=desc, yes=str(vote_count.yes),
+                      no=str(vote_count.no), abstained=str(vote_count.abstained),
+                      not_voted=str(vote_count.not_voted))
+        if category:
+            msg.children.insert(0, " ")
+            msg.children.insert(Vote.colored_category_name(category, color))
+        self.bot.notice(issuer, msg)
 
     def cmd_poll_url(self, issuer):
         url = self.poll_url()
@@ -1234,8 +1231,9 @@ class Vote(abstract.ChannelWatcher):
             Vote.logger.info("Failed to add category: {error}", error=e)
             self.bot.notice(issuer, "Failed to add category: {}".format(e))
             return
-        self.bot.msg(self.channel, "Added category {}".format(
-            Vote.colored_category_name(name, color)))
+        self.bot.msg(self.channel, Tag("")("Added category ",
+                                           Vote.colored_category_name(name,
+                                                                      color)))
 
     @defer.inlineCallbacks
     def cmd_category_modify(self, issuer, name, field, value):
@@ -1266,10 +1264,12 @@ class Vote(abstract.ChannelWatcher):
         if not res:
             self.bot.notice(issuer, "There are no categories")
             return
-        self.bot.notice(issuer, "There are {} categories (confidential marked with *):\n{}".format(
-            len(res), ", ".join(itertools.starmap(lambda n, _, c, s: "{}{}".format(
-                                                      "*" if s else "", Vote.colored_category_name(n, c)),
-                                                  res))))
+        msg = Tag("")(f"There are {len(res)} categories (confidential marked with *)")
+        for name, _, color, secret in res:
+            msg.children.append(tags.br)
+            msg.children.append("*" if secret else " ")
+            msg.children.append(Vote.colored_category_name(name, color))
+        self.bot.notice(issuer, msg)
 
     @defer.inlineCallbacks
     def cmd_vote(self, voter, poll_id, decision, comment, **kwargs):
@@ -1299,32 +1299,33 @@ class Vote(abstract.ChannelWatcher):
                 if kwargs['yes']:
                     confirmed = True
                 else:
+                    confirmation_msg = Vote.already_voted_stub.clone()
+                    confirmation_msg.fillSlots(
+                            decision=previous_decision.name,
+                            decision_color=Vote.vote_decision_color(previous_decision),
+                            comment=previous_comment,
+                            prefix=self.prefix)
                     confirmed = yield self.require_confirmation(voter, voterid,
-                            "You already voted for this poll "
-                            "({vote}: {comment}), please confirm with "
-                            "'{prefix}yes' or '{prefix}no".format(
-                                vote=Vote.colored_vote_decision(previous_decision),
-                                comment=Vote.colored_vote_comment(previous_comment),
-                                prefix=self.prefix))
+                                                                confirmation_msg)
                 if not confirmed:
                     return
                 yield self.dbpool.runInteraction(Vote.update_vote_decision,
                                                  poll_id, voterid, decision,
                                                  comment)
-                msg = "{} changed vote from {} to {} for poll #{}: {}".format(
-                        Vote.colored_user(voter),
-                        Vote.colored_vote_decision(previous_decision),
-                        Vote.colored_vote_decision(decision),
-                        Vote.colored_poll_id(poll_id),
-                        Vote.colored_vote_comment(comment))
+                msg = Vote.vote_changed_stub.clone()
+                msg.fillSlots(poll_id=str(poll_id), user=voter,
+                              previous_decision=previous_decision.name,
+                              previous_decision_color=Vote.vote_decision_color(previous_decision),
+                              decision=decision.name,
+                              decision_color=Vote.vote_decision_color(decision),
+                              comment=comment)
             else:
                 yield self.dbpool.runInteraction(Vote.insert_vote, poll_id,
                                                  voterid, decision, comment)
-                msg = "{} voted {} for poll #{}: {}".format(
-                        Vote.colored_user(voter),
-                        Vote.colored_vote_decision(decision),
-                        Vote.colored_poll_id(poll_id),
-                        Vote.colored_vote_comment(comment))
+                msg = Vote.new_vote_stub.clone()
+                msg.fillSlots(poll_id=str(poll_id), user=voter, decision=decision.name,
+                              decision_color=Vote.vote_decision_color(decision),
+                              comment=comment)
         except Exception as e:
             self.bot.notice(voter, "An error occured. Please contact the admin.")
             Vote.logger.warn("Encountered error during vote: {}".format(e))
@@ -1333,11 +1334,12 @@ class Vote(abstract.ChannelWatcher):
         # end poll early on 2/3 majority
         early_consensus = 3*max(vote_count.yes, vote_count.no) >= 2*self._num_active_users
         if not early_consensus:
-            msg += "\nCurrent Result: YES:{yes} | NO:{no} | ABSTAINED:{vote_count.abstained} "\
-                    "| NOT VOTED:{vote_count.not_voted}".format(
-                            yes=formatting.colored(str(vote_count.yes), ColorCodes.green),
-                            no=formatting.colored(str(vote_count.no), ColorCodes.red),
-                            vote_count=vote_count)
+            current_result = Vote.current_result_stub.clone()
+            current_result.fillSlots(yes=str(vote_count.yes), no=str(vote_count.no),
+                                     abstained=str(vote_count.abstained),
+                                     not_voted=str(vote_count.not_voted))
+            msg.children.append(tags.br)
+            msg.children.append(current_result)
         self.bot.msg(self.channel, msg)
         if early_consensus:
             self._poll_delayed_call_cancel(poll_id)
@@ -1398,25 +1400,31 @@ class Vote(abstract.ChannelWatcher):
 
         sig = option_class.irc_help()
         if sig.subCommands:
-            self.bot.notice(user, "{}: {}".format(
-                formatting.colored("Available commands",
-                                   ColorCodes.blue),
-                " | ".join(sig.subCommands)))
+            msg = Tag("")(formatting.colored("Available commands",
+                                             ColorCodes.blue), ": ")
+            for i, command in enumerate(sig.subCommands):
+                if i>0:
+                    msg.children.append(" | ")
+                msg.children.append(command)
+            self.bot.notice(user, msg)
             return
-        help_lines = [desc]
+        msg = Tag("")(desc)
         if sig.flags:
-            help_lines.append("{}: {}".format(formatting.colored("Flags",
-                                                                 ColorCodes.yellow),
-                                              "; ".join(sig.flags)))
+            msg.children.append(formatting.colored("Flags", ColorCodes.yellow))
+            msg.children.append(": " + "; ".join(sig.flags))
         if sig.params:
-            help_lines.append("{}: {}".format(formatting.colored("Optional parameters",
-                                                                 ColorCodes.yellow),
-                                              "; ".join(sig.params)))
+            if len(msg.children) > 1:
+                msg.children.append(tags.br)
+            msg.children.append(formatting.colored("Optional parameters",
+                                                   ColorCodes.yellow))
+            msg.children.append(": " + "; ".join(sig.params))
         if sig.pos_params:
-            help_lines.append("{}: {}".format(formatting.colored("Positional parameters",
-                                                                 ColorCodes.green),
-                                              "; ".join(sig.pos_params)))
-        self.bot.notice(user, "\n".join(help_lines))
+            if len(msg.children) > 1:
+                msg.children.append(tags.br)
+            msg.children.append(formatting.colored("Positional parameters",
+                                                   ColorCodes.green))
+            msg.children.append(": " + "; ".join(sig.pos_params))
+        self.bot.notice(user, msg)
 
     def topic(self, user, topic):
         pass
@@ -1466,6 +1474,8 @@ class Vote(abstract.ChannelWatcher):
         pass
 
     def msg(self, user, message):
+        # TODO: handle formatted messages
+        message = formatting.to_plaintext(message)
         if not message.startswith(self.prefix):
             return
         tokens = message.lstrip(self.prefix).split()

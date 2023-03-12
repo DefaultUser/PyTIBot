@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2018-2022>  <Sebastian Schmidt>
+# Copyright (C) <2018-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,8 +20,7 @@ from twisted.logger import Logger
 from . import abstract
 from backends import Backends
 from util import filesystem as fs
-# FIXME: replace IRC formatting with internal formatting
-from util.formatting import irc as formatting
+from util import formatting
 from util.irc import match_userinfo
 
 
@@ -41,7 +40,7 @@ class Greeter(abstract.ChannelWatcher):
         self.standard_nicks = set(map(lambda x: x.lower(),
                                       config.get("standard_nicks", [])))
         self.message = formatting.from_human_readable(
-            config.get("message", "Welcome, $USER"))
+                config.get("message", 'Welcome, <t:slot name="user"/>'))
         # read list of previously greeted users from disk
         self.already_greeted = self.load_greeted_file()
 
@@ -67,7 +66,8 @@ class Greeter(abstract.ChannelWatcher):
             for pattern in self.patterns:
                 if match_userinfo(userinfo, pattern):
                     self.log.debug("Pattern found for user {user}", user=user)
-                    self.bot.notice(user, self.message.replace("$USER", user))
+                    msg = self.message.clone().fillSlots(user=user)
+                    self.bot.notice(user, msg)
                     if user_low not in self.standard_nicks:
                         self.log.debug("Adding {user} to 'already_greeted'",
                                        user=user)

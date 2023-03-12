@@ -20,10 +20,9 @@ from typing import Any
 
 from twisted.web.template import Tag, tags, slot
 
-from util.formatting import ColorCodes
-from util.formatting import common
-from util.formatting import html
+from util.formatting import ColorCodes, to_irc, to_plaintext, to_matrix
 from util.formatting import irc
+from util.formatting import html
 
 
 def _compare_tags(testcase: unittest.TestCase, item1: Any, item2: Any):
@@ -47,7 +46,7 @@ def _compare_tags(testcase: unittest.TestCase, item1: Any, item2: Any):
 
 class PlaintextFormattingTestCase(unittest.TestCase):
     def _test_formatting(self, input_value, expected_outcome):
-        result = common.to_plaintext(input_value)
+        result = to_plaintext(input_value)
         self.assertEqual(result, expected_outcome)
 
     def test_simple_string(self):
@@ -140,12 +139,12 @@ class PlaintextFormattingTestCase(unittest.TestCase):
         msg = Tag("")("foo", tags.b(slot("slt"), "bar").fillSlots(slt=" "))
         self._test_formatting(msg, "foo bar")
         msg = Tag("")("foo", tags.b(slot("slt"), "bar"))
-        self.assertRaises(KeyError, common.to_plaintext, msg)
+        self.assertRaises(KeyError, to_plaintext, msg)
 
 
 class IrcFormattingTestCase(unittest.TestCase):
     def _test_formatting(self, input_value, expected_outcome):
-        result = irc.to_irc(input_value)
+        result = to_irc(input_value)
         self.assertEqual(result, expected_outcome)
 
     def test_simple_string(self):
@@ -362,7 +361,7 @@ class IrcFormattingTestCase(unittest.TestCase):
         msg = Tag("")("foo", tags.b(slot("slt"), "bar").fillSlots(slt=" "))
         self._test_formatting(msg, "foo\x02 bar\x02")
         msg = Tag("")("foo", tags.b(slot("slt"), "bar"))
-        self.assertRaises(KeyError, irc.to_irc, msg)
+        self.assertRaises(KeyError, to_irc, msg)
 
     def test_attr_slot(self):
         msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))).fillSlots(slt="red"))
@@ -374,7 +373,7 @@ class IrcFormattingTestCase(unittest.TestCase):
         msg = Tag("")(tags.a("foo", href=Tag("")(slot("slt"))).fillSlots(slt="example.com"))
         self._test_formatting(msg, "foo (example.com)")
         msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))))
-        self.assertRaises(KeyError, irc.to_irc, msg)
+        self.assertRaises(KeyError, to_irc, msg)
 
     def test_rainbow_with_slot(self):
         msg = Tag("")(Tag("rainbow")("abc", slot("slt"))).fillSlots(slt="def")
@@ -384,7 +383,7 @@ class IrcFormattingTestCase(unittest.TestCase):
 
 class MatrixFormattingTestCase(unittest.TestCase):
     def _test_formatting(self, input_value, expected_outcome):
-        result = html.to_matrix(input_value)
+        result = to_matrix(input_value)
         self.assertEqual(result, expected_outcome)
 
     def test_simple_string(self):
@@ -432,7 +431,7 @@ class MatrixFormattingTestCase(unittest.TestCase):
         msg = Tag("")("foo ", tags.b(slot("slt"), " bar").fillSlots(slt="baz"))
         self._test_formatting(msg, "foo <b>baz bar</b>")
         msg = Tag("")("foo", tags.b(slot("slt"), "bar"))
-        self.assertRaises(KeyError, html.to_matrix, msg)
+        self.assertRaises(KeyError, to_matrix, msg)
 
     def test_attr_slot(self):
         msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))).fillSlots(
@@ -442,7 +441,7 @@ class MatrixFormattingTestCase(unittest.TestCase):
             slt=ColorCodes.red))
         self._test_formatting(msg, '<font color="red">foo</font>')
         msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))))
-        self.assertRaises(KeyError, html.to_matrix, msg)
+        self.assertRaises(KeyError, to_matrix, msg)
 
     def test_rainbow_with_slot(self):
         msg = Tag("")(Tag("rainbow")("abc", slot("slt"))).fillSlots(slt="def")

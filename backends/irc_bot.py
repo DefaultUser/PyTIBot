@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2022>  <Sebastian Schmidt>
+# Copyright (C) <2015-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -20,6 +20,7 @@ from twisted.words.protocols import irc
 from twisted.internet import defer, reactor
 from twisted.internet import ssl
 from twisted.web.server import Site
+from twisted.web.template import Tag
 from twisted.logger import Logger
 import sys
 from zope.interface import implementer
@@ -31,7 +32,8 @@ from lib import commands
 from lib import triggers
 from lib import channelwatcher
 from util import decorators
-from util.formatting import irc as formatting
+from util import formatting
+from util.formatting.irc import parse_irc
 from util.irc import UserInfo
 
 # WHOIS reply for AUTH name (NONSTANDARD REPLY!)
@@ -212,23 +214,25 @@ class IRCBot(irc.IRCClient, object):
         """
         Send the message and log it to a channel log if neccessary
         """
-        super().msg(user, message, length)
         # user can also be a channel
         user = user.lower()
         if user in self.channelwatchers:
-            for msg in message.split("\n"):
-                for watcher in self.channelwatchers[user]:
-                    watcher.msg(self.nickname, msg)
+            for watcher in self.channelwatchers[user]:
+                watcher.msg(self.nickname, message)
+        if isinstance(message, Tag):
+            message = formatting.to_irc(message)
+        super().msg(user, message, length)
 
     def notice(self, user, message):
+        user = user.lower()
+        if user in self.channelwatchers:
+            for watcher in self.channelwatchers[user]:
+                watcher.msg(self.nickname, message)
+        if isinstance(message, Tag):
+            message = formatting.to_irc(message)
         # Workaround for https://twistedmatrix.com/trac/ticket/10285
         for msg in message.split("\n"):
             super().notice(user, msg)
-        user = user.lower()
-        if user in self.channelwatchers:
-            for msg in message.split("\n"):
-                for watcher in self.channelwatchers[user]:
-                    watcher.msg(self.nickname, msg)
 
     def ban(self, channel, user):
         """
@@ -257,6 +261,7 @@ class IRCBot(irc.IRCClient, object):
         user, temp = user.split('!', 1)
         userhost = temp.split("@")[-1]
 
+        msg = parse_irc(msg)
         if channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:
                 watcher.msg(user, msg)
@@ -265,12 +270,7 @@ class IRCBot(irc.IRCClient, object):
         if self.ignore_user(user):
             return
 
-        # strip the formatting
-        try:
-            msg = irc.stripFormatting(msg)
-        except AttributeError:
-            # twisted < 13.1
-            pass
+        msg = formatting.to_plaintext(msg)
         msg = msg.strip()
         self.log.info("{channel} | {user} : {msg}",
                       channel=channel, user=user, msg=msg)
@@ -366,8 +366,10 @@ class IRCBot(irc.IRCClient, object):
 
     def topicUpdated(self, user, channel, newTopic):
         nick = user.split("!")[0]
+        newTopic = parse_irc(newTopic)
         self.log.info("{nick} changed the topic of {channel} to {topic}",
-                      nick=nick, channel=channel, topic=newTopic)
+                      nick=nick, channel=channel,
+                      topic=formatting.to_plaintext(newTopic))
         if channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:
                 watcher.topic(nick, newTopic)
@@ -409,8 +411,9 @@ class IRCBot(irc.IRCClient, object):
     def noticed(self, user, channel, message):
         """Triggered by notice"""
         nick = user.split("!")[0]
+        message = parse_irc(message)
         self.log.info("{channel} | [{nick} {message}]", channel=channel,
-                      nick=nick, message=message)
+                      nick=nick, message=formatting.to_plaintext(message))
         if channel in self.channelwatchers:
             for watcher in self.channelwatchers[channel]:
                 watcher.notice(nick, message)
@@ -419,13 +422,15 @@ class IRCBot(irc.IRCClient, object):
         """Triggered when a user gets kicked"""
         # kick message
         if self.config["Actions"]:
-            msg = self.config["Actions"].get("userKicked", "").replace(
-                "$KICKER", kicker)
-            msg = msg.replace("$KICKEE", kickee).replace("$CHANNEL",
-                                                         channel)
-            msg = formatting.from_human_readable(msg)
-            if msg:
-                self.msg(channel, msg)
+            if msg := self.config["Actions"].get("userKicked", None):
+                try:
+                    msg = formatting.from_human_readable(msg)
+                except Exception as e:
+                    self.log.error("Couldn't format reply to userKicked event"
+                                   " ({e})", e=e)
+                else:
+                    msg.fillSlots(kicker=kicker, kickee=kickee, channel=channel)
+                    self.msg(channel, msg)
 
         self.log.info("{kickee} was kicked from {channel} by {kicker} "
                       "({reason})", kickee=kickee, channel=channel,
@@ -464,13 +469,15 @@ class IRCBot(irc.IRCClient, object):
         if self.config["Connection"].get("rejoinKicked", False):
             self.join(channel)
             if self.config["Actions"]:
-                msg = self.config["Actions"].get("kickedFrom", "").replace(
-                    "$KICKER", kicker)
-                msg = msg.replace("$CHANNEL", channel).replace("$MESSAGE",
-                                                               message)
-                msg = formatting.from_human_readable(msg)
-                if msg:
-                    self.msg(channel, msg)
+                if msg := self.config["Actions"].get("kickedFrom", None):
+                    try:
+                        msg = formatting.from_human_readable(msg)
+                    except Exception as e:
+                        self.log.error("Couldn't format reply to userKicked event"
+                                       " ({e})", e=e)
+                    else:
+                        msg.fillSlots(kicker=kicker, channel=channel)
+                        self.msg(channel, msg)
 
         self.userlist.pop(channel)
         if channel in self.channelwatchers:

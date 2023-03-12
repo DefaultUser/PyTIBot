@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2015-2022>  <Sebastian Schmidt>
+# Copyright (C) <2015-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,14 +16,16 @@
 
 import re
 from twisted.internet import threads
+from twisted.logger import Logger
 import sys
 import random
 
-# FIXME: replace IRC formatting with internal formatting
-from util.formatting import irc as formatting
+from util import formatting
 
 
 trigger_module = sys.modules[__name__]
+
+logger = Logger()
 
 __trigs__ = {r"youtube.com/watch\?v=": "youtube",
              r"^import this$": "import_this",
@@ -137,8 +139,11 @@ def simple_trigger(bot, config):
             answer = trigger["answer"]
             if isinstance(answer, list):
                 answer = random.choice(answer)
-            msg = answer.replace("$USER", sender).replace("$CHANNEL", channel)
 
             # Replace colors
-            msg = formatting.from_human_readable(msg)
-            bot.msg(channel, msg)
+            try:
+                msg = formatting.from_human_readable(answer)
+            except Exception as e:
+                logger.error("Couldn't read simple trigger ({e})", e=e)
+            else:
+                bot.msg(channel, msg)

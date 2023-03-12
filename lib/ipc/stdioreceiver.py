@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2022>  <Sebastian Schmidt>
+# Copyright (C) <2017-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,8 +18,7 @@ from twisted.protocols.basic import LineOnlyReceiver
 from twisted.internet import stdio
 
 from util.formatting import ansi
-# FIXME: replace IRC formatting with internal formatting
-from util.formatting import irc as formatting
+from util import formatting
 from util.misc import str_to_bytes, bytes_to_str
 
 

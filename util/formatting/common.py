@@ -101,13 +101,6 @@ class Style:
     def __bool__(self) -> bool:
         return any(asdict(self).values())
 
-class StyledTextFragment(NamedTuple):
-    text: str
-    style: Style = Style()
-
-
-StyledText: TypeAlias = str | list[str|StyledTextFragment]
-
 
 def is_bold(tag: Tag) -> bool:
     return (tag.tagName in ("b", "strong") or

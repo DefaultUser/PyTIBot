@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2016-2022>  <Sebastian Schmidt>
+# Copyright (C) <2016-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,7 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from twisted.web.server import NOT_DONE_YET
-from twisted.words.protocols import irc
 from twisted.internet import threads, reactor
 from twisted.internet.task import LoopingCall
 from twisted.logger import Logger
@@ -36,7 +35,8 @@ from datetime import datetime, timedelta
 from .common import PageElement, webpage_error_handler, BaseResource
 from util import log
 from util import filesystem as fs
-from util.formatting import html as html_formatting
+from util.formatting import to_plaintext
+from util.formatting.html import modernize_html
 from util.misc import bytes_to_str
 from util.whoosh_tag_formatter import WhooshTagFormatter
 
@@ -56,8 +56,7 @@ def _prepare_yaml_element(element):
     """Prepare a yaml element for display in html"""
     element["time"] = element["time"][11:]
     if "message" in element:
-        element["message"] = html_formatting.to_tags(element["message"],
-                                                     link_urls=True)
+        element["message"] = modernize_html(element["message"])
 
 
 class LogPageElement(PageElement):
@@ -229,8 +228,7 @@ class SearchPage(BaseResource):
             content = []
             for element in yaml.full_load_all(f.read()):
                 if element["levelname"] == "MSG":
-                    # TODO: adapt once internal stringformat is available
-                    msg = irc.stripFormatting(element["message"])
+                    msg = to_plaintext(element["message"])
                     content.append(msg)
             datestr = name.removeprefix(self.channel.lstrip("#") + ".").removesuffix(".yaml")
             try:

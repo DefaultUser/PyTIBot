@@ -452,6 +452,10 @@ class MatrixFormattingTestCase(unittest.TestCase):
                               '<font color="#00fe80">d</font><font color="#00aafe">'
                               'e</font><font color="#2b00fd">f</font>')
 
+    def test_escape_html(self):
+        msg = Tag("")(tags.span("<b>foo</b>"))
+        self._test_formatting(msg, "<span>&lt;b&gt;foo&lt;/b&gt;</span>")
+
 
 RAINBOW_STYLE_CSS = ("background:linear-gradient(to right, red, darkorange, "
                      "green, cyan, blue, magenta);color:transparent;"

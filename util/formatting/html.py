@@ -408,6 +408,7 @@ class TagToMatrixFormatter:
             blend_factor = relative_position*(len(common.RAINBOW_COLORS)-1) - index
             return common.interpolate_color(current_color, next_color, blend_factor)
 
+        data = htmlescape(data)
         if self._rainbow_content_length:
             for char in data:
                 color = rainbow_color_at(self._rainbow_position/self._rainbow_content_length)

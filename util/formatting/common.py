@@ -24,6 +24,7 @@ from enum import Enum
 import re
 from twisted.web.template import Tag, slot
 from typing import NamedTuple, TypeAlias
+import yaml
 from zope import interface
 
 
@@ -319,4 +320,50 @@ def closest_colorcode(color: str) -> ColorCodes:
     if color in [e.name for e in ColorCodes]:
         return ColorCodes[color]
     raise ValueError("Invalid color definition")
+
+
+def colorCode_representer(dumper: yaml.SafeDumper, color: ColorCodes) -> yaml.nodes.MappingNode:
+    return dumper.represent_scalar("!ColorCode", color.name)
+
+
+def colorCode_constructor(loader: yaml.SafeLoader,
+                          node: yaml.nodes.MappingNode) -> ColorCodes:
+    code = loader.construct_scalar(node)
+    return ColorCodes[code]
+
+
+def tag_representer(dumper: yaml.SafeDumper, tag: Tag) -> yaml.nodes.MappingNode:
+    d = {"tagName": tag.tagName, "children": tag.children}
+    if tag.attributes:
+        d["attributes"] = tag.attributes
+    if tag.slotData:
+        d["slotData"] = tag.slotData
+    return dumper.represent_mapping("!Tag", d)
+
+
+def tag_constructor(loader: yaml.SafeLoader, node: yaml.nodes.MappingNode) -> Tag:
+    mapping = loader.construct_mapping(node, deep=True)
+    tag = Tag(mapping["tagName"])(*mapping["children"])
+    if attr := mapping.get("attributes", None):
+        tag.attributes = attr
+    if slotData := mapping.get("slotData", None):
+        tag.slotData = slotData
+    return tag
+
+
+def slot_representer(dumper: yaml.SafeDumper, slt: slot) -> yaml.nodes.MappingNode:
+    return dumper.represent_scalar("!slot", slt.name)
+
+
+def slot_constructor(loader: yaml.SafeLoader, node: yaml.nodes.MappingNode) -> slot:
+    name = loader.construct_scalar(node)
+    return slot(name)
+
+
+yaml.add_constructor("!ColorCode", colorCode_constructor)
+yaml.add_constructor("!Tag", tag_constructor)
+yaml.add_constructor("!slot", slot_constructor)
+yaml.add_representer(ColorCodes, colorCode_representer)
+yaml.add_representer(Tag, tag_representer)
+yaml.add_representer(slot, slot_representer)
 

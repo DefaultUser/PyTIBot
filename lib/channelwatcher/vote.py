@@ -74,7 +74,7 @@ PRAGMA foreign_keys = ON;""",
     id INTEGER PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
     description TEXT,
-    color TEXT CHECK(color in ("white", "black", "dark_blue", "dark_green", "red", "dark_red", "dark_magenta", "dark_yellow", "yellow", "green", "dark_cyan", "cyan", "blue", "magenta", "dark_gray", "gray", "")), -- IRC colors
+    color TEXT CHECK(color in ("white", "black", "darkblue", "darkgreen", "red", "darkred", "darkmagenta", "darkorange", "yellow", "green", "darkcyan", "cyan", "blue", "magenta", "darkgray", "gray", "")),
     confidential BOOLEAN DEFAULT false CHECK(confidential in (true, false)), -- only for filtering on website
     default_duration_seconds INTEGER
 );"""]

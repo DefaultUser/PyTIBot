@@ -187,6 +187,8 @@ class HTMLParseError(Exception):
     pass
 
 
+_UNPAIRED_TAGS = ("br", "hr", "img")
+
 class SanetizingHTMLParser(htmlparser.HTMLParser):
     """
     Parser for html and matrix messages that restricts the used tags and
@@ -209,9 +211,6 @@ class SanetizingHTMLParser(htmlparser.HTMLParser):
     allowed_tags = ("b", "strong", "u", "i", "em", "cite", "del", "strike", "s",
                     "font", "a", "br", "span", "div", "img", "rainbow",
                     "t:slot", "t:attr")
-
-
-    unpaired_tags = ("br", "hr", "img")
 
     def __init__(self, *, allow_slots=False, convert_charrefs=True):
         super().__init__(convert_charrefs=convert_charrefs)
@@ -304,7 +303,7 @@ class SanetizingHTMLParser(htmlparser.HTMLParser):
         new_tag = Tag(tagName)
         new_tag.attributes = sanetized_attrs
         self._stack[-1].children.append(new_tag)
-        if tagName not in SanetizingHTMLParser.unpaired_tags:
+        if tagName not in _UNPAIRED_TAGS:
             self._stack.append(new_tag)
 
     def handle_data(self, data: str):
@@ -313,7 +312,7 @@ class SanetizingHTMLParser(htmlparser.HTMLParser):
     def handle_endtag(self, tagName: str):
         if tagName not in SanetizingHTMLParser.allowed_tags:
             return
-        if tagName in SanetizingHTMLParser.unpaired_tags:
+        if tagName in _UNPAIRED_TAGS:
             # these tags can have an end tag, but don't have to depending on
             # which version of HTML is used
             return
@@ -418,6 +417,8 @@ class TagToMatrixFormatter:
             self._rainbow_content_length = 0
             return
         if not tag.tagName:
+            return
+        if tag.tagName in _UNPAIRED_TAGS:
             return
         if (tag.attributes.get("color", None) or
                 tag.attributes.get("background-color", None)):

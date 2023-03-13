@@ -425,6 +425,10 @@ class MatrixFormattingTestCase(unittest.TestCase):
                               '<font color="#00fe80">d</font><font color="#00aafe">'
                               'e</font><font color="#2b00fd">f</font>')
 
+    def test_unpaired_tags(self):
+        msg = Tag("")("foo", tags.br, "bar")
+        self._test_formatting(msg, 'foo<br>bar')
+
     def test_nested_rainbow(self):
         msg = Tag("")("foo", Tag("rainbow")("abc", tags.b("def")))
         self._test_formatting(msg,

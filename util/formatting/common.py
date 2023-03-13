@@ -165,21 +165,19 @@ class TagToPlainFormatter:
     # TODO: support <hn> (markdown style)
     def __init__(self):
         self.buffer = ""
-        self._slotDataStack = []
+        self._slotDataStack = deque()
+        self._slotDataStack.append({})
 
     def handle_newline(self):
         if self.buffer:
             self.buffer += "\n"
 
     def handle_slot(self, slt: slot):
-        for slotData in self._slotDataStack[::-1]:
-            if slotData and slt.name in slotData:
-                self.handle_data(slotData[slt.name])
-                return
-        raise KeyError(f"Unfilled Slot {slt.name}")
+        self.handle_data(self._slotDataStack[-1][slt.name])
 
     def handle_starttag(self, tag: Tag):
-        self._slotDataStack.append(tag.slotData)
+        slotData = {**self._slotDataStack[-1], **(tag.slotData or {})}
+        self._slotDataStack.append(slotData)
         if tag.tagName == "br" or is_display_block(tag):
             self.handle_newline()
 
@@ -191,11 +189,13 @@ class TagToPlainFormatter:
             self.buffer += item
 
     def handle_endtag(self, tag: Tag):
-        self._slotDataStack.pop()
         if tag.tagName == "a" and (href:=tag.attributes.get("href", None)):
+            if isinstance(href, Tag):
+                href = handle_attribute_tag(href, self._slotDataStack)
             self.buffer += f" ({href})"
         if is_display_block(tag):
             self.handle_newline()
+        self._slotDataStack.pop()
 
 
 def _processStyledText(data: Tag, processor: ITagProcessor):

@@ -383,6 +383,8 @@ class TagToMatrixFormatter:
             attributes["data-mx-bg-color"] = color_to_string(color)
             tagName = "font"
         if href := tag.attributes.get("href", None):
+            if isinstance(href, Tag):
+                href = common.handle_attribute_tag(href, self._slotDataStack)
             attributes["href"] = href
         if not tagName:
             return
@@ -411,6 +413,7 @@ class TagToMatrixFormatter:
             self.buffer += data
 
     def handle_endtag(self, tag: Tag):
+        self._slotDataStack.pop()
         if tag.tagName == "rainbow":
             self._rainbow_content_length = 0
             return

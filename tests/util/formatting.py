@@ -141,6 +141,12 @@ class PlaintextFormattingTestCase(unittest.TestCase):
         msg = Tag("")("foo", tags.b(slot("slt"), "bar"))
         self.assertRaises(KeyError, to_plaintext, msg)
 
+    def test_attr_slot(self):
+        msg = Tag("")(tags.a("foo", href=Tag("")(slot("slt"))).fillSlots(slt="example.com"))
+        self._test_formatting(msg, "foo (example.com)")
+        msg = Tag("")(tags.a("foo", href=Tag("")(slot("slt"))))
+        self.assertRaises(KeyError, to_plaintext, msg)
+
 
 class IrcFormattingTestCase(unittest.TestCase):
     def _test_formatting(self, input_value, expected_outcome):
@@ -440,6 +446,8 @@ class MatrixFormattingTestCase(unittest.TestCase):
         msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))).fillSlots(
             slt=ColorCodes.red))
         self._test_formatting(msg, '<font color="red">foo</font>')
+        msg = Tag("")(tags.a("foo", href=Tag("")(slot("slt"))).fillSlots(slt="example.com"))
+        self._test_formatting(msg, '<a href="example.com">foo</a>')
         msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))))
         self.assertRaises(KeyError, to_matrix, msg)
 

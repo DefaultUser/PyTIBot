@@ -44,7 +44,7 @@ class GitWebhookServer(Resource):
     log = Logger()
     GH_ReviewFloodPrevention_Delay = 10
 
-    reponame_stub = '[<font color="blue" background-color="gray"><t:slot name="repo_name"/></font>]'
+    reponame_stub = '[<font color="green"><t:slot name="repo_name"/></font>]'
     author_stub = '<font color="darkcyan"><t:slot name="author"/></font>'
     user_stub = '<font color="darkcyan"><t:slot name="user"/></font>'
     action_stub = '<font><t:attr name="color"><t:slot name="actioncolor"/></t:attr><t:slot name="action"/></font>'
@@ -226,12 +226,10 @@ class GitWebhookServer(Resource):
         if self.botfactory.bot is None:
             return
         if isinstance(success, Failure):
-            message = Tag("")("Hook ", colored(actionname, ColorCodes.blue,
-                                               ColorCodes.gray),
+            message = Tag("")("Hook ", colored(actionname, ColorCodes.red),
                               " failed: {}".format(success.getErrorMessage()))
         elif self.hook_report_success:
-            message = Tag("")("Hook ", colored(actionname, ColorCodes.blue,
-                                               ColorCodes.gray),
+            message = Tag("")("Hook ", colored(actionname, ColorCodes.green),
                               " finished without errors")
         else:
             return

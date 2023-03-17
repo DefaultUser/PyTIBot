@@ -1318,14 +1318,14 @@ class Vote(abstract.ChannelWatcher):
                               previous_decision_color=Vote.vote_decision_color(previous_decision),
                               decision=decision.name,
                               decision_color=Vote.vote_decision_color(decision),
-                              comment=comment)
+                              comment=comment or "No Comment")
             else:
                 yield self.dbpool.runInteraction(Vote.insert_vote, poll_id,
                                                  voterid, decision, comment)
                 msg = Vote.new_vote_stub.clone()
                 msg.fillSlots(poll_id=str(poll_id), user=voter, decision=decision.name,
                               decision_color=Vote.vote_decision_color(decision),
-                              comment=comment)
+                              comment=comment or "No Comment")
         except Exception as e:
             self.bot.notice(voter, "An error occured. Please contact the admin.")
             Vote.logger.warn("Encountered error during vote: {}".format(e))

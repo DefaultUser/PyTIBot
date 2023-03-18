@@ -512,6 +512,9 @@ class IRCBot(irc.IRCClient, object):
         self.whois(user)
         return d
 
+    def get_displayname(self, user: str, channel: str) -> str:
+        return user
+
     def remove_user_from_cache(self, user):
         """Remove the info about user from get_auth and user_info cache"""
         key = "({}, {})|{}".format(str(self), str(user.lower()), {})

@@ -155,6 +155,9 @@ class MatrixBot:
         # the user handle is already unique
         return user
 
+    def get_displayname(self, user: str, channel: str) -> str:
+        return self.client.rooms[channel].users[user].display_name
+
     @maybe_deferred
     def is_user_admin(self, user: str) -> bool:
         return user in self.config["Connection"]["admins"]

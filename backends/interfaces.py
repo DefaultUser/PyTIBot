@@ -57,6 +57,9 @@ class IBot(zope.interface.Interface):
     def is_user_ignored(user: str) -> bool:
         """Test whether to ignore a user"""
 
+    def get_displayname(user: str, channel: str) -> str:
+        """Return a user's displayname for a channel"""
+
     def get_auth(user: str) -> str:
         """Get a users auth"""
 

@@ -22,7 +22,7 @@ from typing import Union
 from zope import interface
 
 from util.formatting import common
-from util.formatting.common import ColorCodes, HTMLColors, Style
+from util.formatting.common import ColorCodes, HTMLColors, Style, Message
 
 
 def color_to_string(color: Union[ColorCodes, str]) -> str:
@@ -277,7 +277,7 @@ class TagToMatrixFormatter:
                 self.buffer += f"</{TagToMatrixFormatter.styled_tagnames[attr]}>"
 
 
-def to_matrix(data: Union[Tag, str]) -> str:
+def to_matrix(data: Message) -> str:
     if isinstance(data, str):
         return data
     formatter = TagToMatrixFormatter()
@@ -366,7 +366,7 @@ class TagModernizer:
         self._parent_stack.pop()
 
 
-def modernize_html(data: Union[Tag, str]) -> Union[Tag, str]:
+def modernize_html(data: Message) -> Message:
     if isinstance(data, str):
         return data
     processor = TagModernizer()

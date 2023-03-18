@@ -23,7 +23,7 @@ from dataclasses import dataclass, asdict
 from enum import Enum
 import re
 from twisted.web.template import Tag, slot
-from typing import NamedTuple, Union, Optional
+from typing import NamedTuple, Union, Optional, TypeAlias
 import yaml
 from zope import interface
 
@@ -242,6 +242,9 @@ RAINBOW_COLORS = (ColorCodes.red, ColorCodes.darkorange, ColorCodes.green,
                   ColorCodes.cyan, ColorCodes.blue, ColorCodes.magenta)
 
 
+Message: TypeAlias = Union[str, Tag]
+
+
 @dataclass
 class Style:
     underline: Optional[bool] = None
@@ -378,7 +381,7 @@ def _processStyledText(data: Tag, processor: ITagProcessor):
         processor.handle_endtag(close_tag[0])
 
 
-def to_plaintext(data: Union[Tag, str]) -> str:
+def to_plaintext(data: Message) -> str:
     if isinstance(data, str):
         return data
     formatter = TagToPlainFormatter()

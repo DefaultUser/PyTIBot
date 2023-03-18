@@ -18,7 +18,7 @@ from twisted.web.template import Tag, tags
 from typing import Optional, Union
 
 from util.formatting.common import ColorCodes, ColorsHex, good_contrast_with_black
-from util.formatting.common import to_plaintext
+from util.formatting.common import to_plaintext, Message
 from util.formatting.html import to_matrix, parse_html
 from util.formatting.irc import to_irc
 
@@ -27,7 +27,7 @@ def from_human_readable(text: str) -> Tag:
     return parse_html(text, allow_slots=True)
 
 
-def colored(text: Union[Tag, str], fg: Union[ColorCodes, str],
+def colored(text: Message, fg: Union[ColorCodes, str],
             bg: Optional[Union[ColorCodes, str]] = None) -> Tag:
     new_tag = tags.font(text, color=fg)
     if bg:
@@ -35,23 +35,23 @@ def colored(text: Union[Tag, str], fg: Union[ColorCodes, str],
     return new_tag
 
 
-def rainbow(text: Union[Tag, str]) -> Tag:
+def rainbow(text: Message) -> Tag:
     return Tag("rainbow")(text)
 
 
-def underlined(text: Union[Tag, str]) -> Tag:
+def underlined(text: Message) -> Tag:
     return tags.u(text)
 
 
-def italic(text: Union[Tag, str]) -> Tag:
+def italic(text: Message) -> Tag:
     return tags.i(text)
 
 
-def bold(text: Union[Tag, str]) -> Tag:
+def bold(text: Message) -> Tag:
     return tags.b(text)
 
 
-def strike(text: Union[Tag, str]) -> Tag:
+def strike(text: Message) -> Tag:
     return Tag("del")(text)
 
 

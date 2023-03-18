@@ -23,7 +23,7 @@ from typing import Union
 from zope import interface
 
 from util.formatting import common
-from util.formatting.common import ColorCodes, Style
+from util.formatting.common import ColorCodes, Style, Message
 
 # https://modern.ircdocs.horse/formatting.html
 
@@ -44,7 +44,7 @@ _NORMAL = "\x0f"
 _irc_parser_pattern = re.compile("(\x1f)|(\x02)|(\x03)(\\d{1,2}(,\\d{1,2})?)?|"
                                  "(\x1d)|(\x1e)|(\x0f)")
 
-def parse_irc(message: str, link_urls: bool=True) -> Union[Tag, str]:
+def parse_irc(message: str, link_urls: bool=True) -> Message:
     result = Tag("")
     stack = deque()
     stack.append(result)
@@ -288,7 +288,7 @@ class TagToIrcFormatter:
         self._slotDataStack.pop()
 
 
-def to_irc(data: Union[Tag, str]) -> str:
+def to_irc(data: Message) -> str:
     if isinstance(data, str):
         return data
     formatter = TagToIrcFormatter()

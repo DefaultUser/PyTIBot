@@ -32,7 +32,7 @@ from backends.interfaces import IBot
 
 from util.aio_compat import deferred_to_future, future_to_deferred
 from util import filesystem as fs
-from util.formatting import to_matrix, to_plaintext, Tag
+from util.formatting import to_matrix, to_plaintext, Tag, Message
 from util.decorators import maybe_deferred
 from util.config import Config
 
@@ -192,7 +192,7 @@ class MatrixBot:
         future_to_deferred(self.client.close())
 
     @staticmethod
-    def formatted_message_content(message: Union[Tag, str]) -> dict[str, str]:
+    def formatted_message_content(message: Message) -> dict[str, str]:
         if isinstance(message, str):
             return {"body": message}
         unformatted = to_plaintext(message)
@@ -218,7 +218,7 @@ class MatrixBot:
             return
 
     @inlineCallbacks
-    def _send_message(self, msgtype: MessageType, target: str, message: Union[Tag, str]) -> None:
+    def _send_message(self, msgtype: MessageType, target: str, message: Message) -> None:
         # direct messages will stay open until the user leaves the room
         if target.startswith("@"):
             target = yield self.get_or_create_direct_message_room(target)
@@ -232,10 +232,10 @@ class MatrixBot:
                                                  message_type="m.room.message",
                                                  content=content))
 
-    def msg(self, target: str, message: Union[Tag, str], length=None) -> None:
+    def msg(self, target: str, message: Message, length=None) -> None:
         self._send_message(MessageType.text, target, message)
 
-    def notice(self, target: str, message: Union[Tag, str], length=None) -> None:
+    def notice(self, target: str, message: Message, length=None) -> None:
         self._send_message(MessageType.notice, target, message)
 
     def join(self, channel: str) -> None:

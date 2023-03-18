@@ -804,8 +804,9 @@ class Vote(abstract.ChannelWatcher):
         if not auth:
             self.bot.notice(issuer, "Couldn't query user's AUTH, aborting...")
             return
+        displayname = self.bot.get_display_name(user, self.channel)
         try:
-            yield self.dbpool.runInteraction(Vote.insert_user, auth, user,
+            yield self.dbpool.runInteraction(Vote.insert_user, auth, displayname,
                                              privilege)
         except Exception as e:
             self.bot.notice(issuer, "Couldn't add user {} ({}). "
@@ -937,8 +938,10 @@ class Vote(abstract.ChannelWatcher):
             url = self.poll_url(poll_id)
             if url is None:
                 url = ""
+            issuer_displayname = self.bot.get_displayname(issuer, self.channel)
             msg = Vote.new_poll_stub.clone()
-            msg.fillSlots(poll_id=str(poll_id), creator=issuer, url=url, description=description)
+            msg.fillSlots(poll_id=str(poll_id), creator=issuer_displayname,
+                          url=url, description=description)
             if category:
                 msg.children.insert(0, " ")
                 msg.children.insert(0, Vote.colored_category_name(category, category_color))
@@ -1277,6 +1280,7 @@ class Vote(abstract.ChannelWatcher):
             self.bot.notice(voter, "You are not allowed to vote")
             return
         voterid = yield self.bot.get_auth(voter)
+        voter_displayname = self.bot.get_displayname(voter, self.channel)
         pollstatus = yield self.dbpool.runQuery(
                 'SELECT status FROM Polls WHERE id=:id;', {"id": poll_id})
         if not pollstatus:
@@ -1313,7 +1317,7 @@ class Vote(abstract.ChannelWatcher):
                                                  poll_id, voterid, decision,
                                                  comment)
                 msg = Vote.vote_changed_stub.clone()
-                msg.fillSlots(poll_id=str(poll_id), user=voter,
+                msg.fillSlots(poll_id=str(poll_id), user=voter_displayname,
                               previous_decision=previous_decision.name,
                               previous_decision_color=Vote.vote_decision_color(previous_decision),
                               decision=decision.name,
@@ -1323,7 +1327,8 @@ class Vote(abstract.ChannelWatcher):
                 yield self.dbpool.runInteraction(Vote.insert_vote, poll_id,
                                                  voterid, decision, comment)
                 msg = Vote.new_vote_stub.clone()
-                msg.fillSlots(poll_id=str(poll_id), user=voter, decision=decision.name,
+                msg.fillSlots(poll_id=str(poll_id), user=voter_displayname,
+                              decision=decision.name,
                               decision_color=Vote.vote_decision_color(decision),
                               comment=comment or "No Comment")
         except Exception as e:

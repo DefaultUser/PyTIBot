@@ -63,6 +63,7 @@ class ChannelLogger(abstract.ChannelWatcher):
             self.logger.addHandler(log_handler)
 
     def topic(self, user, topic):
+        user = self.bot.get_displayname(user, self.channel)
         if not self._yaml:
             message = to_matrix(message)
         self.logger.log(log.TOPIC, log.msg_templates[log.TOPIC],
@@ -73,33 +74,41 @@ class ChannelLogger(abstract.ChannelWatcher):
                         {"oldnick": oldnick, "newnick": newnick})
 
     def join(self, user):
+        user = self.bot.get_displayname(user, self.channel)
         self.logger.log(log.JOIN, log.msg_templates[log.JOIN], {"user": user})
 
     def part(self, user):
+        user = self.bot.get_displayname(user, self.channel)
         self.logger.log(log.PART, log.msg_templates[log.PART], {"user": user})
 
     def quit(self, user, quitMessage):
+        user = self.bot.get_displayname(user, self.channel)
         self.logger.log(log.QUIT, log.msg_templates[log.QUIT],
                         {"user": user, "quitMessage": quitMessage})
 
     def kick(self, kickee, kicker, message):
+        kickee = self.bot.get_displayname(kickee, self.channel)
+        kicker = self.bot.get_displayname(kicker, self.channel)
         self.logger.log(log.KICK, log.msg_templates[log.KICK],
                         {"kickee": kickee, "kicker": kicker,
                          "message": message})
 
     def notice(self, user, message):
+        user = self.bot.get_displayname(user, self.channel)
         if not self._yaml:
             message = to_matrix(message)
         self.logger.log(log.NOTICE, log.msg_templates[log.NOTICE],
                         {"user": user, "message": message})
 
     def action(self, user, data):
+        user = self.bot.get_displayname(user, self.channel)
         if not self._yaml:
             message = to_matrix(message)
         self.logger.log(log.ACTION, log.msg_templates[log.ACTION],
                         {"user": user, "data": data})
 
     def msg(self, user, message):
+        user = self.bot.get_displayname(user, self.channel)
         if not self._yaml:
             message = to_matrix(message)
         self.logger.log(log.MSG, log.msg_templates[log.MSG],

@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2021>  <Sebastian Schmidt>
+# Copyright (C) <2021-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -61,9 +61,6 @@ class IBot(zope.interface.Interface):
 
     def ignore_user(user):
         """Test whether to ignore a user"""
-
-    def user_info(user):
-        """Get additional information about a user"""
 
     def get_auth(user):
         """Get a users auth"""

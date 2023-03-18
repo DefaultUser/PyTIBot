@@ -23,7 +23,7 @@ from dataclasses import dataclass, asdict
 from enum import Enum
 import re
 from twisted.web.template import Tag, slot
-from typing import NamedTuple, Union, Optional, TypeAlias
+from typing import NamedTuple, Union, Optional
 import yaml
 from zope import interface
 
@@ -242,7 +242,7 @@ RAINBOW_COLORS = (ColorCodes.red, ColorCodes.darkorange, ColorCodes.green,
                   ColorCodes.cyan, ColorCodes.blue, ColorCodes.magenta)
 
 
-Message: TypeAlias = Union[str, Tag]
+Message = Union[str, Tag]
 
 
 @dataclass

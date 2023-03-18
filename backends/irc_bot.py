@@ -210,29 +210,29 @@ class IRCBot(irc.IRCClient, object):
         for channel in channels:
             self.join(channel)
 
-    def msg(self, user, message, length=None):
+    def msg(self, target, message, length=None):
         """
         Send the message and log it to a channel log if neccessary
         """
         # user can also be a channel
-        user = user.lower()
-        if user in self.channelwatchers:
-            for watcher in self.channelwatchers[user]:
-                watcher.msg(self.nickname, message)
+        target = target.lower()
+        if target in self.channelwatchers:
+            for watcher in self.channelwatchers[target]:
+                watcher.msg(target, message)
         if isinstance(message, Tag):
             message = formatting.to_irc(message)
-        super().msg(user, message, length)
+        super().msg(target, message, length)
 
-    def notice(self, user, message):
-        user = user.lower()
-        if user in self.channelwatchers:
-            for watcher in self.channelwatchers[user]:
-                watcher.msg(self.nickname, message)
+    def notice(self, target, message):
+        target = target.lower()
+        if target in self.channelwatchers:
+            for watcher in self.channelwatchers[target]:
+                watcher.msg(target, message)
         if isinstance(message, Tag):
             message = formatting.to_irc(message)
         # Workaround for https://twistedmatrix.com/trac/ticket/10285
         for msg in message.split("\n"):
-            super().notice(user, msg)
+            super().notice(target, msg)
 
     def ban(self, channel, user):
         """

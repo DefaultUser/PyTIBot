@@ -54,7 +54,7 @@ class IBot(zope.interface.Interface):
     def enable_trigger(trigger: str, add_to_config: bool=False):
         """Enable a trigger"""
 
-    def ignore_user(user: str) -> bool:
+    def is_user_ignored(user: str) -> bool:
         """Test whether to ignore a user"""
 
     def get_auth(user: str) -> str:

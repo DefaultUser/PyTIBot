@@ -267,7 +267,7 @@ class IRCBot(irc.IRCClient, object):
                 watcher.msg(user, msg)
 
         # try if the user should be ignored
-        if self.ignore_user(user):
+        if self.is_user_ignored(user):
             return
 
         msg = formatting.to_plaintext(msg)
@@ -336,7 +336,7 @@ class IRCBot(irc.IRCClient, object):
         return ignorelist
 
     def add_to_ignorelist(self, user):
-        if self.ignore_user(user):
+        if self.is_user_ignored(user):
             return
         ignorelist = self.get_ignorelist()
         ignorelist.append(user)
@@ -344,14 +344,14 @@ class IRCBot(irc.IRCClient, object):
         self.config.write()
 
     def remove_from_ignorelist(self, user):
-        if not self.ignore_user(user):
+        if not self.is_user_ignored(user):
             return
         ignorelist = self.get_ignorelist()
         ignorelist.remove(user)
         self.config["Connection"]["ignore"] = ignorelist
         self.config.write()
 
-    def ignore_user(self, user):
+    def is_user_ignored(self, user):
         """Test whether to ignore the user"""
         for iu in self.get_ignorelist():
             try:
@@ -394,7 +394,7 @@ class IRCBot(irc.IRCClient, object):
                     for watcher in self.channelwatchers[channel]:
                         watcher.nick(oldname, newname)
         # expand the ignore list
-        if self.ignore_user(oldname):
+        if self.is_user_ignored(oldname):
             self.add_to_ignorelist(newname)
 
         self.remove_user_from_cache(oldname)

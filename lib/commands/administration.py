@@ -61,7 +61,7 @@ to remove from the list, 'ls' or 'list' to show the list"""
                                        "have at least 3 chars".format(nick))
                 elif task.lower() in ("-", "remove"):
                     for nick in nicks:
-                        if bot.ignore_user(nick):
+                        if bot.is_user_ignored(nick):
                             bot.remove_from_ignorelist(nick)
                             bot.notice(sender, "Removed {} from the ignore "
                                        "ignore list".format(nick))

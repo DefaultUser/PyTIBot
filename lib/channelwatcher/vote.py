@@ -1418,13 +1418,13 @@ class Vote(abstract.ChannelWatcher):
             msg.children.append(formatting.colored("Flags", ColorCodes.yellow))
             msg.children.append(": " + "; ".join(sig.flags))
         if sig.params:
-            if len(msg.children) > 1:
+            if len(msg.children):
                 msg.children.append(tags.br)
             msg.children.append(formatting.colored("Optional parameters",
                                                    ColorCodes.yellow))
             msg.children.append(": " + "; ".join(sig.params))
         if sig.pos_params:
-            if len(msg.children) > 1:
+            if len(msg.children):
                 msg.children.append(tags.br)
             msg.children.append(formatting.colored("Positional parameters",
                                                    ColorCodes.green))

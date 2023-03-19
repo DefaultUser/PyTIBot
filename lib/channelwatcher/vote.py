@@ -804,7 +804,7 @@ class Vote(abstract.ChannelWatcher):
         if not auth:
             self.bot.notice(issuer, "Couldn't query user's AUTH, aborting...")
             return
-        displayname = self.bot.get_display_name(user, self.channel)
+        displayname = self.bot.get_displayname(user, self.channel)
         try:
             yield self.dbpool.runInteraction(Vote.insert_user, auth, displayname,
                                              privilege)

@@ -818,7 +818,7 @@ class Vote(abstract.ChannelWatcher):
             return
         self._num_active_users += 1
         msg = Vote.user_added_stub.clone()
-        msg.fillSlots(user=user, auth=auth)
+        msg.fillSlots(user=displayname, auth=auth)
         self.bot.notice(issuer, msg)
 
     @defer.inlineCallbacks

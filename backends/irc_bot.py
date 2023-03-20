@@ -218,7 +218,7 @@ class IRCBot(irc.IRCClient, object):
         target = target.lower()
         if target in self.channelwatchers:
             for watcher in self.channelwatchers[target]:
-                watcher.msg(target, message)
+                watcher.msg(self.nickname, message)
         if isinstance(message, Tag):
             message = formatting.to_irc(message)
         super().msg(target, message, length)
@@ -227,7 +227,7 @@ class IRCBot(irc.IRCClient, object):
         target = target.lower()
         if target in self.channelwatchers:
             for watcher in self.channelwatchers[target]:
-                watcher.msg(target, message)
+                watcher.msg(self.nickname, message)
         if isinstance(message, Tag):
             message = formatting.to_irc(message)
         # Workaround for https://twistedmatrix.com/trac/ticket/10285

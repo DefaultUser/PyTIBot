@@ -214,8 +214,6 @@ class IRCBot(irc.IRCClient, object):
         """
         Send the message and log it to a channel log if neccessary
         """
-        # user can also be a channel
-        target = target.lower()
         if target in self.channelwatchers:
             for watcher in self.channelwatchers[target]:
                 watcher.msg(self.nickname, message)
@@ -224,7 +222,6 @@ class IRCBot(irc.IRCClient, object):
         super().msg(target, message, length)
 
     def notice(self, target, message):
-        target = target.lower()
         if target in self.channelwatchers:
             for watcher in self.channelwatchers[target]:
                 watcher.msg(self.nickname, message)
@@ -603,7 +600,7 @@ class IRCBot(irc.IRCClient, object):
         Reply for the NAMES command. Will automatically be issued when joining
         a channel.
         """
-        channel = params[2].lower()
+        channel = params[2]
         users = params[3].split()
         nicks = [user.lstrip("@+") for user in users]
         if channel not in self.userlist:

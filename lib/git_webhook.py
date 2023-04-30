@@ -49,13 +49,13 @@ class GitWebhookServer(Resource):
     author_stub = '<font color="darkcyan"><t:slot name="author"/></font>'
     user_stub = '<font color="darkcyan"><t:slot name="user"/></font>'
     action_stub = '<font><t:attr name="color"><t:slot name="actioncolor"/></t:attr><t:slot name="action"/></font>'
-    issue_description_stub = 'Issue <a><t:attr name="href"><t:slot name="issue_url"/></t:attr>#<font color="darkorange"><t:slot name="issue_id"/></font> <t:slot name="issue_title"/></a>'
-    pr_description_stub = 'Pull Request <a><t:attr name="href"><t:slot name="pr_url"/></t:attr>#<font color="darkorange"><t:slot name="pr_id"/></font> <t:slot name="pr_title"/> (<font color="magenta"><t:slot name="head"/></font>-&gt;<font color="darkred"><t:slot name="base"/></font>)</a>'
-    pr_description_without_href_stub = 'Pull Request #<font color="darkorange"><t:slot name="pr_id"/></font> <t:slot name="pr_title"/> (<font color="magenta"><t:slot name="head"/></font>-&gt;<font color="darkred"><t:slot name="base"/></font>)'
-    ref_stub = '<t:slot name="ref_type"/> <font color="darkmagenta"><t:slot name="ref"/></font>'
+    issue_description_stub = 'Issue #<font color="darkorange"><t:slot name="issue_id"/></font> <a><t:attr name="href"><t:slot name="issue_url"/></t:attr><t:slot name="issue_title"/></a>'
+    pr_description_stub = 'Pull Request #<font color="darkorange"><t:slot name="pr_id"/></font> <a><t:attr name="href"><t:slot name="pr_url"/></t:attr><t:slot name="pr_title"/> (<font color="magenta"><t:slot name="head"/></font>-&gt;<font color="red"><t:slot name="base"/></font>)</a>'
+    pr_description_without_href_stub = 'Pull Request #<font color="darkorange"><t:slot name="pr_id"/></font> <t:slot name="pr_title"/> (<font color="magenta"><t:slot name="head"/></font>-&gt;<font color="red"><t:slot name="base"/></font>)'
+    ref_stub = '<t:slot name="ref_type"/> <font color="magenta"><t:slot name="ref"/></font>'
 
-    push_stub = from_human_readable(f'{reponame_stub} {user_stub} pushed <t:slot name="num_commits"/> commit(s) to <font color="darkgreen"><t:slot name="branch"/></font>')
-    github_push_stub = from_human_readable(f'{reponame_stub} {user_stub} {action_stub} <a><t:attr name="href"><t:slot name="compare_url"/></t:attr><t:slot name="num_commits"/> commit(s) to <font color="darkgreen"><t:slot name="branch"/></font></a>')
+    push_stub = from_human_readable(f'{reponame_stub} {user_stub} pushed <t:slot name="num_commits"/> commit(s) to <font color="magenta"><t:slot name="branch"/></font>')
+    github_push_stub = from_human_readable(f'{reponame_stub} {user_stub} {action_stub} <a><t:attr name="href"><t:slot name="compare_url"/></t:attr><t:slot name="num_commits"/> commit(s) to <font color="magenta"><t:slot name="branch"/></font></a>')
     commit_stub = from_human_readable(f'{author_stub}: <a><t:attr name="href"><t:slot name="url"/></t:attr><t:slot name="message"/></a>')
     issue_stub = from_human_readable(f'{reponame_stub} {user_stub} {action_stub} {issue_description_stub}')
     issue_comment_stub = from_human_readable(f'{reponame_stub} {user_stub} {action_stub} <a><t:attr name="href"><t:slot name="comment_url"/></t:attr>comment</a> on {issue_description_stub}')
@@ -67,7 +67,7 @@ class GitWebhookServer(Resource):
     commit_comment_stub = from_human_readable(f'{reponame_stub} {user_stub} commented on <a><t:attr name="href"><t:slot name="url"/></t:attr>commit <t:slot name="commit_id"/></a>')
     release_stub = from_human_readable(f'{reponame_stub} {user_stub} {action_stub} <a><t:attr name="href"><t:slot name="url"/></t:attr>release <t:slot name="release_name"/></a>')
     gitlab_note_stub = from_human_readable(f'{reponame_stub} {user_stub} commented on <t:slot name="noteable_type"/> <t:slot name="id_prefix"/><font color="darkorange"><t:slot name="id"/></font> <a><t:attr name="href"><t:slot name="url"/></t:attr><t:slot name="title"/></a>')
-    gitlab_mr_stub = from_human_readable(f'{reponame_stub} {user_stub} {action_stub} Merge Request !<font color="darkorange"><t:slot name="id"/></font> <a><t:attr name="href"><t:slot name="url"/></t:attr><t:slot name="title"/> (<font color="magenta"><t:slot name="source"/></font>-&gt;<font color="darkred"><t:slot name="target"/></font>)</a>')
+    gitlab_mr_stub = from_human_readable(f'{reponame_stub} {user_stub} {action_stub} Merge Request !<font color="darkorange"><t:slot name="id"/></font> <a><t:attr name="href"><t:slot name="url"/></t:attr><t:slot name="title"/> (<font color="magenta"><t:slot name="source"/></font>-&gt;<font color="red"><t:slot name="target"/></font>)</a>')
 
     def __init__(self, botfactory, config):
         self.botfactory = botfactory

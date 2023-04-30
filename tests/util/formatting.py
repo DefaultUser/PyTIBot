@@ -398,16 +398,16 @@ class MatrixFormattingTestCase(unittest.TestCase):
 
     def test_attributes(self):
         msg = Tag("")(tags.font("foo", color=ColorCodes.red))
-        self._test_formatting(msg, '<font color="red">foo</font>')
+        self._test_formatting(msg, '<font color="#FF0000">foo</font>')
         msg = Tag("")(tags.font("foo", color=ColorCodes.darkorange))
-        self._test_formatting(msg, '<font color="darkorange">foo</font>')
+        self._test_formatting(msg, '<font color="#FF8C00">foo</font>')
         msg = Tag("")(tags.font("foo", color="#ff00ff"))
         self._test_formatting(msg, '<font color="#ff00ff">foo</font>')
         msg = Tag("")(tags.font("foo", **{"background-color": "#ff00ff"}))
         self._test_formatting(msg,
                               '<font data-mx-bg-color="#ff00ff">foo</font>')
         msg = Tag("")(tags.div("foo", color=ColorCodes.red))
-        self._test_formatting(msg, '<font color="red">foo</font>')
+        self._test_formatting(msg, '<font color="#FF0000">foo</font>')
 
     def test_multiple_attributes(self):
         msg = Tag("")(tags.span("foo", bold=True, strike=True))
@@ -415,15 +415,15 @@ class MatrixFormattingTestCase(unittest.TestCase):
         msg = Tag("")(tags.span("foo", bold=True, strike=True,
                                     color=ColorCodes.red))
         self._test_formatting(msg,
-                              '<b><del><font color="red">foo</font></del></b>')
+                              '<b><del><font color="#FF0000">foo</font></del></b>')
 
     def test_simple_rainbow(self):
         msg = Tag("")(Tag("rainbow")("abcdef"))
         self._test_formatting(msg,
-                              '<font color="#ff0000">a</font><font color="#fd6a00">'
-                              'b</font><font color="#54d200">c</font>'
-                              '<font color="#00fe80">d</font><font color="#00aafe">'
-                              'e</font><font color="#2b00fd">f</font>')
+                              '<font color="#ff0000">a</font><font color="#ff7500">'
+                              'b</font><font color="#55d900">c</font>'
+                              '<font color="#00ff80">d</font><font color="#00aaff">'
+                              'e</font><font color="#2b00ff">f</font>')
 
     def test_unpaired_tags(self):
         msg = Tag("")("foo", tags.br, "bar")
@@ -432,10 +432,10 @@ class MatrixFormattingTestCase(unittest.TestCase):
     def test_nested_rainbow(self):
         msg = Tag("")("foo", Tag("rainbow")("abc", tags.b("def")))
         self._test_formatting(msg,
-                              'foo<font color="#ff0000">a</font><font color="#fd6a00">'
-                              'b</font><font color="#54d200">c</font><b>'
-                              '<font color="#00fe80">d</font><font color="#00aafe">'
-                              'e</font><font color="#2b00fd">f</font></b>')
+                              'foo<font color="#ff0000">a</font><font color="#ff7500">'
+                              'b</font><font color="#55d900">c</font>'
+                              '<b><font color="#00ff80">d</font><font color="#00aaff">'
+                              'e</font><font color="#2b00ff">f</font></b>')
 
     def test_slot(self):
         msg = Tag("")("foo ", tags.b(slot("slt"), " bar").fillSlots(slt="baz"))
@@ -449,7 +449,7 @@ class MatrixFormattingTestCase(unittest.TestCase):
         self._test_formatting(msg, '<font color="red">foo</font>')
         msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))).fillSlots(
             slt=ColorCodes.red))
-        self._test_formatting(msg, '<font color="red">foo</font>')
+        self._test_formatting(msg, '<font color="#FF0000">foo</font>')
         msg = Tag("")(tags.a("foo", href=Tag("")(slot("slt"))).fillSlots(slt="example.com"))
         self._test_formatting(msg, '<a href="example.com">foo</a>')
         msg = Tag("")(tags.font("foo", color=Tag("")(slot("slt"))))
@@ -458,10 +458,10 @@ class MatrixFormattingTestCase(unittest.TestCase):
     def test_rainbow_with_slot(self):
         msg = Tag("")(Tag("rainbow")("abc", slot("slt"))).fillSlots(slt="def")
         self._test_formatting(msg,
-                              '<font color="#ff0000">a</font><font color="#fd6a00">'
-                              'b</font><font color="#54d200">c</font>'
-                              '<font color="#00fe80">d</font><font color="#00aafe">'
-                              'e</font><font color="#2b00fd">f</font>')
+                              '<font color="#ff0000">a</font><font color="#ff7500">'
+                              'b</font><font color="#55d900">c</font>'
+                              '<font color="#00ff80">d</font><font color="#00aaff">'
+                              'e</font><font color="#2b00ff">f</font>')
 
     def test_escape_html(self):
         msg = Tag("")(tags.span("<b>foo</b>"))
@@ -484,9 +484,9 @@ class HTMLTagModernizerTestCase(unittest.TestCase):
 
     def test_attributes(self):
         msg = Tag("")(tags.font("foo", color=ColorCodes.red))
-        self._test_formatting(msg, Tag("")(tags.span("foo", style="color:red;")))
+        self._test_formatting(msg, Tag("")(tags.span("foo", style="color:#FF0000;")))
         msg = Tag("")(tags.font("foo", color=ColorCodes.darkorange))
-        self._test_formatting(msg, Tag("")(tags.span("foo", style="color:darkorange;")))
+        self._test_formatting(msg, Tag("")(tags.span("foo", style="color:#FF8C00;")))
         msg = Tag("")(tags.font("foo", color="#ff00ff"))
         self._test_formatting(msg, Tag("")(tags.span("foo", style="color:#ff00ff;")))
         msg = Tag("")(tags.div("foo", bold=True))

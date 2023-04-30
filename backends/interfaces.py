@@ -61,7 +61,7 @@ class IBot(zope.interface.Interface):
         """Return a user's displayname for a channel"""
 
     def get_auth(user: str) -> str:
-        """Get a users auth"""
+        """Get a user's auth"""
 
     def is_user_admin(user: str) -> bool:
         """Check if a user is an admin for the bot"""

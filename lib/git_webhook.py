@@ -69,8 +69,10 @@ class GitWebhookServer(Resource):
         self.botfactory = botfactory
         self.github_secret = config["GitWebhook"].get("github_secret", None)
         self.gitlab_secret = config["GitWebhook"].get("gitlab_secret", None)
-        self.channels = config["GitWebhook"]["channels"]
-        self.confidential_channels = config["GitWebhook"].get("confidential_channels", {})
+        self.channels = GitWebhookServer._setup_report_channels(
+            config["GitWebhook"]["channels"])
+        self.confidential_channels = GitWebhookServer._setup_report_channels(
+            config["GitWebhook"].get("confidential_channels", {}))
         # filter settings
         self.filter_rules = config["GitWebhook"].get("FilterRules", [])
         self.prevent_github_review_flood = config["GitWebhook"].get(
@@ -125,6 +127,26 @@ class GitWebhookServer(Resource):
                                              payload_accessor=accessor)
             except Exception as e:
                 self.log.warn("Couldn't set up url shortener: {error}", error=e)
+
+    @staticmethod
+    def _setup_report_channels(config: dict[str, list[str]]) -> dict[str, dict[str, list[str]]]:
+        channel_setup = {}
+        for key, chanlist in config.items():
+            if "/" in key:
+                space, repo = key.rsplit("/", 1)
+            else:
+                space = "*"
+                repo = key
+            if space == "default":
+                space = "*"
+            if repo == "default":
+                repo = "*"
+            space = space.lower()
+            repo = repo.lower()
+            if space not in channel_setup:
+                channel_setup[space] = {}
+            channel_setup[space][repo] = chanlist
+        return channel_setup
 
     def render_POST(self, request):
         body = request.content.read()
@@ -285,25 +307,35 @@ class GitWebhookServer(Resource):
         #          github_pull_request_review_comment, gitlab_note
         # TODO: issue_hooks, tag_hooks, pullrequest_hooks and comment_hooks
 
-    def report_to_chat(self, repo_name, message, confidential=False):
+    def report_to_chat(self, repo_name, repo_space, message, confidential=False):
         if self.botfactory.bot is None:
             return
-        channels = []
         channel_config = self.confidential_channels if confidential else self.channels
-        if repo_name in channel_config:
-            channels = channel_config[repo_name]
-        elif "default" in channel_config:
-            channels = channel_config["default"]
+        repo_space = repo_space.lower()
+        repo_name = repo_name.lower()
+        config_space = repo_space if repo_space in channel_config else "*"
+        config_repo = repo_name if repo_name in channel_config[config_space] else "*"
+        try:
+            channels = channel_config[config_space][config_repo]
+        except KeyError:
+            self.log.warn("Recieved webhook for repo [{space}/{repo}], but no chat "
+                          "channel is configured for it, ignoring...",
+                          space=repo_space, repo=repo_name)
+            return
         if not isinstance(channels, list):
             # don't error out if the config has a string instead of a list
             channels = [channels]
-        if not channels:
-            self.log.warn("Recieved webhook for repo [{repo}], but no IRC "
-                          "channel is configured for it, ignoring...",
-                          repo=repo_name)
-            return
         for channel in channels:
             self.botfactory.bot.msg(channel, message)
+
+    @staticmethod
+    def _github_get_namespace(data):
+        return data["repository"]["full_name"].rsplit("/", 1)[0]
+
+    @staticmethod
+    def _gitlab_get_namespace(data):
+        # use `path_with_namespace` to capture all groups and subgroups
+        return data["project"]["path_with_namespace"].rsplit("/", 1)[0]
 
     @defer.inlineCallbacks
     def format_commits(self, commits, num_commits):
@@ -350,7 +382,9 @@ class GitWebhookServer(Resource):
                                                         len(data["commits"]))
                 msg.children.append(tags.br)
                 msg.children.append(commit_msgs)
-            self.report_to_chat(repo_name, msg)
+            self.report_to_chat(repo_name,
+                                GitWebhookServer._github_get_namespace(data),
+                                msg)
         # subset of information that is common for both GitHUb and GitLab
         # only a few useful pieces of information
         subset = {"commits": data["commits"],
@@ -395,7 +429,9 @@ class GitWebhookServer(Resource):
         if payload:
             msg.children.append(": ")
             msg.children.append(payload)
-        self.report_to_chat(repo_name, msg)
+        self.report_to_chat(repo_name,
+                            GitWebhookServer._github_get_namespace(data),
+                            msg)
 
     @defer.inlineCallbacks
     def on_github_issue_comment(self, data):
@@ -416,21 +452,27 @@ class GitWebhookServer(Resource):
                       issue_title=data["issue"]["title"],
                       issue_url=issue_url,
                       comment_url=comment_url)
-        self.report_to_chat(repo_name, msg)
+        self.report_to_chat(repo_name,
+                            GitWebhookServer._github_get_namespace(data),
+                            msg)
 
     def on_github_create(self, data):
         repo_name = data["repository"]["name"]
         msg = GitWebhookServer.create_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["sender"]["login"],
                       ref_type=data["ref_type"], ref=data["ref"])
-        self.report_to_chat(repo_name, msg)
+        self.report_to_chat(repo_name,
+                            GitWebhookServer._github_get_namespace(data),
+                            msg)
 
     def on_github_delete(self, data):
         repo_name = data["repository"]["name"]
         msg = GitWebhookServer.delete_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["sender"]["login"],
                       ref_type=data["ref_type"], ref=data["ref"])
-        self.report_to_chat(repo_name, msg)
+        self.report_to_chat(repo_name,
+                            GitWebhookServer._github_get_namespace(data),
+                            msg)
 
     @defer.inlineCallbacks
     def on_github_fork(self, data):
@@ -440,7 +482,9 @@ class GitWebhookServer(Resource):
         msg.fillSlots(repo_name=repo_name,
                       user=data["forkee"]["owner"]["login"],
                       url=url)
-        self.report_to_chat(repo_name, msg)
+        self.report_to_chat(repo_name,
+                            GitWebhookServer._github_get_namespace(data),
+                            msg)
 
     @defer.inlineCallbacks
     def on_github_commit_comment(self, data):
@@ -449,7 +493,9 @@ class GitWebhookServer(Resource):
         msg = GitWebhookServer.commit_comment_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["comment"]["user"]["login"],
                       commit_id=data["comment"]["commit_id"], url=url)
-        self.report_to_chat(repo_name, msg)
+        self.report_to_chat(repo_name,
+                            GitWebhookServer._github_get_namespace(data),
+                            msg)
 
     @defer.inlineCallbacks
     def on_github_release(self, data):
@@ -473,7 +519,9 @@ class GitWebhookServer(Resource):
         msg.fillSlots(repo_name=repo_name, user=user, action=action,
                       actioncolor=actioncolor, release_name=release_name,
                       url=url)
-        self.report_to_chat(repo_name, msg)
+        self.report_to_chat(repo_name,
+                            GitWebhookServer._github_get_namespace(data),
+                            msg)
 
     @defer.inlineCallbacks
     def on_github_pull_request(self, data):
@@ -525,9 +573,11 @@ class GitWebhookServer(Resource):
         if payload:
             msg.children.append(": ")
             msg.children.append(payload)
-        self.report_to_chat(repo_name, msg)
+        self.report_to_chat(repo_name,
+                            GitWebhookServer._github_get_namespace(data),
+                            msg)
 
-    def _github_PR_review_send_msg(self, is_comment, repo_name, user,
+    def _github_PR_review_send_msg(self, is_comment, repo_name, repo_space, user,
                                    pr_number, title, action, head, base, urls):
         review_type = "Review Comment" if is_comment else "Review"
         msg = GitWebhookServer.pr_review_stub.clone()
@@ -538,7 +588,7 @@ class GitWebhookServer(Resource):
             if i != 0:
                 msg.children.append(", ")
             msg.children.append(tags.a(str(i), href=url))
-        self.report_to_chat(repo_name, msg)
+        self.report_to_chat(repo_name, repo_space, msg)
 
     @defer.inlineCallbacks
     def github_handle_review_flood(self, is_comment):
@@ -557,16 +607,17 @@ class GitWebhookServer(Resource):
             type_ = "review"
         partition = {}
         for event in buffer:
+            repo_space = GitWebhookServer._github_get_namespace(event)
             repo_name = event["repository"]["name"]
             user = event[type_]["user"]["login"]
             pr_number = event["pull_request"]["number"]
             action = event["action"]
-            key = (repo_name, pr_number, user, action)
+            key = (repo_space, repo_name, pr_number, user, action)
             if key not in partition:
                 partition[key] = []
             partition[key].append(event)
         for k, events in partition.items():
-            repo_name, pr_number, user, action = k
+            repo_space, repo_name, pr_number, user, action = k
             title = events[0]["pull_request"]["title"]
             head = events[0]["pull_request"]["head"]["ref"]
             base = events[0]["pull_request"]["base"]["ref"]
@@ -575,9 +626,9 @@ class GitWebhookServer(Resource):
             urls_defers = [self.url_shortener(url) for url in full_urls]
             results = yield defer.DeferredList(urls_defers)
             urls = [res[1] for res in results]
-            self._github_PR_review_send_msg(is_comment, repo_name, user,
-                                            pr_number, title, action, head,
-                                            base, urls)
+            self._github_PR_review_send_msg(is_comment, repo_name, repo_space,
+                                            user, pr_number, title, action,
+                                            head, base, urls)
 
     @defer.inlineCallbacks
     def on_github_pull_request_review(self, data):
@@ -593,6 +644,7 @@ class GitWebhookServer(Resource):
             self._github_PR_review_send_msg(
                 False,
                 data["repository"]["name"],
+                GitWebhookServer._github_get_namespace(data),
                 data["review"]["user"]["login"],
                 data["pull_request"]["number"],
                 data["pull_request"]["title"],
@@ -615,6 +667,7 @@ class GitWebhookServer(Resource):
             self._github_PR_review_send_msg(
                 True,
                 data["repository"]["name"],
+                GitWebhookServer._github_get_namespace(data),
                 data["comment"]["user"]["login"],
                 data["pull_request"]["number"],
                 data["pull_request"]["title"],
@@ -641,7 +694,9 @@ class GitWebhookServer(Resource):
         if commit_msgs:
             msg.children.append(tags.br)
             msg.children.append(commit_msgs)
-        self.report_to_chat(repo_name, msg)
+        self.report_to_chat(repo_name,
+                            GitWebhookServer._gitlab_get_namespace(data),
+                            msg)
         # subset of information that is common for both GitHUb and GitLab
         # only a few useful pieces of information
         subset = {"commits": data["commits"],
@@ -667,7 +722,9 @@ class GitWebhookServer(Resource):
         if commit_msgs:
             msg.children.append(tags.br)
             msg.children.append(commit_msgs)
-        self.report_to_chat(repo_name, msg)
+        self.report_to_chat(repo_name,
+                            GitWebhookServer._gitlab_get_namespace(data),
+                            msg)
 
     @defer.inlineCallbacks
     def on_gitlab_issue(self, data):
@@ -693,8 +750,10 @@ class GitWebhookServer(Resource):
                       issue_id=str(attribs["iid"]),
                       issue_title=attribs["title"],
                       issue_url=url)
-        self.report_to_chat(repo_name, msg,
-                            confidential=attribs.get("confidential", False))
+        self.report_to_chat(repo_name,
+                            GitWebhookServer._gitlab_get_namespace(data),
+                            msg, confidential=attribs.get("confidential",
+                                                          False))
 
     @defer.inlineCallbacks
     def on_gitlab_note(self, data):
@@ -726,7 +785,9 @@ class GitWebhookServer(Resource):
         msg.fillSlots(repo_name=repo_name, user=data["user"]["name"],
                       noteable_type=noteable_type, id_prefix=id_prefix, id=id,
                       title=title, url=url)
-        self.report_to_chat(repo_name, msg, confidential=confidential)
+        self.report_to_chat(repo_name,
+                            GitWebhookServer._gitlab_get_namespace(data),
+                            msg, confidential=confidential)
 
     @defer.inlineCallbacks
     def on_gitlab_merge_request(self, data):
@@ -774,4 +835,6 @@ class GitWebhookServer(Resource):
                       source=attribs["source_branch"],
                       target=attribs["target_branch"],
                       url=url)
-        self.report_to_chat(repo_name, msg)
+        self.report_to_chat(repo_name,
+                            GitWebhookServer._gitlab_get_namespace(data),
+                            msg)

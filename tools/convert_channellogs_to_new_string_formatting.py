@@ -42,6 +42,7 @@ def convert(input_folder, output_folder):
             with open(outpath, "w") as f:
                 f.write(yaml.dump_all(content, explicit_start=True, default_flow_style=False))
 
+
 if __name__ == "__main__":
     if len(sys.argv) > 1:
         config_name = sys.argv[1]

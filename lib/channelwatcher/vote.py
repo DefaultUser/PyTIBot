@@ -27,9 +27,9 @@ from enum import Enum
 import itertools
 import re
 from threading import Lock
-import textwrap
 from inspect import signature, Parameter
 import typing
+from typing import Optional
 
 from . import abstract
 from backends import Backends
@@ -77,7 +77,7 @@ PRAGMA foreign_keys = ON;""",
     color TEXT CHECK(color in ("white", "black", "darkblue", "darkgreen", "red", "darkred", "darkmagenta", "darkorange", "yellow", "lime", "darkcyan", "cyan", "blue", "magenta", "darkgray", "lightgray", "")),
     confidential BOOLEAN DEFAULT false CHECK(confidential in (true, false)), -- only for filtering on website
     default_duration_seconds INTEGER
-);"""]
+);"""] # noqa: E128
 
 
 UserPrivilege = Enum("UserPrivilege", "REVOKED USER ADMIN")
@@ -373,7 +373,7 @@ class CategoryOptions(OptionsWithoutHandlers):
 
 
 class HelpOptions(OptionsWithoutHandlers):
-    def parseArgs(self, topic: str=None):
+    def parseArgs(self, topic: Optional[str] = None):
         self["topic"] = topic
 
 

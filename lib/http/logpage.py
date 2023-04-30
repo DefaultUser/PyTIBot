@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from twisted.web.server import NOT_DONE_YET
 from twisted.internet import threads, reactor
 from twisted.internet.task import LoopingCall
 from twisted.logger import Logger
@@ -29,10 +28,9 @@ import yaml
 import os
 import re
 import time
-from collections import defaultdict
-from datetime import datetime, timedelta
+from datetime import datetime
 
-from .common import PageElement, webpage_error_handler, BaseResource
+from .common import PageElement, BaseResource
 from util import log
 from util import filesystem as fs
 from util.formatting import to_plaintext
@@ -303,4 +301,3 @@ class SearchPage(BaseResource):
 
     def element(self):
         return SearchPageElement(self)
-

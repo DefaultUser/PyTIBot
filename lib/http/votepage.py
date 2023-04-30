@@ -21,12 +21,11 @@ from twisted.enterprise import adbapi
 from twisted.logger import Logger
 
 import os
-from collections import defaultdict
 from enum import Enum
 from inspect import signature, Parameter
 import typing
 
-from .common import PageElement, webpage_error_handler, BaseResource
+from .common import PageElement, BaseResource
 from lib.channelwatcher.vote import PollListStatusFilter, CommandOptions
 
 from util.misc import bytes_to_str
@@ -114,7 +113,7 @@ class VotePageElement(PageElement):
 
     @renderer
     def key_option(self, request, tag):
-        if not b"key" in request.args:
+        if b"key" not in request.args:
             return tag()
         return tags.input("", style="display:none;", name="key",
                           value=request.args[b"key"][0])
@@ -300,7 +299,7 @@ class VoteDetailPageElement(PageElement):
                 decision_kwargs = dict()
                 if decision == "YES":
                     decision_kwargs["style"] = "color:darkgreen;"
-                elif decision =="NO":
+                elif decision == "NO":
                     decision_kwargs["style"] = "color:red;"
                 yield tag.clone()(tags.td(voter, class_="vote_user"),
                                   tags.td(decision, class_="vote_decision",
@@ -533,4 +532,3 @@ class VoteHelpPage(BaseResource):
 
     def element(self):
         return VoteHelpPageElement(self)
-

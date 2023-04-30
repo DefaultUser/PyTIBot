@@ -1,5 +1,5 @@
 # PyTIBot - Formatting Helper
-# Copyright (C) <2015-2022>  <Sebastian Schmidt>
+# Copyright (C) <2015-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from enum import IntEnum
+from typing import Optional
 
 
 _ANSI_CSI = "\x1b["
@@ -23,12 +24,12 @@ _ANSI_BG_START = 40
 ANSIColors = IntEnum("ANSIColors", "black red green yellow blue magenta cyan white",
                      start=0)
 
-def colored(text: str, fg: ANSIColors=None, bg: ANSIColors=None) -> str:
+
+def colored(text: str, fg: Optional[ANSIColors] = None,
+            bg: Optional[ANSIColors] = None) -> str:
     infocodes = []
     if fg is not None:
         infocodes.append(str(fg.value + _ANSI_FG_START))
     if bg is not None:
         infocodes.append(str(bg.value + _ANSI_BG_START))
     return _ANSI_CSI + ";".join(infocodes) + "m" + text + _ANSI_CSI + "0m"
-
-

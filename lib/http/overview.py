@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2020-2022>  <Sebastian Schmidt>
+# Copyright (C) <2020-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@ from twisted.logger import Logger
 from twisted.web.template import XMLFile, renderer, tags
 from twisted.python.filepath import FilePath
 
-from lib.http.common import PageElement, webpage_error_handler, BaseResource
+from lib.http.common import PageElement, BaseResource
 from util import filesystem as fs
 
 
@@ -43,4 +43,3 @@ class OverviewPage(BaseResource):
 
     def element(self):
         return OverviewPageElement(self)
-

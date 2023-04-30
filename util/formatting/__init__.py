@@ -17,10 +17,9 @@
 from twisted.web.template import Tag, tags
 from typing import Optional, Union
 
-from util.formatting.common import ColorCodes, ColorsHex, good_contrast_with_black
-from util.formatting.common import to_plaintext, Message
-from util.formatting.html import to_matrix, parse_html
-from util.formatting.irc import to_irc
+from util.formatting.common import ColorCodes
+from util.formatting.common import Message
+from util.formatting.html import parse_html
 
 
 def from_human_readable(text: str) -> Tag:
@@ -53,5 +52,3 @@ def bold(text: Message) -> Tag:
 
 def strike(text: Message) -> Tag:
     return Tag("del")(text)
-
-

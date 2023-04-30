@@ -19,7 +19,6 @@ import dataclasses
 import re
 from twisted.web.template import Tag, tags, slot
 from twisted.words.protocols.irc import stripFormatting as stripIrcFormatting
-from typing import Union
 from zope import interface
 
 from util.formatting import common
@@ -27,17 +26,17 @@ from util.formatting.common import ColorCodes, Style, Message
 
 # https://modern.ircdocs.horse/formatting.html
 
-## \brief Token to start underlined text
+# Token to start underlined text
 _UNDERLINE = "\x1f"
-## \brief Token to start bold text
+# Token to start bold text
 _BOLD = "\x02"
-## \brief Token to start colored text
+# Token to start colored text
 _COLOR = "\x03"
-## \brief Token to start italic text
+# Token to start italic text
 _ITALIC = "\x1d"
-## \brief Token to start striked text
+# Token to start striked text
 _STRIKE = "\x1e"
-## \brief Token to end formatted text
+# Token to end formatted text
 _NORMAL = "\x0f"
 
 
@@ -303,7 +302,7 @@ def to_irc(data: Message) -> str:
     return result
 
 
-def rainbow_color(factor: float, colors: list[ColorCodes])-> ColorCodes:
+def rainbow_color(factor: float, colors: list[ColorCodes]) -> ColorCodes:
     """
     \brief Return a color in the rainbow
     \param factor        A value in [0,1]
@@ -311,4 +310,3 @@ def rainbow_color(factor: float, colors: list[ColorCodes])-> ColorCodes:
     \returns The numerical value of the selected color
     """
     return colors[int(factor*len(colors))]
-

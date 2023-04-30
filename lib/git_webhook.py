@@ -19,18 +19,14 @@ from twisted.web.template import Tag, tags
 from twisted.internet import reactor, defer
 from twisted.python.failure import Failure
 from twisted.logger import Logger
-import treq
 import codecs
 from functools import partial
 import json
 import hmac
 from hashlib import sha1
-import re
-import sys
 import textwrap
 
 from util.formatting import ColorCodes, good_contrast_with_black, colored, from_human_readable
-from util.formatting.common import closest_colorcode
 from util.misc import str_to_bytes, bytes_to_str, filter_dict
 from util.internet import shorten_url, DirectAccessor, HeaderAccessor, JsonAccessor
 from lib import webhook_actions
@@ -78,7 +74,7 @@ class GitWebhookServer(Resource):
         # filter settings
         self.filter_rules = config["GitWebhook"].get("FilterRules", [])
         self.prevent_github_review_flood = config["GitWebhook"].get(
-                "PreventGitHubReviewFlood", False)
+            "PreventGitHubReviewFlood", False)
         self.hide_github_commit_list = config["GitWebhook"].get("HideGitHubCommitList", False)
         self._gh_review_buffer = []
         self._gh_review_delayed_call = None
@@ -108,7 +104,7 @@ class GitWebhookServer(Resource):
                 post_data = url_shortener_settings.get("post_data", None)
                 request_params = url_shortener_settings.get("request_params", None)
                 payload_accessor_settings = url_shortener_settings.get(
-                        "payload_accessor", "DirectAccessor")
+                    "payload_accessor", "DirectAccessor")
                 if payload_accessor_settings == "DirectAccessor":
                     accessor = DirectAccessor()
                 else:
@@ -207,7 +203,6 @@ class GitWebhookServer(Resource):
                         elif previous == "Draft: " + current:
                             action = "mark_as_ready"
                 data["object_attributes"]["_extended_action"] = action
-
 
     def filter_event(self, data):
         """
@@ -462,7 +457,7 @@ class GitWebhookServer(Resource):
         action = data["action"]
         actioncolor = ColorCodes.darkorange
         if action in ("published", "created", "released"):
-            actioncolor= ColorCodes.darkgreen
+            actioncolor = ColorCodes.darkgreen
         elif action == "prereleased":
             actioncolor = ColorCodes.darkcyan
         elif action in ("unpublished", "deleted"):
@@ -589,8 +584,8 @@ class GitWebhookServer(Resource):
             if self._gh_review_delayed_call:
                 self._gh_review_delayed_call.cancel()
             self._gh_review_delayed_call = reactor.callLater(
-                    GitWebhookServer.GH_ReviewFloodPrevention_Delay,
-                    self.github_handle_review_flood, False)
+                GitWebhookServer.GH_ReviewFloodPrevention_Delay,
+                self.github_handle_review_flood, False)
         else:
             url = yield self.url_shortener(data["review"]["html_url"])
             self._github_PR_review_send_msg(
@@ -611,8 +606,8 @@ class GitWebhookServer(Resource):
             if self._gh_review_comment_delayed_call:
                 self._gh_review_comment_delayed_call.cancel()
             self._gh_review_comment_delayed_call = reactor.callLater(
-                    GitWebhookServer.GH_ReviewFloodPrevention_Delay,
-                    self.github_handle_review_flood, True)
+                GitWebhookServer.GH_ReviewFloodPrevention_Delay,
+                self.github_handle_review_flood, True)
         else:
             url = yield self.url_shortener(data["comment"]["html_url"])
             self._github_PR_review_send_msg(

@@ -17,7 +17,7 @@
 from collections import deque
 from html import escape as htmlescape
 from html import parser as htmlparser
-from twisted.web.template import tags, Tag, slot
+from twisted.web.template import Tag, slot
 from typing import Union
 from zope import interface
 
@@ -34,6 +34,7 @@ class HTMLParseError(Exception):
 
 
 _UNPAIRED_TAGS = ("br", "hr", "img")
+
 
 class SanetizingHTMLParser(htmlparser.HTMLParser):
     """
@@ -242,16 +243,16 @@ class TagToMatrixFormatter:
         def rainbow_color_at(relative_position: float) -> str:
             if relative_position > 1 or relative_position < 0:
                 raise ValueError("relative position in rainbow has to be in [0,1]")
-            index = int(relative_position*(len(common.RAINBOW_COLORS)-1))
+            index = int(relative_position * (len(common.RAINBOW_COLORS) - 1))
             current_color = common.RAINBOW_COLORS[index]
-            next_color = common.RAINBOW_COLORS[index+1]
-            blend_factor = relative_position*(len(common.RAINBOW_COLORS)-1) - index
+            next_color = common.RAINBOW_COLORS[index + 1]
+            blend_factor = relative_position * (len(common.RAINBOW_COLORS) - 1) - index
             return common.interpolate_color(current_color, next_color, blend_factor)
 
         data = htmlescape(data)
         if self._rainbow_content_length:
             for char in data:
-                color = rainbow_color_at(self._rainbow_position/self._rainbow_content_length)
+                color = rainbow_color_at(self._rainbow_position / self._rainbow_content_length)
                 self._rainbow_position += 1
                 self.buffer += f"<font color=\"{color}\">{char}</font>"
         else:
@@ -266,8 +267,8 @@ class TagToMatrixFormatter:
             return
         if tag.tagName in _UNPAIRED_TAGS:
             return
-        if (tag.attributes.get("color", None) or
-                tag.attributes.get("background-color", None)):
+        if (tag.attributes.get("color", None) or tag.attributes.get("background-color",
+                                                                    None)):
             tagName = "font"
         else:
             tagName = tag.tagName

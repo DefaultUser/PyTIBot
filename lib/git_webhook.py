@@ -44,7 +44,8 @@ class GitWebhookServer(Resource):
     log = Logger()
     GH_ReviewFloodPrevention_Delay = 10
 
-    reponame_stub = '[<font color="green"><t:slot name="repo_name"/></font>]'
+    # `a` tag to work around bug in element that automatically links text that remotely looks like an URL
+    reponame_stub = '[<a><font color="green"><t:slot name="repo_name"/></font></a>]'
     author_stub = '<font color="darkcyan"><t:slot name="author"/></font>'
     user_stub = '<font color="darkcyan"><t:slot name="user"/></font>'
     action_stub = '<font><t:attr name="color"><t:slot name="actioncolor"/></t:attr><t:slot name="action"/></font>'

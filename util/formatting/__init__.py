@@ -17,9 +17,19 @@
 from twisted.web.template import Tag, tags
 from typing import Optional, Union
 
-from util.formatting.common import ColorCodes
-from util.formatting.common import Message
-from util.formatting.html import parse_html
+from util.formatting.common import ColorCodes, ColorsHex, good_contrast_with_black
+from util.formatting.common import to_plaintext, Message
+from util.formatting.html import parse_html, to_matrix
+from util.formatting.irc import to_irc
+
+
+def __ensure_available():
+    """Ensure that these are available by importing util/formatting"""
+    to_irc
+    to_matrix
+    to_plaintext
+    good_contrast_with_black
+    ColorsHex
 
 
 def from_human_readable(text: str) -> Tag:

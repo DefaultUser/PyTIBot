@@ -532,9 +532,11 @@ class GitWebhookServer(Resource):
         review_type = "Review Comment" if is_comment else "Review"
         msg = GitWebhookServer.pr_review_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=user, action=action,
-                      review_type=review_type, pr_id=pr_number, pr_title=title,
-                      head=head, base=base)
+                      review_type=review_type, pr_id=str(pr_number),
+                      pr_title=title, head=head, base=base)
         for i, url in enumerate(urls):
+            if i != 0:
+                msg.children.append(", ")
             msg.children.append(tags.a(str(i), href=url))
         self.report_to_chat(repo_name, msg)
 

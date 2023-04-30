@@ -22,11 +22,11 @@ from typing import Union
 from zope import interface
 
 from util.formatting import common
-from util.formatting.common import ColorCodes, HTMLColors, Style, Message
+from util.formatting.common import ColorCodes, ColorsHex, HTMLColors, Style, Message
 
 
 def color_to_string(color: Union[ColorCodes, str]) -> str:
-    return color.name if isinstance(color, ColorCodes) else color
+    return ColorsHex[color] if isinstance(color, ColorCodes) else color
 
 
 class HTMLParseError(Exception):

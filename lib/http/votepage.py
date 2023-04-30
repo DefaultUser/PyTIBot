@@ -58,9 +58,9 @@ class VotePageElement(PageElement):
     @staticmethod
     def status_style(status):
         if status == "RUNNING":
-            return "color: green;"
+            return "color: darkgreen;"
         if status == "PASSED":
-            return "color: green;"
+            return "color: darkgreen;"
         if status == "TIED":
             return "color: orange;"
         if status == "FAILED":
@@ -140,7 +140,7 @@ class VotePageElement(PageElement):
                     category_options["style"] = style
                 if status == "RUNNING":
                     not_voted = active_users - yes - no - abstain
-                vote_count = [tags.span(str(yes), style="color:green;"), ":",
+                vote_count = [tags.span(str(yes), style="color:darkgreen;"), ":",
                               tags.span(str(no), style="color:red;"),
                               tags.span("({} abstained, {} didn't vote)".format(abstain,
                                                                       not_voted))]
@@ -299,7 +299,7 @@ class VoteDetailPageElement(PageElement):
             for voter, decision, comment in votes:
                 decision_kwargs = dict()
                 if decision == "YES":
-                    decision_kwargs["style"] = "color:green;"
+                    decision_kwargs["style"] = "color:darkgreen;"
                 elif decision =="NO":
                     decision_kwargs["style"] = "color:red;"
                 yield tag.clone()(tags.td(voter, class_="vote_user"),

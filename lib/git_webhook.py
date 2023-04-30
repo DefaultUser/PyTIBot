@@ -45,7 +45,7 @@ class GitWebhookServer(Resource):
     GH_ReviewFloodPrevention_Delay = 10
 
     # `a` tag to work around bug in element that automatically links text that remotely looks like an URL
-    reponame_stub = '[<a><font color="green"><t:slot name="repo_name"/></font></a>]'
+    reponame_stub = '[<a><font color="lime"><t:slot name="repo_name"/></font></a>]'
     author_stub = '<font color="darkcyan"><t:slot name="author"/></font>'
     user_stub = '<font color="darkcyan"><t:slot name="user"/></font>'
     action_stub = '<font><t:attr name="color"><t:slot name="actioncolor"/></t:attr><t:slot name="action"/></font>'
@@ -230,7 +230,7 @@ class GitWebhookServer(Resource):
             message = Tag("")("Hook ", colored(actionname, ColorCodes.red),
                               " failed: {}".format(success.getErrorMessage()))
         elif self.hook_report_success:
-            message = Tag("")("Hook ", colored(actionname, ColorCodes.green),
+            message = Tag("")("Hook ", colored(actionname, ColorCodes.lime),
                               " finished without errors")
         else:
             return
@@ -753,7 +753,7 @@ class GitWebhookServer(Resource):
             action = "updated"
         elif action == "mark_as_draft":
             action = "marked as draft:"
-            actioncolor = ColorCodes.gray
+            actioncolor = ColorCodes.lightgray
         elif action == "mark_as_ready":
             action = "marked as ready:"
             actioncolor = ColorCodes.darkgreen

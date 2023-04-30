@@ -44,33 +44,33 @@ ColorCodes = Enum("ColorCodes", {
     "darkmagenta": "06",
     "darkorange": "07",
     "yellow": "08",
-    "green": "09",
+    "lime": "09",
     "darkcyan": "10",
     "cyan": "11",
     "blue": "12",
     "magenta": "13",
     "darkgray": "14",
-    "gray": "15"
+    "lightgray": "15"
 })
 
 ## \brief hex color codes for mIRC numerical values
 ColorsHex = bidict({
     ColorCodes.white: "#FFFFFF",
     ColorCodes.black: "#000000",
-    ColorCodes.darkblue: "#00007F",
-    ColorCodes.darkgreen: "#009300",
+    ColorCodes.darkblue: "#000080",
+    ColorCodes.darkgreen: "#006400",
     ColorCodes.red: "#FF0000",
-    ColorCodes.darkred: "#7F0000",
-    ColorCodes.darkmagenta: "#9C009C",
-    ColorCodes.darkorange: "#FC7F00",
+    ColorCodes.darkred: "#8B0000",
+    ColorCodes.darkmagenta: "#8B008B",
+    ColorCodes.darkorange: "#FF8C00",
     ColorCodes.yellow: "#FFFF00",
-    ColorCodes.green: "#00FC00",
-    ColorCodes.darkcyan: "#009393",
+    ColorCodes.lime: "#00FF00",
+    ColorCodes.darkcyan: "#008B8B",
     ColorCodes.cyan: "#00FFFF",
-    ColorCodes.blue: "#0000FC",
+    ColorCodes.blue: "#0000FF",
     ColorCodes.magenta: "#FF00FF",
     ColorCodes.darkgray: "#7F7F7F",
-    ColorCodes.gray: "#D2D2D2"})
+    ColorCodes.lightgray: "#D3D3D3"})
 
 
 # The HTML spec defines several named colors:
@@ -238,7 +238,7 @@ def good_contrast_with_black(color: Union[str,ColorCodes]) -> bool:
                          HSVColor).hsv_v > 0.5
 
 
-RAINBOW_COLORS = (ColorCodes.red, ColorCodes.darkorange, ColorCodes.green,
+RAINBOW_COLORS = (ColorCodes.red, ColorCodes.darkorange, ColorCodes.lime,
                   ColorCodes.cyan, ColorCodes.blue, ColorCodes.magenta)
 
 

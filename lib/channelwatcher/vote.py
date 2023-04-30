@@ -74,7 +74,7 @@ PRAGMA foreign_keys = ON;""",
     id INTEGER PRIMARY KEY,
     name TEXT UNIQUE NOT NULL,
     description TEXT,
-    color TEXT CHECK(color in ("white", "black", "darkblue", "darkgreen", "red", "darkred", "darkmagenta", "darkorange", "yellow", "green", "darkcyan", "cyan", "blue", "magenta", "darkgray", "gray", "")),
+    color TEXT CHECK(color in ("white", "black", "darkblue", "darkgreen", "red", "darkred", "darkmagenta", "darkorange", "yellow", "lime", "darkcyan", "cyan", "blue", "magenta", "darkgray", "lightgray", "")),
     confidential BOOLEAN DEFAULT false CHECK(confidential in (true, false)), -- only for filtering on website
     default_duration_seconds INTEGER
 );"""]
@@ -406,8 +406,8 @@ class Vote(abstract.ChannelWatcher):
     creator_stub = '<font color="blue"><t:slot name="creator"/></font>'
     user_stub = '<font color="blue"><t:slot name="user"/></font>'
     comment_stub = '<font color="cyan"><t:slot name="comment"/></font>'
-    standing_stub = 'YES:<font color="green"><t:slot name="yes"/></font> | NO:<font color="red"><t:slot name="no"/></font> | ABSTAINED:<t:slot name="abstained"/> | OPEN:<t:slot name="not_voted"/>'
-    final_standing_stub = 'YES:<font color="green"><t:slot name="yes"/></font> | NO:<font color="red"><t:slot name="no"/></font> | ABSTAINED:<t:slot name="abstained"/> | NOT VOTED:<t:slot name="not_voted"/>'
+    standing_stub = 'YES:<font color="lime"><t:slot name="yes"/></font> | NO:<font color="red"><t:slot name="no"/></font> | ABSTAINED:<t:slot name="abstained"/> | OPEN:<t:slot name="not_voted"/>'
+    final_standing_stub = 'YES:<font color="lime"><t:slot name="yes"/></font> | NO:<font color="red"><t:slot name="no"/></font> | ABSTAINED:<t:slot name="abstained"/> | NOT VOTED:<t:slot name="not_voted"/>'
 
     missing_voter_stub = from_human_readable(f'Your vote is required in channel <t:slot name="channel"/> for poll #<font color="darkorange"><t:slot name="poll_id"/></font>')
     user_added_stub = from_human_readable(f'Successfully added user <font color="blue"><t:slot name="user"/></font> (<t:slot name="auth"/>)')
@@ -431,15 +431,15 @@ class Vote(abstract.ChannelWatcher):
         user = ColorCodes.blue
         description = ColorCodes.darkcyan
         comment = ColorCodes.cyan
-        yes = ColorCodes.green
+        yes = ColorCodes.lime
         no = ColorCodes.red
-        PASSED = ColorCodes.green
+        PASSED = ColorCodes.lime
         FAILED = ColorCodes.red
         TIED = ColorCodes.darkorange
         VETOED = ColorCodes.darkred
         DECIDED = ColorCodes.darkgreen
         ADMIN = ColorCodes.darkgreen
-        USER = ColorCodes.green
+        USER = ColorCodes.lime
         REVOKED = ColorCodes.darkred
 
 
@@ -621,7 +621,7 @@ class Vote(abstract.ChannelWatcher):
             return Vote.Colors.yes
         if decision == VoteDecision.NO:
             return Vote.Colors.no
-        return ColorCodes.gray
+        return ColorCodes.lightgray
 
     @defer.inlineCallbacks
     def get_user_privilege(self, name):
@@ -1427,7 +1427,7 @@ class Vote(abstract.ChannelWatcher):
             if len(msg.children):
                 msg.children.append(tags.br)
             msg.children.append(formatting.colored("Positional parameters",
-                                                   ColorCodes.green))
+                                                   ColorCodes.lime))
             msg.children.append(": " + "; ".join(sig.pos_params))
         self.bot.notice(user, msg)
 

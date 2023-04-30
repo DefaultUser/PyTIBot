@@ -286,7 +286,7 @@ class IrcFormattingTestCase(unittest.TestCase):
 
     def test_nested_color_tags(self):
         fg = ColorCodes.red
-        fg2 = ColorCodes.green
+        fg2 = ColorCodes.lime
         bg = ColorCodes.blue
         # same fg and bg color
         msg = Tag("")(tags.font("foo", tags.font("bar", color=fg),
@@ -329,12 +329,12 @@ class IrcFormattingTestCase(unittest.TestCase):
                               "\x0304a\x0307b\x0309c\x02\x0311d\x0312e"
                               "\x0313f\x02\x03")
         # rainbow inhibits inner tag's color information
-        fg = ColorCodes.green
+        fg = ColorCodes.lime
         msg = Tag("")(Tag("rainbow")("abc", tags.font("def", color=fg)))
         self._test_formatting(msg,
                               "\x0304a\x0307b\x0309c\x0311d\x0312e\x0313f\x03")
         # rainbow inside a colored block, not the same color as rainbow start or end
-        fg = ColorCodes.green
+        fg = ColorCodes.lime
         msg = Tag("")(tags.font("foo ", Tag("rainbow")("abcdef"), " bar",
                                     color=fg))
         self._test_formatting(msg,
@@ -469,7 +469,7 @@ class MatrixFormattingTestCase(unittest.TestCase):
 
 
 RAINBOW_STYLE_CSS = ("background:linear-gradient(to right, red, darkorange, "
-                     "green, cyan, blue, magenta);color:transparent;"
+                     "lime, cyan, blue, magenta);color:transparent;"
                      "background-clip:text;-webkit-background-clip:text")
 
 

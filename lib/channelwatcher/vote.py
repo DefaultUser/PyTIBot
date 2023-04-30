@@ -409,9 +409,9 @@ class Vote(abstract.ChannelWatcher):
     standing_stub = 'YES:<font color="lime"><t:slot name="yes"/></font> | NO:<font color="red"><t:slot name="no"/></font> | ABSTAINED:<t:slot name="abstained"/> | OPEN:<t:slot name="not_voted"/>'
     final_standing_stub = 'YES:<font color="lime"><t:slot name="yes"/></font> | NO:<font color="red"><t:slot name="no"/></font> | ABSTAINED:<t:slot name="abstained"/> | NOT VOTED:<t:slot name="not_voted"/>'
 
-    missing_voter_stub = from_human_readable(f'Your vote is required in channel <t:slot name="channel"/> for poll #<font color="darkorange"><t:slot name="poll_id"/></font>')
-    user_added_stub = from_human_readable(f'Successfully added user <font color="blue"><t:slot name="user"/></font> (<t:slot name="auth"/>)')
-    user_modified_stub = from_human_readable(f'Successfully modified user <font color="blue"><t:slot name="user"/></font>')
+    missing_voter_stub = from_human_readable('Your vote is required in channel <t:slot name="channel"/> for poll #<font color="darkorange"><t:slot name="poll_id"/></font>')
+    user_added_stub = from_human_readable('Successfully added user <font color="blue"><t:slot name="user"/></font> (<t:slot name="auth"/>)')
+    user_modified_stub = from_human_readable('Successfully modified user <font color="blue"><t:slot name="user"/></font>')
     new_poll_stub = from_human_readable(f'New {poll_id_stub} by {creator_stub}: <a><t:attr name="href"><t:slot name="url"/></t:attr>{description_stub}</a>')
     poll_description_change_stub = from_human_readable(f'{poll_id_stub}: description changed to <t:slot name="description"/>')
     poll_vetoed_stub = from_human_readable(f'{poll_id_stub}: vetoed')

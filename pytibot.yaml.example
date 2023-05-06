@@ -199,7 +199,7 @@ Channelmodules:
     Greeter:
       standard_nicks: [test]
       patterns: ["*!webchat@*", "*!*@gateway/web/*"] # shell like pattern matching
-      message: Welcome, $USER!
+      message: Welcome, <t:slot name="user"/>
   "#myweirdchannel":
   -
     ChannelLogger

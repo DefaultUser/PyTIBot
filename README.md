@@ -232,7 +232,7 @@ Channelmodules:
       - "realname == *webchat*" # similar to webhook event filter (nick, user, host, realname)
       - "*!webchat@* # shell like pattern matching"
       - "*!*@gateway/web/*"
-      message: Welcome, $USER!
+      message: Welcome to my channel, <t:slot name="user"/>
   -
     MarkovChat: # needs a list
     - corpus: mycorpus # file in <config dir>/markov/<channel>/

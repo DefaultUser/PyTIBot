@@ -37,7 +37,6 @@ class PytibotDBusObject(objects.DBusObject):
                                     Method("leave", arguments="as"),
                                     Method("quit"))]
 
-
     def __init__(self, objectPath, botprovider):
         super().__init__(objectPath)
         self.botprovider = botprovider
@@ -89,6 +88,7 @@ class PytibotDBusObject(objects.DBusObject):
         if self.botprovider.bot:
             self.botprovider.bot.quit()
 
+
 @defer.inlineCallbacks
 def setup(botprovider):
     try:
@@ -98,4 +98,3 @@ def setup(botprovider):
         return connection
     except error.DBusException as e:
         log.error("Couldn't export DBus object: {e}", e=e)
-

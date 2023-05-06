@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2020>  <Sebastian Schmidt>
+# Copyright (C) <2020-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -31,4 +31,3 @@ def match_userinfo(userinfo, pattern):
         userstring = "{0.nick}!{0.user}@{0.host}".format(userinfo)
         if fnmatch(userstring, pattern):
             return True
-

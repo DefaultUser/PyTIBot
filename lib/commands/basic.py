@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 # PyTIBot - IRC Bot using python and the twisted library
 # Copyright (C) <2015-2021>  <Sebastian Schmidt>
 

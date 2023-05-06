@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2022>  <Sebastian Schmidt>
+# Copyright (C) <2017-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -65,4 +65,3 @@ def filter_dict(data, rule):
         logger.warn("Filter rule '{rule}' couldn't be applied: {e}",
                     rule=rule, e=e)
     return False
-

@@ -38,6 +38,3 @@ list of choices"""
             result = formatting.colored("Invalid call - check the help",
                                         ColorCodes.red)
         bot.msg(channel, result)
-
-
-

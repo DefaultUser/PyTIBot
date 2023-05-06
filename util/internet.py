@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2018-2022>  <Sebastian Schmidt>
+# Copyright (C) <2018-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,7 +19,6 @@ from twisted.logger import Logger
 import treq
 import zope.interface
 from dataclasses import dataclass
-from functools import partial
 
 
 log = Logger()
@@ -93,4 +92,3 @@ def shorten_url(url, service_url, method, headers=None, post_data=None,
         log.warn("Error shortening url {url} using service {service}: {error}",
                  url=url, service=service_url, error=e)
         return url
-

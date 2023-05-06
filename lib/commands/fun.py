@@ -86,7 +86,7 @@ def joke(bot):
         get(url).addCallback(_tell_joke, channel, " ".join(args))
 
 
-if sys.version_info.major==3 and sys.version_info.minor < 9:
+if sys.version_info.major == 3 and sys.version_info.minor < 9:
     class ArgParser(argparse.ArgumentParser):
         def __init__(self, *args, exit_on_error=True, **kwargs):
             super().__init__(*args, **kwargs)

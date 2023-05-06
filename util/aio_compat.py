@@ -21,6 +21,6 @@ from twisted.internet.defer import Deferred
 def deferred_to_future(d):
     return d.asFuture(asyncio.get_event_loop())
 
+
 def future_to_deferred(f):
     return Deferred.fromFuture(asyncio.ensure_future(f))
-

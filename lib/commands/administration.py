@@ -132,4 +132,3 @@ def reload_config(bot):
     while True:
         args, sender, channel = yield
         bot.is_user_admin(sender).addCallback(_reload)
-

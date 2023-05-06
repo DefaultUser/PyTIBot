@@ -15,7 +15,6 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import logging
-from logging.handlers import TimedRotatingFileHandler
 import os
 import yaml
 import time
@@ -56,11 +55,13 @@ msg_templates = {TOPIC: "%(user)s changed the topic to: %(topic)s",
 
 _channellog_dir = os.path.join(fs.adirs.user_log_dir, "channellogs")
 
+
 @only_once
 def channellog_dir_from_config(config):
     global _channellog_dir
     if "Logging" in config:
         _channellog_dir = config["Logging"].get("directory", _channellog_dir)
+
 
 def get_channellog_dir():
     return _channellog_dir

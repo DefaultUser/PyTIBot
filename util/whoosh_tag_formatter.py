@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2019>  <Sebastian Schmidt>
+# Copyright (C) <2019-2023>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -16,6 +16,7 @@
 
 from whoosh import highlight
 from twisted.web.template import tags
+
 
 class WhooshTagFormatter(highlight.Formatter):
     """
@@ -47,7 +48,7 @@ class WhooshTagFormatter(highlight.Formatter):
         formatted = [self.format_fragment(f, replace=replace)
                      for f in fragments]
         i = 1
-        while i<len(formatted):
+        while i < len(formatted):
             formatted.insert(i, self.between)
             i += 2
         return tags.div(*formatted)

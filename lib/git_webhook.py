@@ -379,7 +379,6 @@ class GitWebhookServer(Resource):
         if action == "assigned" or action == "unassigned":
             payload = data["issue"]["assignee"]["login"]
         elif action == "labeled" or action == "unlabeled":
-            url = yield self.url_shortener(data["issue"]["html_url"])
             fg, bg = self.github_label_colors(data["label"])
             payload = colored(data["label"]["name"], fg, bg)
         elif action == "milestoned":

@@ -253,21 +253,13 @@ The *Greeter* channelmodule will greet new users when they join the given channe
 
 Text Formatting
 ---------------
-Several control codes are available for formatting messages sent to IRC:
-- `$COLOR`
-- `$RAINBOW`
-- `$BOLD`
-- `$ITALIC`
-- `$UNDERLINE`
-- `$NOFORMAT`
+Text can be formatted with a subset of HTML. The supported tags are: `font`, `p`, `div`, `span`, `b`, `strong`, `u`, `i`, `em`, `cite`, `del`, `strike`, `s`, `a`, `br`.
+Most attributes are ignored for security reasons. HTML5 inline `style` tags are only partially supported, but old style HTML tags are preferred.
+Colors can be specified with the `color` and `background-color` attributes or the same css `style` settings. Additionally the attributes `data-mx-color`, `data-mx-bg-color` from the [Matrix client spec](https://spec.matrix.org/v1.5/client-server-api/#mroommessage-msgtypes).
 
-The `$COLOR` control code can take parameters: `$COLOR(fg,bg)`
-The first parameter stands for the font color and the second one for the
-background [optional]. These colors can either be the color names (seen util/formatting.py)
-or directly the color code ranging from 0 to 15.<br/>
-**Attention**: Don't put a whitespace between the colors.<br/>
-`$RAINBOW` takes the text that should be colorized as paramter:
-`$RAINBOW(Example text in rainbow) - no colors here`
+Additionally to standard HTML tags, the following are supported:
+- `rainbow`: turns the forground color into a rainbow gradient
+- `t:slot`, `t:attr`: In certain situations these tags are placeholders for data that needs to be added programatically at runtime. Usage is explained in the [Twisted Web Template Documentation](https://twisted.org/documents/15.5.0/web/howto/twisted-templates.html). **WARNING**: Don't add `t:slot`s and `t:attr`s unless you know that they're filled. Messages with unfilled slots will not be sent.
 
 
 Logging

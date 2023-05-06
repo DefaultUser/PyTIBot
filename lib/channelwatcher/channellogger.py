@@ -24,7 +24,7 @@ from util.formatting import to_matrix
 
 
 class ChannelLogger(abstract.ChannelWatcher):
-    supported_backends = [Backends.IRC]
+    supported_backends = [Backends.IRC, Backends.MATRIX]
 
     def __init__(self, bot, channel, config):
         super(ChannelLogger, self).__init__(bot, channel, config)

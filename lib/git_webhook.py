@@ -40,31 +40,6 @@ class GitWebhookServer(Resource):
     log = Logger()
     GH_ReviewFloodPrevention_Delay = 10
 
-    # `a` tag to work around bug in element that automatically links text that remotely looks like an URL
-    reponame_stub = '[<a><font color="lime"><t:slot name="repo_name"/></font></a>]'
-    author_stub = '<font color="darkcyan"><t:slot name="author"/></font>'
-    user_stub = '<font color="darkcyan"><t:slot name="user"/></font>'
-    action_stub = '<font><t:attr name="color"><t:slot name="actioncolor"/></t:attr><t:slot name="action"/></font>'
-    issue_description_stub = 'Issue #<font color="darkorange"><t:slot name="issue_id"/></font> <a><t:attr name="href"><t:slot name="issue_url"/></t:attr><t:slot name="issue_title"/></a>'
-    pr_description_stub = 'Pull Request #<font color="darkorange"><t:slot name="pr_id"/></font> <a><t:attr name="href"><t:slot name="pr_url"/></t:attr><t:slot name="pr_title"/> (<font color="magenta"><t:slot name="head"/></font>-&gt;<font color="red"><t:slot name="base"/></font>)</a>'
-    pr_description_without_href_stub = 'Pull Request #<font color="darkorange"><t:slot name="pr_id"/></font> <t:slot name="pr_title"/> (<font color="magenta"><t:slot name="head"/></font>-&gt;<font color="red"><t:slot name="base"/></font>)'
-    ref_stub = '<t:slot name="ref_type"/> <font color="magenta"><t:slot name="ref"/></font>'
-
-    push_stub = from_human_readable(f'{reponame_stub} {user_stub} pushed <t:slot name="num_commits"/> commit(s) to <font color="magenta"><t:slot name="branch"/></font>')
-    github_push_stub = from_human_readable(f'{reponame_stub} {user_stub} {action_stub} <a><t:attr name="href"><t:slot name="compare_url"/></t:attr><t:slot name="num_commits"/> commit(s) to <font color="magenta"><t:slot name="branch"/></font></a>')
-    commit_stub = from_human_readable(f'{author_stub}: <a><t:attr name="href"><t:slot name="url"/></t:attr><t:slot name="message"/></a>')
-    issue_stub = from_human_readable(f'{reponame_stub} {user_stub} {action_stub} {issue_description_stub}')
-    issue_comment_stub = from_human_readable(f'{reponame_stub} {user_stub} {action_stub} <a><t:attr name="href"><t:slot name="comment_url"/></t:attr>comment</a> on {issue_description_stub}')
-    pr_stub = from_human_readable(f'{reponame_stub} {user_stub} {action_stub} {pr_description_stub}')
-    pr_review_stub = from_human_readable(f'{reponame_stub} {user_stub} <t:slot name="action"/> <t:slot name="review_type"/> for {pr_description_without_href_stub}: ')
-    create_stub = from_human_readable(f'{reponame_stub} {user_stub} created {ref_stub}')
-    delete_stub = from_human_readable(f'{reponame_stub} {user_stub} <font color="red">deleted</font> {ref_stub}')
-    fork_stub = from_human_readable(f'{reponame_stub} {user_stub} created <a><t:attr name="href"><t:slot name="url"/></t:attr>fork</a>')
-    commit_comment_stub = from_human_readable(f'{reponame_stub} {user_stub} commented on <a><t:attr name="href"><t:slot name="url"/></t:attr>commit <t:slot name="commit_id"/></a>')
-    release_stub = from_human_readable(f'{reponame_stub} {user_stub} {action_stub} <a><t:attr name="href"><t:slot name="url"/></t:attr>release <t:slot name="release_name"/></a>')
-    gitlab_note_stub = from_human_readable(f'{reponame_stub} {user_stub} commented on <t:slot name="noteable_type"/> <t:slot name="id_prefix"/><font color="darkorange"><t:slot name="id"/></font> <a><t:attr name="href"><t:slot name="url"/></t:attr><t:slot name="title"/></a>')
-    gitlab_mr_stub = from_human_readable(f'{reponame_stub} {user_stub} {action_stub} Merge Request !<font color="darkorange"><t:slot name="id"/></font> <a><t:attr name="href"><t:slot name="url"/></t:attr><t:slot name="title"/> (<font color="magenta"><t:slot name="source"/></font>-&gt;<font color="red"><t:slot name="target"/></font>)</a>')
-
     def __init__(self, botfactory, config):
         self.botfactory = botfactory
         self.github_secret = config["GitWebhook"].get("github_secret", None)
@@ -125,6 +100,35 @@ class GitWebhookServer(Resource):
                                              payload_accessor=accessor)
             except Exception as e:
                 self.log.warn("Couldn't set up url shortener: {error}", error=e)
+        # message templates
+        self.load_message_templates(config["GitWebhook"].get("MessageTemplates", {}))
+
+    def load_message_templates(self, message_config: dict) -> None:
+        crumbs = {}
+        # `a` tag to work around bug in element that automatically links text that remotely looks like an URL
+        crumbs["reponame_stub"] = message_config.get("reponame_stub", '[<a><font color="lime"><t:slot name="repo_name"/></font></a>]')
+        crumbs["author_stub"] = message_config.get("author_stub", '<font color="darkcyan"><t:slot name="author"/></font>')
+        crumbs["user_stub"] = message_config.get("user_stub", '<font color="darkcyan"><t:slot name="user"/></font>')
+        crumbs["action_stub"] = message_config.get("action_stub", '<font><t:attr name="color"><t:slot name="actioncolor"/></t:attr><t:slot name="action"/></font>')
+        crumbs["issue_description_stub"] = message_config.get("issue_description_stub", 'Issue #<font color="darkorange"><t:slot name="issue_id"/></font> <a><t:attr name="href"><t:slot name="issue_url"/></t:attr><t:slot name="issue_title"/></a>')
+        crumbs["pr_description_stub"] = message_config.get("pr_description_stub", 'Pull Request #<font color="darkorange"><t:slot name="pr_id"/></font> <a><t:attr name="href"><t:slot name="pr_url"/></t:attr><t:slot name="pr_title"/> (<font color="magenta"><t:slot name="head"/></font>-&gt;<font color="red"><t:slot name="base"/></font>)</a>')
+        crumbs["pr_description_without_href_stub"] = message_config.get("pr_description_without_href_stub", 'Pull Request #<font color="darkorange"><t:slot name="pr_id"/></font> <t:slot name="pr_title"/> (<font color="magenta"><t:slot name="head"/></font>-&gt;<font color="red"><t:slot name="base"/></font>)')
+        crumbs["ref_stub"] = message_config.get("ref_stub", '<t:slot name="ref_type"/> <font color="magenta"><t:slot name="ref"/></font>')
+
+        self.push_stub = from_human_readable(message_config.get("push_stub", '{reponame_stub} {user_stub} pushed <t:slot name="num_commits"/> commit(s) to <font color="magenta"><t:slot name="branch"/></font>').format(**crumbs))
+        self.github_push_stub = from_human_readable(message_config.get("github_push_stub", '{reponame_stub} {user_stub} {action_stub} <a><t:attr name="href"><t:slot name="compare_url"/></t:attr><t:slot name="num_commits"/> commit(s) to <font color="magenta"><t:slot name="branch"/></font></a>').format(**crumbs))
+        self.commit_stub = from_human_readable(message_config.get("commit_stub", '{author_stub}: <a><t:attr name="href"><t:slot name="url"/></t:attr><t:slot name="message"/></a>').format(**crumbs))
+        self.issue_stub = from_human_readable(message_config.get("issue_stub", '{reponame_stub} {user_stub} {action_stub} {issue_description_stub}').format(**crumbs))
+        self.issue_comment_stub = from_human_readable(message_config.get("issue_comment_stub", '{reponame_stub} {user_stub} {action_stub} <a><t:attr name="href"><t:slot name="comment_url"/></t:attr>comment</a> on {issue_description_stub}').format(**crumbs))
+        self.pr_stub = from_human_readable(message_config.get("pr_stub", '{reponame_stub} {user_stub} {action_stub} {pr_description_stub}').format(**crumbs))
+        self.pr_review_stub = from_human_readable(message_config.get("pr_review_stub", '{reponame_stub} {user_stub} <t:slot name="action"/> <t:slot name="review_type"/> for {pr_description_without_href_stub}: ').format(**crumbs))
+        self.create_stub = from_human_readable(message_config.get("create_stub", '{reponame_stub} {user_stub} created {ref_stub}').format(**crumbs))
+        self.delete_stub = from_human_readable(message_config.get("delete_stub", '{reponame_stub} {user_stub} <font color="red">deleted</font> {ref_stub}').format(**crumbs))
+        self.fork_stub = from_human_readable(message_config.get("fork_stub", '{reponame_stub} {user_stub} created <a><t:attr name="href"><t:slot name="url"/></t:attr>fork</a>').format(**crumbs))
+        self.commit_comment_stub = from_human_readable(message_config.get("commit_comment_stub", '{reponame_stub} {user_stub} commented on <a><t:attr name="href"><t:slot name="url"/></t:attr>commit <t:slot name="commit_id"/></a>').format(**crumbs))
+        self.release_stub = from_human_readable(message_config.get("release_stub", '{reponame_stub} {user_stub} {action_stub} <a><t:attr name="href"><t:slot name="url"/></t:attr>release <t:slot name="release_name"/></a>').format(**crumbs))
+        self.gitlab_note_stub = from_human_readable(message_config.get("gitlab_note_stub", '{reponame_stub} {user_stub} commented on <t:slot name="noteable_type"/> <t:slot name="id_prefix"/><font color="darkorange"><t:slot name="id"/></font> <a><t:attr name="href"><t:slot name="url"/></t:attr><t:slot name="title"/></a>').format(**crumbs))
+        self.gitlab_mr_stub = from_human_readable(message_config.get("gitlab_mr_stub", '{reponame_stub} {user_stub} {action_stub} Merge Request !<font color="darkorange"><t:slot name="id"/></font> <a><t:attr name="href"><t:slot name="url"/></t:attr><t:slot name="title"/> (<font color="magenta"><t:slot name="source"/></font>-&gt;<font color="red"><t:slot name="target"/></font>)</a>').format(**crumbs))
 
     def render_POST(self, request):
         body = request.content.read()
@@ -317,7 +321,7 @@ class GitWebhookServer(Resource):
             message = commit["message"].split("\n")[0]
             if i != 0:
                 msg.children.append(tags.br)
-            line = GitWebhookServer.commit_stub.clone()
+            line = self.commit_stub.clone()
             line.fillSlots(author=commit["author"]["name"],
                            message=textwrap.shorten(message, 100),
                            url=url)
@@ -338,7 +342,7 @@ class GitWebhookServer(Resource):
             if data["forced"]:
                 action = "force pushed"
                 actioncolor = ColorCodes.red
-            msg = GitWebhookServer.github_push_stub.clone()
+            msg = self.github_push_stub.clone()
             # NOTE: num_commits is limited to 20, but GitHub doesn't send the
             # exact number
             msg.fillSlots(repo_name=repo_name, user=data["pusher"]["name"],
@@ -386,7 +390,7 @@ class GitWebhookServer(Resource):
             actioncolor = ColorCodes.red
         elif action == "closed":
             actioncolor = ColorCodes.darkgreen
-        msg = GitWebhookServer.issue_stub.clone()
+        msg = self.issue_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["sender"]["login"],
                       action=action, actioncolor=actioncolor,
                       issue_id=str(data["issue"]["number"]),
@@ -409,7 +413,7 @@ class GitWebhookServer(Resource):
             actioncolor = ColorCodes.darkorange
         else:
             actioncolor = ColorCodes.red
-        msg = GitWebhookServer.issue_comment_stub.clone()
+        msg = self.issue_comment_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["comment"]["user"]["login"],
                       action=action, actioncolor=actioncolor,
                       issue_id=str(data["issue"]["number"]),
@@ -420,14 +424,14 @@ class GitWebhookServer(Resource):
 
     def on_github_create(self, data):
         repo_name = data["repository"]["name"]
-        msg = GitWebhookServer.create_stub.clone()
+        msg = self.create_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["sender"]["login"],
                       ref_type=data["ref_type"], ref=data["ref"])
         self.report_to_chat(repo_name, msg)
 
     def on_github_delete(self, data):
         repo_name = data["repository"]["name"]
-        msg = GitWebhookServer.delete_stub.clone()
+        msg = self.delete_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["sender"]["login"],
                       ref_type=data["ref_type"], ref=data["ref"])
         self.report_to_chat(repo_name, msg)
@@ -436,7 +440,7 @@ class GitWebhookServer(Resource):
     def on_github_fork(self, data):
         repo_name = data["repository"]["name"]
         url = yield self.url_shortener(data["forkee"]["html_url"])
-        msg = GitWebhookServer.fork_stub.clone()
+        msg = self.fork_stub.clone()
         msg.fillSlots(repo_name=repo_name,
                       user=data["forkee"]["owner"]["login"],
                       url=url)
@@ -446,7 +450,7 @@ class GitWebhookServer(Resource):
     def on_github_commit_comment(self, data):
         repo_name = data["repository"]["name"]
         url = yield self.url_shortener(data["comment"]["html_url"])
-        msg = GitWebhookServer.commit_comment_stub.clone()
+        msg = self.commit_comment_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["comment"]["user"]["login"],
                       commit_id=data["comment"]["commit_id"], url=url)
         self.report_to_chat(repo_name, msg)
@@ -469,7 +473,7 @@ class GitWebhookServer(Resource):
             release_name += " (Prerelease)"
         user = data["sender"]["login"]
         url = yield self.url_shortener(data["release"]["html_url"])
-        msg = GitWebhookServer.release_stub.clone()
+        msg = self.release_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=user, action=action,
                       actioncolor=actioncolor, release_name=release_name,
                       url=url)
@@ -515,7 +519,7 @@ class GitWebhookServer(Resource):
         elif action == "converted_to_draft":
             action = "converted to draft:"
         url = yield self.url_shortener(data["pull_request"]["html_url"])
-        msg = GitWebhookServer.pr_stub.clone()
+        msg = self.pr_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=user, action=action,
                       actioncolor=actioncolor,
                       pr_number=str(data["pull_request"]["number"]),
@@ -530,7 +534,7 @@ class GitWebhookServer(Resource):
     def _github_PR_review_send_msg(self, is_comment, repo_name, user,
                                    pr_number, title, action, head, base, urls):
         review_type = "Review Comment" if is_comment else "Review"
-        msg = GitWebhookServer.pr_review_stub.clone()
+        msg = self.pr_review_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=user, action=action,
                       review_type=review_type, pr_id=str(pr_number),
                       pr_title=title, head=head, base=base)
@@ -628,11 +632,11 @@ class GitWebhookServer(Resource):
         repo_name = data["project"]["name"]
         branch = data["ref"].split("/", 2)[-1]
         if data["checkout_sha"] is None:
-            msg = GitWebhookServer.delete_stub.clone()
+            msg = self.delete_stub.clone()
             msg.fillSlots(repo_name=repo_name, user=data["user_name"],
                           ref_type="branch", ref=branch)
         else:
-            msg = GitWebhookServer.push_stub.clone()
+            msg = self.push_stub.clone()
             msg.fillSlots(repo_name=repo_name, user=data["user_name"],
                           num_commits=str(data["total_commits_count"]),
                           branch=branch)
@@ -659,7 +663,7 @@ class GitWebhookServer(Resource):
     @defer.inlineCallbacks
     def on_gitlab_tag_push(self, data):
         repo_name = data["project"]["name"]
-        msg = GitWebhookServer.create_stub.clone()
+        msg = self.create_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["user_name"],
                       ref_type="tag", ref=data["ref"].split("/", 2)[-1])
         commit_msgs = yield self.format_commits(data["commits"],
@@ -687,7 +691,7 @@ class GitWebhookServer(Resource):
         elif action == "update":
             action = "updated"
         url = yield self.url_shortener(attribs["url"])
-        msg = GitWebhookServer.issue_stub.clone()
+        msg = self.issue_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["user"]["name"],
                       action=action, actioncolor=actioncolor,
                       issue_id=str(attribs["iid"]),
@@ -722,7 +726,7 @@ class GitWebhookServer(Resource):
         else:
             return
         url = yield self.url_shortener(attribs["url"])
-        msg = GitWebhookServer.gitlab_note_stub.clone()
+        msg = self.gitlab_note_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["user"]["name"],
                       noteable_type=noteable_type, id_prefix=id_prefix, id=id,
                       title=title, url=url)
@@ -767,7 +771,7 @@ class GitWebhookServer(Resource):
             action = "removed approval for"
             actioncolor = ColorCodes.darkorange
         url = yield self.url_shortener(attribs["url"])
-        msg = GitWebhookServer.gitlab_mr_stub.clone()
+        msg = self.gitlab_mr_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["user"]["name"],
                       action=action, actioncolor=actioncolor,
                       id=str(attribs["iid"]), title=attribs["title"],

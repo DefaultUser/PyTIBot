@@ -411,6 +411,9 @@ GitWebhook:
         - shortened_url
       #HeaderAccessor: # shortened url is contained in the HTTP headers
       #  key: Location
+  MessageTemplates:
+    # full list is available in the example config
+    reponame_stub: '[<t:slot name="repo_name"/>]'
   Hooks:
     Push:
       default:

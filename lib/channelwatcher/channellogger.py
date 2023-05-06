@@ -64,8 +64,6 @@ class ChannelLogger(abstract.ChannelWatcher):
 
     def topic(self, user, topic):
         user = self.bot.get_displayname(user, self.channel)
-        if not self._yaml:
-            message = to_matrix(message)
         self.logger.log(log.TOPIC, log.msg_templates[log.TOPIC],
                         {"user": user, "topic": topic})
 
@@ -102,8 +100,6 @@ class ChannelLogger(abstract.ChannelWatcher):
 
     def action(self, user, data):
         user = self.bot.get_displayname(user, self.channel)
-        if not self._yaml:
-            message = to_matrix(message)
         self.logger.log(log.ACTION, log.msg_templates[log.ACTION],
                         {"user": user, "data": data})
 

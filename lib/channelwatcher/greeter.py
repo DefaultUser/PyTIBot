@@ -40,7 +40,7 @@ class Greeter(abstract.ChannelWatcher):
         self.standard_nicks = set(map(lambda x: x.lower(),
                                       config.get("standard_nicks", [])))
         self.message = formatting.from_human_readable(
-                config.get("message", 'Welcome, <t:slot name="user"/>'))
+            config.get("message", 'Welcome, <t:slot name="user"/>'))
         # read list of previously greeted users from disk
         self.already_greeted = self.load_greeted_file()
 

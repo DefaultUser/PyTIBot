@@ -500,9 +500,9 @@ class Vote(abstract.ChannelWatcher):
         time_start_str = Vote.format_time(time_start)
         time_end_str = Vote.format_time(time_end)
         cursor.execute('INSERT INTO Polls (description, creator, category, time_start, time_end) '
-                'VALUES  (:desc, :creator, :category, :time_start, :time_end);',
-                {"desc": description, "creator": user, "category": category,
-                 "time_start": time_start_str, "time_end": time_end_str})
+                       'VALUES  (:desc, :creator, :category, :time_start, :time_end);',
+                       {"desc": description, "creator": user, "category": category,
+                        "time_start": time_start_str, "time_end": time_end_str})
 
     @staticmethod
     def update_poll_status(cursor, poll_id, status):
@@ -526,8 +526,8 @@ class Vote(abstract.ChannelWatcher):
                        'SET status = "VETOED", vetoed_by = "{vetoed_by}", '
                        'veto_reason = "{reason}" '
                        'WHERE id = "{poll_id}";'.format(poll_id=poll_id,
-                                                       vetoed_by=vetoed_by,
-                                                       reason=reason))
+                                                        vetoed_by=vetoed_by,
+                                                        reason=reason))
         now = datetime.utcnow()
         Vote.update_poll_time_end(cursor, poll_id, now)
 
@@ -570,7 +570,7 @@ class Vote(abstract.ChannelWatcher):
     @staticmethod
     def update_category_field(cursor, name, field, value):
         if field == "default_duration_seconds" and value is not None:
-            value = value.seconds + value.days*24*60*60
+            value = value.seconds + value.days * 24 * 60 * 60
         cursor.execute('UPDATE Categories '
                        'SET {field}=:value '
                        'WHERE name=:name;'.format(field=field),
@@ -664,19 +664,19 @@ class Vote(abstract.ChannelWatcher):
         if time_warning > utcnow:
             delta = time_warning - utcnow
             end_warning_call = reactor.callLater(delta.total_seconds(),
-                    self.warn_end_poll, poll_id)
+                                                 self.warn_end_poll, poll_id)
         else:
             end_warning_call = None
         delta = time_end - utcnow
         end_call = reactor.callLater(delta.total_seconds(),
-                self.end_poll, poll_id)
+                                     self.end_poll, poll_id)
         if poll_id in self._poll_delayed_calls:
             delayed_calls = self._poll_delayed_calls[poll_id]
             delayed_calls.end.cancel()
             if delayed_calls.end_warning:
                 delayed_calls.end_warning.cancel()
         self._poll_delayed_calls[poll_id] = PollDelayedCalls(end=end_call,
-                end_warning=end_warning_call)
+                                                             end_warning=end_warning_call)
 
     def _poll_delayed_call_cancel(self, poll_id):
         try:
@@ -702,7 +702,7 @@ class Vote(abstract.ChannelWatcher):
             c[VoteDecision[decision]] = int(count)
         if is_running:
             sum_votes = sum(c.values())
-            c[VoteDecision.NONE] += self._num_active_users-sum_votes
+            c[VoteDecision.NONE] += self._num_active_users - sum_votes
         return VoteCount(abstained=c[VoteDecision.ABSTAIN], yes=c[VoteDecision.YES],
                          no=c[VoteDecision.NO], not_voted=c[VoteDecision.NONE])
 
@@ -729,12 +729,12 @@ class Vote(abstract.ChannelWatcher):
     @defer.inlineCallbacks
     def warn_end_poll(self, poll_id):
         res = yield self.dbpool.runQuery(
-                'SELECT Polls.description, Users.name FROM Polls, Users '
-                'WHERE Polls.id=:poll_id AND Polls.creator=Users.id;',
-                {"poll_id": poll_id})
+            'SELECT Polls.description, Users.name FROM Polls, Users '
+            'WHERE Polls.id=:poll_id AND Polls.creator=Users.id;',
+            {"poll_id": poll_id})
         if not res:
             Vote.logger.warn("Poll with id {poll_id} doesn't exist, but delayed call "
-                    "was running", poll_id=poll_id)
+                             "was running", poll_id=poll_id)
             return
         desc, creator = res[0]
         vote_count = yield self.count_votes(poll_id, True)
@@ -749,12 +749,12 @@ class Vote(abstract.ChannelWatcher):
     @defer.inlineCallbacks
     def end_poll(self, poll_id):
         res = yield self.dbpool.runQuery(
-                'SELECT Polls.description, Users.name FROM Polls, Users '
-                'WHERE Polls.id=:poll_id AND Polls.creator=Users.id;',
-                {"poll_id": poll_id})
+            'SELECT Polls.description, Users.name FROM Polls, Users '
+            'WHERE Polls.id=:poll_id AND Polls.creator=Users.id;',
+            {"poll_id": poll_id})
         if not res:
             Vote.logger.warn("Poll with id {poll_id} doesn't exist, but delayed call "
-                    "was running", poll_id=poll_id)
+                             "was running", poll_id=poll_id)
             return
         desc, creator = res[0]
         vote_count = yield self.count_votes(poll_id, True)
@@ -783,7 +783,7 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def is_vote_admin(self, user):
-        return (yield self.get_user_privilege(user))==UserPrivilege.ADMIN
+        return (yield self.get_user_privilege(user)) == UserPrivilege.ADMIN
 
     def poll_url(self, poll_id=None):
         if self._poll_url is None:
@@ -860,7 +860,7 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def cmd_user_list(self, issuer, filter):
-        if not(yield self.is_vote_user(issuer)):
+        if not (yield self.is_vote_user(issuer)):
             self.bot.notice(issuer, "Insufficient permissions")
             return
         if filter == UserListStatusFilter.ALL:
@@ -884,7 +884,6 @@ class Vote(abstract.ChannelWatcher):
                              "{channel}: {e}", channel=self.channel, e=e)
             return
         users_raw = sorted(users_raw, key=lambda x: Vote.PrivilegeOrder[x[1]])
-        messages = []
         msg = Tag("")
         for privilege, userlist in itertools.groupby(users_raw, lambda x: x[1]):
             msg.children.append(Vote.colored_user_status(UserPrivilege[privilege]))
@@ -895,8 +894,8 @@ class Vote(abstract.ChannelWatcher):
     @defer.inlineCallbacks
     def is_poll_running(self, poll_id):
         status = yield self.dbpool.runQuery(
-                'SELECT status FROM Polls WHERE id=:id;',
-                {"id": poll_id})
+            'SELECT status FROM Polls WHERE id=:id;',
+            {"id": poll_id})
         if not status:
             raise KeyError("No poll with id {poll_id} found".format(poll_id=poll_id))
         status = PollStatus[status[0][0]]
@@ -959,11 +958,11 @@ class Vote(abstract.ChannelWatcher):
 
     @defer.inlineCallbacks
     def cmd_poll_modify(self, issuer, poll_id, field, value):
-        if not(yield self.is_vote_admin(issuer)):
+        if not (yield self.is_vote_admin(issuer)):
             self.bot.notice(issuer, "You are not allowed to modify votes")
             return
         try:
-            if not(yield self.is_poll_running(poll_id)):
+            if not (yield self.is_poll_running(poll_id)):
                 self.bot.notice(issuer, "Poll isn't running")
                 return
         except KeyError:
@@ -999,7 +998,7 @@ class Vote(abstract.ChannelWatcher):
         issuer_auth = yield self.bot.get_auth(issuer)
         with self._lock: # TODO: is this needed?
             try:
-                if not(yield self.is_poll_running(poll_id)):
+                if not (yield self.is_poll_running(poll_id)):
                     self.bot.notice(issuer, "Poll isn't running")
                     return
             except KeyError:
@@ -1026,10 +1025,9 @@ class Vote(abstract.ChannelWatcher):
         if not (yield self.is_vote_admin(issuer)):
             self.bot.notice(issuer, "Only admins can DECIDE polls")
             return
-        issuer_auth = yield self.bot.get_auth(issuer)
         with self._lock: # TODO: is this needed?
             try:
-                if not(yield self.is_poll_running(poll_id)):
+                if not (yield self.is_poll_running(poll_id)):
                     self.bot.notice(issuer, "Poll isn't running")
                     return
             except KeyError:
@@ -1053,8 +1051,8 @@ class Vote(abstract.ChannelWatcher):
     def cmd_poll_cancel(self, issuer, poll_id):
         with self._lock: # TODO: needed?
             temp = yield self.dbpool.runQuery(
-                    'SELECT creator, status FROM Polls '
-                    'WHERE id=:id;', {"id": poll_id})
+                'SELECT creator, status FROM Polls '
+                'WHERE id=:id;', {"id": poll_id})
             if not temp:
                 self.bot.notice(issuer, "No Poll with given ID found, "
                                 "aborting...")
@@ -1115,8 +1113,9 @@ class Vote(abstract.ChannelWatcher):
                 self.bot.notice(issuer, "Invalid new end time specified")
                 return
         issuer_id = yield self.bot.get_auth(issuer)
-        confirmation = yield self.require_confirmation(issuer, issuer_id,
-                "Please confirm new expiration date {}".format(time_end.isoformat()))
+        confirmation = yield self.require_confirmation(
+            issuer, issuer_id,
+            "Please confirm new expiration date {}".format(time_end.isoformat()))
         if not confirmation:
             return
         self._poll_delayed_call_cancel(poll_id)
@@ -1141,7 +1140,7 @@ class Vote(abstract.ChannelWatcher):
             statusfilter = ''
         else:
             statusfilter = 'Polls.status=:status'
-        if not category or category=="all":
+        if not category or category == "all":
             categoryfilter = ''
         else:
             categoryfilter = 'Categories.name=:category'
@@ -1154,10 +1153,10 @@ class Vote(abstract.ChannelWatcher):
             else:
                 where = 'WHERE ' + categoryfilter
         result = yield self.dbpool.runQuery(
-                'SELECT Polls.id, Polls.status, Polls.description, Users.name, Categories.name, Categories.color '
-                'FROM Polls LEFT JOIN Categories ON Polls.category=Categories.id '
-                           'LEFT JOIN Users ON Polls.creator=Users.id ' +
-                where + ' ORDER BY Polls.id DESC;', {"status": status.name, "category": category})
+            'SELECT Polls.id, Polls.status, Polls.description, Users.name, Categories.name, Categories.color '
+            'FROM Polls LEFT JOIN Categories ON Polls.category=Categories.id '
+            '           LEFT JOIN Users ON Polls.creator=Users.id ' +
+            where + ' ORDER BY Polls.id DESC;', {"status": status.name, "category": category})
         if not result:
             self.bot.notice(issuer, "No Polls found")
             return
@@ -1165,10 +1164,11 @@ class Vote(abstract.ChannelWatcher):
         if not issuer_id:
             issuer_id = issuer
         for i, (poll_id, poll_status, desc, creator, category, color) in enumerate(result):
-            if (i!=0 and i%5==0):
-                confirm = yield self.require_confirmation(issuer, issuer_id,
-                        "Continue? (confirm with {prefix}yes)".format(
-                            prefix=self.prefix))
+            if (i != 0 and i % 5 == 0):
+                confirm = yield self.require_confirmation(
+                    issuer, issuer_id,
+                    "Continue? (confirm with {prefix}yes)".format(
+                        prefix=self.prefix))
                 if not confirm:
                     return
             msg = self.poll_list_stub.clone()
@@ -1183,16 +1183,16 @@ class Vote(abstract.ChannelWatcher):
     @defer.inlineCallbacks
     def cmd_poll_info(self, issuer, poll_id):
         result = yield self.dbpool.runQuery(
-                'SELECT Polls.status, Polls.description, Users.name, Categories.name, Categories.color '
-                'FROM Polls LEFT JOIN Categories ON Polls.category=Categories.id '
-                           'LEFT JOIN Users ON Polls.creator=Users.id '
-                'WHERE Polls.id=:poll_id;', {"poll_id": poll_id})
+            'SELECT Polls.status, Polls.description, Users.name, Categories.name, Categories.color '
+            'FROM Polls LEFT JOIN Categories ON Polls.category=Categories.id '
+            '           LEFT JOIN Users ON Polls.creator=Users.id '
+            'WHERE Polls.id=:poll_id;', {"poll_id": poll_id})
         if not result:
             self.bot.notice(issuer, "No Poll with ID #{} found".format(poll_id))
             return
         status, desc, creator, category, color = result[0]
         status = PollStatus[status]
-        vote_count = yield self.count_votes(poll_id, status==PollStatus.RUNNING)
+        vote_count = yield self.count_votes(poll_id, status == PollStatus.RUNNING)
         msg = self.poll_info_stub.clone()
         msg.fillSlots(poll_id=str(poll_id), creator=creator, status=status.name,
                       status_color=Vote.poll_status_color(status),
@@ -1230,7 +1230,7 @@ class Vote(abstract.ChannelWatcher):
             return
         try:
             yield self.dbpool.runInteraction(Vote.insert_category, name, description,
-                                             color or "", confidential!=0)
+                                             color or "", confidential != 0)
         except Exception as e:
             Vote.logger.info("Failed to add category: {error}", error=e)
             self.bot.notice(issuer, "Failed to add category: {}".format(e))
@@ -1264,7 +1264,7 @@ class Vote(abstract.ChannelWatcher):
             self.bot.notice(issuer, "Insufficient permissions")
             return
         res = yield self.dbpool.runQuery(
-                'SELECT name, description, color, confidential FROM Categories;')
+            'SELECT name, description, color, confidential FROM Categories;')
         if not res:
             self.bot.notice(issuer, "There are no categories")
             return
@@ -1283,20 +1283,20 @@ class Vote(abstract.ChannelWatcher):
         voterid = yield self.bot.get_auth(voter)
         voter_displayname = self.bot.get_displayname(voter, self.channel)
         pollstatus = yield self.dbpool.runQuery(
-                'SELECT status FROM Polls WHERE id=:id;', {"id": poll_id})
+            'SELECT status FROM Polls WHERE id=:id;', {"id": poll_id})
         if not pollstatus:
             self.bot.notice(voter, "Poll #{} doesn't exist".format(poll_id))
             return
         pollstatus = PollStatus[pollstatus[0][0]]
         if pollstatus != PollStatus.RUNNING:
             self.bot.notice(voter, "Poll #{} is not running ({})".format(poll_id,
-                pollstatus.name))
+                            pollstatus.name))
             return
         try:
             query = yield self.dbpool.runQuery(
-                    'SELECT vote, comment FROM Votes '
-                    'WHERE poll_id=:poll_id AND user=:voterid;',
-                    {"poll_id": poll_id, "voterid": voterid})
+                'SELECT vote, comment FROM Votes '
+                'WHERE poll_id=:poll_id AND user=:voterid;',
+                {"poll_id": poll_id, "voterid": voterid})
             if query:
                 previous_decision = VoteDecision[query[0][0]]
                 previous_comment = query[0][1]
@@ -1306,10 +1306,10 @@ class Vote(abstract.ChannelWatcher):
                 else:
                     confirmation_msg = self.already_voted_stub.clone()
                     confirmation_msg.fillSlots(
-                            decision=previous_decision.name,
-                            decision_color=Vote.vote_decision_color(previous_decision),
-                            comment=previous_comment,
-                            prefix=self.prefix)
+                        decision=previous_decision.name,
+                        decision_color=Vote.vote_decision_color(previous_decision),
+                        comment=previous_comment,
+                        prefix=self.prefix)
                     confirmed = yield self.require_confirmation(voter, voterid,
                                                                 confirmation_msg)
                 if not confirmed:
@@ -1338,7 +1338,7 @@ class Vote(abstract.ChannelWatcher):
             return
         vote_count = yield self.count_votes(poll_id, True)
         # end poll early on 2/3 majority
-        early_consensus = 3*max(vote_count.yes, vote_count.no) >= 2*self._num_active_users
+        early_consensus = 3 * max(vote_count.yes, vote_count.no) >= 2 * self._num_active_users
         if not early_consensus:
             current_result = self.current_result_stub.clone()
             current_result.fillSlots(yes=str(vote_count.yes), no=str(vote_count.no),
@@ -1359,6 +1359,7 @@ class Vote(abstract.ChannelWatcher):
             return False
         self.bot.notice(self.channel, message)
         d = defer.Deferred()
+
         def onTimeout(*args):
             self.bot.notice(user, "Confirmation timed out")
             d.callback(False)
@@ -1380,7 +1381,7 @@ class Vote(abstract.ChannelWatcher):
     @defer.inlineCallbacks
     def confirm_command(self, issuer, decision):
         userid = yield self.bot.get_auth(issuer)
-        if not userid in self._pending_confirmations:
+        if userid not in self._pending_confirmations:
             self.bot.notice(issuer, "Nothing to confirm")
             return
         self._pending_confirmations[userid].callback(decision)
@@ -1388,7 +1389,7 @@ class Vote(abstract.ChannelWatcher):
     def cmd_vhelp(self, user, topic):
         def get_subOption(option_class, subCommand):
             for long, short, option, desc in option_class.subCommands:
-                if subCommand==long or subCommand==short:
+                if subCommand == long or subCommand == short:
                     return option, desc
             raise KeyError("No such subcommand")
 
@@ -1398,9 +1399,9 @@ class Vote(abstract.ChannelWatcher):
             for frag in topic.split("."):
                 try:
                     option_class, desc = get_subOption(option_class, frag)
-                except Exception as e:
+                except Exception:
                     self.bot.notice(user, formatting.colored(
-                        "No such command: "+topic,
+                        "No such command: " + topic,
                         ColorCodes.red))
                     return
 
@@ -1409,7 +1410,7 @@ class Vote(abstract.ChannelWatcher):
             msg = Tag("")(formatting.colored("Available commands",
                                              ColorCodes.blue), ": ")
             for i, command in enumerate(sig.subCommands):
-                if i>0:
+                if i > 0:
                     msg.children.append(" | ")
                 msg.children.append(command)
             self.bot.notice(user, msg)
@@ -1443,16 +1444,17 @@ class Vote(abstract.ChannelWatcher):
         if not (yield self.is_vote_user(user)):
             return
         result = yield self.dbpool.runQuery(
-                'SELECT id FROM Polls WHERE status="RUNNING";')
+            'SELECT id FROM Polls WHERE status="RUNNING";')
         if not result:
             return
         num_running_polls = len(result)
         poll_id_list = set(itertools.chain(*result))
         user_id = yield self.bot.get_auth(user)
-        result = yield self.dbpool.runQuery('SELECT poll_id FROM Votes '
-                'WHERE user=:user_id AND poll_id IN ({poll_ids});'.format(
-                    poll_ids=",".join(map(str, poll_id_list))),
-                {"user_id": user_id})
+        result = yield self.dbpool.runQuery(
+            'SELECT poll_id FROM Votes '
+            'WHERE user=:user_id AND poll_id IN ({poll_ids});'.format(
+                poll_ids=",".join(map(str, poll_id_list))),
+            {"user_id": user_id})
         if not result:
             num_already_voted = 0
         else:

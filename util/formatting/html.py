@@ -137,15 +137,15 @@ class SanetizingHTMLParser(htmlparser.HTMLParser):
                     sanetized_attrs["color"] = style.fg
                 if style.bg:
                     sanetized_attrs["background-color"] = style.bg
-            if ((color:=attrs.get("color", None)) or
-                    (color:=attrs.get("data-mx-color", None))):
+            if ((color := attrs.get("color", None)) or
+                    (color := attrs.get("data-mx-color", None))):
                 color = SanetizingHTMLParser.parse_html_color(color)
                 sanetized_attrs["color"] = color
-            if ((color:=attrs.get("background-color", None)) or
-                    (color:=attrs.get("data-mx-bg-color", None))):
+            if ((color := attrs.get("background-color", None)) or
+                    (color := attrs.get("data-mx-bg-color", None))):
                 color = SanetizingHTMLParser.parse_html_color(color)
                 sanetized_attrs["background-color"] = color
-        if tagName == "a" and (href:=attrs.get("href", None)):
+        if tagName == "a" and (href := attrs.get("href", None)):
             sanetized_attrs["href"] = href
         new_tag = Tag(tagName)
         new_tag.attributes = sanetized_attrs
@@ -373,4 +373,3 @@ def modernize_html(data: Message) -> Message:
     processor = TagModernizer()
     common._processStyledText(data, processor)
     return processor.root
-

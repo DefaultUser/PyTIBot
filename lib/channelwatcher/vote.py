@@ -399,33 +399,6 @@ class Vote(abstract.ChannelWatcher):
     description_length = 150
     PrivilegeOrder = {"ADMIN": 0, "USER": 10, "REVOKED": 20} # Lower means shown earlier
 
-    poll_id_stub = 'Poll #<font color="darkorange"><t:slot name="poll_id"/></font>'
-    poll_status_stub = '<font><t:attr name="color"><t:slot name="status_color"/></t:attr><t:slot name="status"/></font>'
-    category_stub = '<font><t:attr name="color"><t:slot name="category_fg"/></t:attr><t:attr name="background-color"><t:slot name="category_bg"/></t:attr><t:slot name="category"/></font>'
-    description_stub = '<font color="darkcyan"><t:slot name="description"/></font>'
-    creator_stub = '<font color="blue"><t:slot name="creator"/></font>'
-    user_stub = '<font color="blue"><t:slot name="user"/></font>'
-    comment_stub = '<font color="cyan"><t:slot name="comment"/></font>'
-    standing_stub = 'YES:<font color="lime"><t:slot name="yes"/></font> | NO:<font color="red"><t:slot name="no"/></font> | ABSTAINED:<t:slot name="abstained"/> | OPEN:<t:slot name="not_voted"/>'
-    final_standing_stub = 'YES:<font color="lime"><t:slot name="yes"/></font> | NO:<font color="red"><t:slot name="no"/></font> | ABSTAINED:<t:slot name="abstained"/> | NOT VOTED:<t:slot name="not_voted"/>'
-
-    missing_voter_stub = from_human_readable('Your vote is required in channel <t:slot name="channel"/> for poll #<font color="darkorange"><t:slot name="poll_id"/></font>')
-    user_added_stub = from_human_readable('Successfully added user <font color="blue"><t:slot name="user"/></font> (<t:slot name="auth"/>)')
-    user_modified_stub = from_human_readable('Successfully modified user <font color="blue"><t:slot name="user"/></font>')
-    new_poll_stub = from_human_readable(f'New {poll_id_stub} by {creator_stub}: <a><t:attr name="href"><t:slot name="url"/></t:attr>{description_stub}</a>')
-    poll_description_change_stub = from_human_readable(f'{poll_id_stub}: description changed to <t:slot name="description"/>')
-    poll_vetoed_stub = from_human_readable(f'{poll_id_stub}: vetoed')
-    poll_decided_stub = from_human_readable(f'{poll_id_stub}: decided')
-    poll_cancelled_stub = from_human_readable(f'{poll_id_stub}: cancelled')
-    warn_poll_end_stub = from_human_readable(f'{poll_id_stub} is running out soon: {description_stub} by {creator_stub}: {standing_stub}')
-    poll_end_stub = from_human_readable(f'{poll_id_stub} {poll_status_stub}: {description_stub} by {creator_stub}: {final_standing_stub}')
-    poll_list_stub = from_human_readable(f'{poll_id_stub} by {creator_stub} ({poll_status_stub}): {description_stub}')
-    poll_info_stub = from_human_readable(f'{poll_id_stub} by {creator_stub} ({poll_status_stub}): {description_stub}<br/>{standing_stub}')
-    vote_changed_stub = from_human_readable(f'{poll_id_stub}: {user_stub} changed vote from <font><t:attr name="color"><t:slot name="previous_decision_color"/></t:attr><t:slot name="previous_decision"/></font> to <font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}')
-    new_vote_stub = from_human_readable(f'{poll_id_stub}: {user_stub} voted <font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}')
-    current_result_stub = from_human_readable(f'Current Result: {standing_stub}')
-    already_voted_stub = from_human_readable(f'You already voted for this poll (<font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}), please confirm, with \'<t:slot name="prefix"/>yes\' or \'<t:slot name="prefix"/>no\'')
-
     class Colors:
         poll_id = ColorCodes.darkorange
         user = ColorCodes.blue
@@ -442,7 +415,6 @@ class Vote(abstract.ChannelWatcher):
         USER = ColorCodes.lime
         REVOKED = ColorCodes.darkred
 
-
     def __init__(self, bot, channel, config):
         super(Vote, self).__init__(bot, channel, config)
         self.prefix = config.get("prefix", "!")
@@ -454,6 +426,7 @@ class Vote(abstract.ChannelWatcher):
             self.poll_duration = Vote.PollDefaultDuration
         else:
             self.poll_duration = timedelta(days=poll_duration)
+        self.load_message_templates(config.get("MessageTemplates", {}))
         vote_configdir = os.path.join(fs.adirs.user_config_dir, "vote")
         os.makedirs(vote_configdir, exist_ok=True)
         dbfile = os.path.join(vote_configdir, "{}.sqlite".format(self.channel))
@@ -464,6 +437,34 @@ class Vote(abstract.ChannelWatcher):
         self._num_active_users = 0
         self._poll_delayed_calls = {}
         self._setup()
+
+    def load_message_templates(self, message_config: dict) -> None:
+        crumbs = {}
+        crumbs["poll_id_stub"] = message_config.get("poll_id_stub", 'Poll #<font color="darkorange"><t:slot name="poll_id"/></font>')
+        crumbs["poll_status_stub"] = message_config.get("poll_status_stub", '<font><t:attr name="color"><t:slot name="status_color"/></t:attr><t:slot name="status"/></font>')
+        crumbs["description_stub"] = message_config.get("description_stub", '<font color="darkcyan"><t:slot name="description"/></font>')
+        crumbs["creator_stub"] = message_config.get("creator_stub", '<font color="blue"><t:slot name="creator"/></font>')
+        crumbs["user_stub"] = message_config.get("user_stub", '<font color="blue"><t:slot name="user"/></font>')
+        crumbs["comment_stub"] = message_config.get("comment_stub", '<font color="cyan"><t:slot name="comment"/></font>')
+        crumbs["standing_stub"] = message_config.get("standing_stub", 'YES:<font color="lime"><t:slot name="yes"/></font> | NO:<font color="red"><t:slot name="no"/></font> | ABSTAINED:<t:slot name="abstained"/> | OPEN:<t:slot name="not_voted"/>')
+        crumbs["final_standing_stub"] = message_config.get("final_standing_stub", 'YES:<font color="lime"><t:slot name="yes"/></font> | NO:<font color="red"><t:slot name="no"/></font> | ABSTAINED:<t:slot name="abstained"/> | NOT VOTED:<t:slot name="not_voted"/>')
+
+        self.missing_voter_stub = from_human_readable(message_config.get("missing_voter_stub", 'Your vote is required in channel <t:slot name="channel"/> for poll #<font color="darkorange"><t:slot name="poll_id"/></font>'))
+        self.user_added_stub = from_human_readable(message_config.get("user_added_stub", 'Successfully added user <font color="blue"><t:slot name="user"/></font> (<t:slot name="auth"/>)'))
+        self.user_modified_stub = from_human_readable(message_config.get("user_modified_stub", 'Successfully modified user <font color="blue"><t:slot name="user"/></font>'))
+        self.new_poll_stub = from_human_readable(message_config.get("new_poll_stub", 'New {poll_id_stub} by {creator_stub}: <a><t:attr name="href"><t:slot name="url"/></t:attr>{description_stub}</a>').format(**crumbs))
+        self.poll_description_change_stub = from_human_readable(message_config.get("poll_description_change_stub", '{poll_id_stub}: description changed to <t:slot name="description"/>').format(**crumbs))
+        self.poll_vetoed_stub = from_human_readable(message_config.get("poll_vetoed_stub", '{poll_id_stub}: vetoed').format(**crumbs))
+        self.poll_decided_stub = from_human_readable(message_config.get("poll_decided_stub", '{poll_id_stub}: decided').format(**crumbs))
+        self.poll_cancelled_stub = from_human_readable(message_config.get("poll_cancelled_stub", '{poll_id_stub}: cancelled').format(**crumbs))
+        self.warn_poll_end_stub = from_human_readable(message_config.get("warn_poll_end_stub", '{poll_id_stub} is running out soon: {description_stub} by {creator_stub}: {standing_stub}').format(**crumbs))
+        self.poll_end_stub = from_human_readable(message_config.get("poll_end_stub", '{poll_id_stub} {poll_status_stub}: {description_stub} by {creator_stub}: {final_standing_stub}').format(**crumbs))
+        self.poll_list_stub = from_human_readable(message_config.get("poll_list_stub", '{poll_id_stub} by {creator_stub} ({poll_status_stub}): {description_stub}').format(**crumbs))
+        self.poll_info_stub = from_human_readable(message_config.get("poll_info_stub", '{poll_id_stub} by {creator_stub} ({poll_status_stub}): {description_stub}<br/>{standing_stub}').format(**crumbs))
+        self.vote_changed_stub = from_human_readable(message_config.get("vote_changed_stub", '{poll_id_stub}: {user_stub} changed vote from <font><t:attr name="color"><t:slot name="previous_decision_color"/></t:attr><t:slot name="previous_decision"/></font> to <font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}').format(**crumbs))
+        self.new_vote_stub = from_human_readable(message_config.get("new_vote_stub", '{poll_id_stub}: {user_stub} voted <font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}').format(**crumbs))
+        self.current_result_stub = from_human_readable(message_config.get("current_result_stub", 'Current Result: {standing_stub}').format(**crumbs))
+        self.already_voted_stub = from_human_readable(message_config.get("already_voted_stub", 'You already voted for this poll (<font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}) please confirm, with \'<t:slot name="prefix"/>yes\' or \'<t:slot name="prefix"/>no\'').format(**crumbs))
 
     @defer.inlineCallbacks
     def _setup(self):
@@ -721,7 +722,7 @@ class Vote(abstract.ChannelWatcher):
             if not auth:
                 continue
             if auth in missing_voter_auths:
-                msg = Vote.missing_voter_stub.clone()
+                msg = self.missing_voter_stub.clone()
                 msg.fillSlots(channel=self.channel, poll_id=str(poll_id))
                 self.bot.notice(user, msg)
 
@@ -737,7 +738,7 @@ class Vote(abstract.ChannelWatcher):
             return
         desc, creator = res[0]
         vote_count = yield self.count_votes(poll_id, True)
-        msg = Vote.warn_poll_end_stub.clone()
+        msg = self.warn_poll_end_stub.clone()
         msg.fillSlots(poll_id=str(poll_id), description=desc, creator=creator,
                       yes=str(vote_count.yes), no=str(vote_count.no),
                       abstained=str(vote_count.abstained),
@@ -764,7 +765,7 @@ class Vote(abstract.ChannelWatcher):
         else:
             result = PollStatus.FAILED
         self.dbpool.runInteraction(Vote.update_poll_status, poll_id, result)
-        msg = Vote.poll_end_stub.clone()
+        msg = self.poll_end_stub.clone()
         msg.fillSlots(poll_id=str(poll_id), status_color=Vote.poll_status_color(result),
                       status=result.name, description=desc, creator=creator,
                       yes=str(vote_count.yes), no=str(vote_count.no),
@@ -817,7 +818,7 @@ class Vote(abstract.ChannelWatcher):
                              error=e)
             return
         self._num_active_users += 1
-        msg = Vote.user_added_stub.clone()
+        msg = self.user_added_stub.clone()
         msg.fillSlots(user=displayname, auth=auth)
         self.bot.notice(issuer, msg)
 
@@ -853,7 +854,7 @@ class Vote(abstract.ChannelWatcher):
         # query DB instead of modifying remembered count directly
         # a DB query is required anyways (for the current permissions)
         self.query_active_user_count()
-        msg = Vote.user_modified_stub.clone()
+        msg = self.user_modified_stub.clone()
         msg.fillSlots(user=user)
         self.bot.notice(issuer, msg)
 
@@ -939,7 +940,7 @@ class Vote(abstract.ChannelWatcher):
             if url is None:
                 url = ""
             issuer_displayname = self.bot.get_displayname(issuer, self.channel)
-            msg = Vote.new_poll_stub.clone()
+            msg = self.new_poll_stub.clone()
             msg.fillSlots(poll_id=str(poll_id), creator=issuer_displayname,
                           url=url, description=description)
             if category:
@@ -982,7 +983,7 @@ class Vote(abstract.ChannelWatcher):
             self.bot.notice(issuer, "Couldn't modify poll ({})".format(e))
             return
         if field == "description":
-            msg = Vote.poll_description_change_stub.clone()
+            msg = self.poll_description_change_stub.clone()
             msg.fillSlots(poll_id=str(poll_id), description=value)
             self.bot.notice(self.channel, msg)
             if self.notification_channel:
@@ -1014,7 +1015,7 @@ class Vote(abstract.ChannelWatcher):
                 Vote.logger.warn("Error vetoing poll #{id}: {error}",
                                  id=poll_id, error=e)
                 return
-            msg = Vote.poll_vetoed_stub.clone().fillSlots(poll_id=str(poll_id))
+            msg = self.poll_vetoed_stub.clone().fillSlots(poll_id=str(poll_id))
             self.bot.msg(self.channel, msg)
             if self.notification_channel:
                 self.bot.msg(self.notification_channel, msg)
@@ -1042,7 +1043,7 @@ class Vote(abstract.ChannelWatcher):
                 Vote.logger.warn("Error deciding poll #{id}: {error}",
                                  id=poll_id, error=e)
                 return
-            msg = Vote.poll_decided_stub.clone().fillSlots(poll_id=str(poll_id))
+            msg = self.poll_decided_stub.clone().fillSlots(poll_id=str(poll_id))
             self.bot.msg(self.channel, msg)
             if self.notification_channel:
                 self.bot.msg(self.notification_channel, msg)
@@ -1078,7 +1079,7 @@ class Vote(abstract.ChannelWatcher):
                 Vote.logger.warn("Error cancelling poll #{id}: {error}",
                                  id=poll_id, error=e)
                 return
-            msg = Vote.poll_cancelled_stub.clone().fillSlots(poll_id=str(poll_id))
+            msg = self.poll_cancelled_stub.clone().fillSlots(poll_id=str(poll_id))
             self.bot.msg(self.channel, msg)
             if self.notification_channel:
                 self.bot.msg(self.notification_channel, msg)
@@ -1170,7 +1171,7 @@ class Vote(abstract.ChannelWatcher):
                             prefix=self.prefix))
                 if not confirm:
                     return
-            msg = Vote.poll_list_stub.clone()
+            msg = self.poll_list_stub.clone()
             msg.fillSlots(poll_id=str(poll_id), creator=creator, status=status.name,
                           status_color=Vote.poll_status_color(status),
                           description=desc)
@@ -1192,7 +1193,7 @@ class Vote(abstract.ChannelWatcher):
         status, desc, creator, category, color = result[0]
         status = PollStatus[status]
         vote_count = yield self.count_votes(poll_id, status==PollStatus.RUNNING)
-        msg = Vote.poll_info_stub.clone()
+        msg = self.poll_info_stub.clone()
         msg.fillSlots(poll_id=str(poll_id), creator=creator, status=status.name,
                       status_color=Vote.poll_status_color(status),
                       description=desc, yes=str(vote_count.yes),
@@ -1303,7 +1304,7 @@ class Vote(abstract.ChannelWatcher):
                 if kwargs['yes']:
                     confirmed = True
                 else:
-                    confirmation_msg = Vote.already_voted_stub.clone()
+                    confirmation_msg = self.already_voted_stub.clone()
                     confirmation_msg.fillSlots(
                             decision=previous_decision.name,
                             decision_color=Vote.vote_decision_color(previous_decision),
@@ -1316,7 +1317,7 @@ class Vote(abstract.ChannelWatcher):
                 yield self.dbpool.runInteraction(Vote.update_vote_decision,
                                                  poll_id, voterid, decision,
                                                  comment)
-                msg = Vote.vote_changed_stub.clone()
+                msg = self.vote_changed_stub.clone()
                 msg.fillSlots(poll_id=str(poll_id), user=voter_displayname,
                               previous_decision=previous_decision.name,
                               previous_decision_color=Vote.vote_decision_color(previous_decision),
@@ -1326,7 +1327,7 @@ class Vote(abstract.ChannelWatcher):
             else:
                 yield self.dbpool.runInteraction(Vote.insert_vote, poll_id,
                                                  voterid, decision, comment)
-                msg = Vote.new_vote_stub.clone()
+                msg = self.new_vote_stub.clone()
                 msg.fillSlots(poll_id=str(poll_id), user=voter_displayname,
                               decision=decision.name,
                               decision_color=Vote.vote_decision_color(decision),
@@ -1339,7 +1340,7 @@ class Vote(abstract.ChannelWatcher):
         # end poll early on 2/3 majority
         early_consensus = 3*max(vote_count.yes, vote_count.no) >= 2*self._num_active_users
         if not early_consensus:
-            current_result = Vote.current_result_stub.clone()
+            current_result = self.current_result_stub.clone()
             current_result.fillSlots(yes=str(vote_count.yes), no=str(vote_count.no),
                                      abstained=str(vote_count.abstained),
                                      not_voted=str(vote_count.not_voted))

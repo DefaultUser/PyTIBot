@@ -209,6 +209,32 @@ Channelmodules:
       poll_url: https://example.org:8081/vote
       secret: secret
       notification_channel: '#mysuperchannel' # will be notified of major events
+      #MessageTemplates:
+      #  poll_id_stub: 'Poll #<font color="darkorange"><t:slot name="poll_id"/></font>'
+      #  poll_status_stub: '<font><t:attr name="color"><t:slot name="status_color"/></t:attr><t:slot name="status"/></font>'
+      #  description_stub: '<font color="darkcyan"><t:slot name="description"/></font>'
+      #  creator_stub: '<font color="blue"><t:slot name="creator"/></font>'
+      #  user_stub: '<font color="blue"><t:slot name="user"/></font>'
+      #  comment_stub: '<font color="cyan"><t:slot name="comment"/></font>'
+      #  standing_stub: 'YES:<font color="lime"><t:slot name="yes"/></font> | NO:<font color="red"><t:slot name="no"/></font> | ABSTAINED:<t:slot name="abstained"/> | OPEN:<t:slot name="not_voted"/>'
+      #  final_standing_stub: 'YES:<font color="lime"><t:slot name="yes"/></font> | NO:<font color="red"><t:slot name="no"/></font> | ABSTAINED:<t:slot name="abstained"/> | NOT VOTED:<t:slot name="not_voted"/>'
+
+      #  missing_voter_stub: 'Your vote is required in channel <t:slot name="channel"/> for poll #<font color="darkorange"><t:slot name="poll_id"/></font>'
+      #  user_added_stub: 'Successfully added user <font color="blue"><t:slot name="user"/></font> (<t:slot name="auth"/>)'
+      #  user_modified_stub: 'Successfully modified user <font color="blue"><t:slot name="user"/></font>'
+      #  new_poll_stub: 'New {poll_id_stub} by {creator_stub}: <a><t:attr name="href"><t:slot name="url"/></t:attr>{description_stub}</a>'
+      #  poll_description_change_stub: '{poll_id_stub}: description changed to <t:slot name="description"/>'
+      #  poll_vetoed_stub: '{poll_id_stub}: vetoed'
+      #  poll_decided_stub: '{poll_id_stub}: decided'
+      #  poll_cancelled_stub: '{poll_id_stub}: cancelled'
+      #  warn_poll_end_stub: '{poll_id_stub} is running out soon: {description_stub} by {creator_stub}: {standing_stub}'
+      #  poll_end_stub: '{poll_id_stub} {poll_status_stub}: {description_stub} by {creator_stub}: {final_standing_stub}'
+      #  poll_list_stub: '{poll_id_stub} by {creator_stub} ({poll_status_stub}).format(**crumbs): {description_stub}'
+      #  poll_info_stub: '{poll_id_stub} by {creator_stub} ({poll_status_stub}).format(**crumbs): {description_stub}<br/>{standing_stub}'
+      #  vote_changed_stub: '{poll_id_stub}: {user_stub} changed vote from <font><t:attr name="color"><t:slot name="previous_decision_color"/></t:attr><t:slot name="previous_decision"/></font> to <font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}'
+      #  new_vote_stub: '{poll_id_stub}: {user_stub} voted <font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}'
+      #  current_result_stub: 'Current Result: {standing_stub}'
+      #  already_voted_stub: 'You already voted for this poll (<font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}).format(**crumbs), please confirm, with \'<t:slot name="prefix"/>yes\' or \'<t:slot name="prefix"/>no\''
 
 Actions:
   userkicked: Nice work $KICKER, noone liked $KICKEE anyways!

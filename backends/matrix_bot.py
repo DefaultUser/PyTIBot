@@ -33,6 +33,7 @@ from backends.interfaces import IBot
 from util.aio_compat import deferred_to_future, future_to_deferred
 from util import filesystem as fs
 from util.formatting import to_matrix, to_plaintext, Tag, Message
+from util.formatting.html import parse_html
 from util.decorators import maybe_deferred
 from util.config import Config
 
@@ -62,8 +63,10 @@ class MatrixBot:
         MatrixBot.log.info("{room.display_name} | {event.sender} : {event.body}",
                            room=room, event=event)
         room_id = room.room_id
-        message = event.body
-        # TODO: parse formatted body
+        if event.formatted_body:
+            message = parse_html(event.formatted_body)
+        else:
+            message = event.body
         try:
             if event.source['content']['m.relates_to']['rel_type'] == "m.replace":
                 message = message.removeprefix("* ")
@@ -80,7 +83,10 @@ class MatrixBot:
                            room=room, event=event)
         room_id = room.room_id
         message = event.body
-        # TODO: parse formatted body
+        if event.formatted_body:
+            message = parse_html(event.formatted_body)
+        else:
+            message = event.body
         try:
             if event.source['content']['m.relates_to']['rel_type'] == "m.replace":
                 message = message.removeprefix("* ")

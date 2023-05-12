@@ -337,9 +337,22 @@ class GitWebhookServer(Resource):
         return data["repository"]["full_name"].rsplit("/", 1)[0]
 
     @staticmethod
+    def _github_get_pr_head_display_ref(pr_data):
+        if pr_data["head"]["repo"]["id"] == pr_data["base"]["repo"]["id"]:
+            return pr_data["head"]["ref"]
+        return pr_data["head"]["label"]
+
+    @staticmethod
     def _gitlab_get_namespace(data):
         # use `path_with_namespace` to capture all groups and subgroups
         return data["project"]["path_with_namespace"].rsplit("/", 1)[0]
+
+    @staticmethod
+    def _gitlab_get_mr_source_display(attribs):
+        source_branch = attribs["source_branch"]
+        if attribs["source_project_id"] == attribs["target_project_id"]:
+            return source_branch
+        return f'{attribs["source"]["path_with_namespace"]}:{source_branch}'
 
     @defer.inlineCallbacks
     def format_commits(self, commits, num_commits):
@@ -565,12 +578,13 @@ class GitWebhookServer(Resource):
         elif action == "converted_to_draft":
             action = "converted to draft:"
         url = yield self.url_shortener(data["pull_request"]["html_url"])
+        head = GitWebhookServer._github_get_pr_head_display_ref(data["pull_request"])
         msg = self.pr_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=user, action=action,
                       actioncolor=actioncolor,
                       pr_number=str(data["pull_request"]["number"]),
                       pr_title=data["pull_request"]["title"],
-                      pr_url=url, head=data["pull_request"]["head"]["ref"],
+                      pr_url=url, head=head,
                       base=data["pull_request"]["head"]["ref"])
         if payload:
             msg.children.append(": ")
@@ -621,7 +635,7 @@ class GitWebhookServer(Resource):
         for k, events in partition.items():
             repo_space, repo_name, pr_number, user, action = k
             title = events[0]["pull_request"]["title"]
-            head = events[0]["pull_request"]["head"]["ref"]
+            head = GitWebhookServer._github_get_pr_head_display_ref(events[0]["pull_request"])
             base = events[0]["pull_request"]["base"]["ref"]
             # remove duplicate urls
             full_urls = {e[type_]["html_url"] for e in events}
@@ -651,7 +665,7 @@ class GitWebhookServer(Resource):
                 data["pull_request"]["number"],
                 data["pull_request"]["title"],
                 data["action"],
-                data["pull_request"]["head"]["ref"],
+                GitWebhookServer._github_get_pr_head_display_ref(data["pull_request"]),
                 data["pull_request"]["base"]["ref"],
                 [url])
 
@@ -674,7 +688,7 @@ class GitWebhookServer(Resource):
                 data["pull_request"]["number"],
                 data["pull_request"]["title"],
                 data["action"],
-                data["pull_request"]["head"]["ref"],
+                GitWebhookServer._github_get_pr_head_display_ref(data["pull_request"]),
                 data["pull_request"]["base"]["ref"],
                 [url])
 
@@ -834,7 +848,7 @@ class GitWebhookServer(Resource):
         msg.fillSlots(repo_name=repo_name, user=data["user"]["name"],
                       action=action, actioncolor=actioncolor,
                       id=str(attribs["iid"]), title=attribs["title"],
-                      source=attribs["source_branch"],
+                      source=GitWebhookServer._gitlab_get_mr_source_display(attribs),
                       target=attribs["target_branch"],
                       url=url)
         self.report_to_chat(repo_name,

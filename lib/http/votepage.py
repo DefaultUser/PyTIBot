@@ -28,7 +28,7 @@ import typing
 from .common import PageElement, BaseResource
 from lib.channelwatcher.vote import PollListStatusFilter, CommandOptions
 
-from util.misc import bytes_to_str
+from util.misc import bytes_to_str, annotation_to_str
 from util import filesystem as fs
 from util.formatting import ColorCodes, ColorsHex, good_contrast_with_black
 from util.formatting.html import modernize_html
@@ -449,10 +449,7 @@ class VoteHelpPageArgsWidget(Element):
                 default = "N/A"
             possible_values = "N/A"
             if p.annotation is not Parameter.empty:
-                if typing.get_origin(p.annotation) == typing.Literal:
-                    possible_values = ", ".join(typing.get_args(p.annotation))
-                else:
-                    possible_values = p.annotation.__name__
+                possible_values = annotation_to_str(p.annotation)
             elif p.kind == Parameter.VAR_POSITIONAL:
                 possible_values = "freetext"
             yield tag.clone().fillSlots(name=p.name, default_value=default,

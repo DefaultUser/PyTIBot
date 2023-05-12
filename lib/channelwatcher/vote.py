@@ -37,6 +37,7 @@ from util import filesystem as fs
 from util.decorators import maybe_deferred
 from util.formatting import ColorCodes, good_contrast_with_black, from_human_readable
 from util import formatting
+from util.misc import annotation_to_str
 
 
 _INIT_DB_STATEMENTS = ["""
@@ -143,10 +144,7 @@ class OptionsWithoutHandlers(usage.Options):
                 else:
                     parameter_description = p.name
                     if p.annotation is not Parameter.empty:
-                        if typing.get_origin(p.annotation) == typing.Literal:
-                            parameter_description += f" {typing.get_args(p.annotation)}"
-                        else:
-                            parameter_description += f" ({p.annotation.__name__})"
+                        parameter_description += f" ({annotation_to_str(p.annotation)})"
                     if p.default is not Parameter.empty:
                         parameter_description += f" (default {p.default})"
                     pos_params.append(parameter_description)

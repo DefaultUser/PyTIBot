@@ -17,6 +17,7 @@
 import re
 from fnmatch import fnmatch
 import itertools
+import typing
 
 from twisted.logger import Logger
 
@@ -30,6 +31,22 @@ def str_to_bytes(data):
 
 def bytes_to_str(data):
     return str(data, "utf-8")
+
+
+def annotation_to_str(annotation):
+    def type_to_str(t: type) -> str:
+        return t.__name__
+    origin = typing.get_origin(annotation)
+    if origin == typing.Literal:
+        return ", ".join(typing.get_args(annotation))
+    if origin == typing.Union:
+        args = typing.get_args(annotation)
+        if type(None) in args: # -> typing.Optional
+            return f"Optional[{', '.join(map(type_to_str, args[:-1]))}]"
+        return ' | '.join(map(type_to_str, args))
+    if isinstance(annotation, type):
+        return type_to_str(annotation)
+    return ""
 
 
 def filter_dict(data, rule):

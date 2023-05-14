@@ -67,8 +67,10 @@ class MatrixBot:
             message = parse_html(event.formatted_body)
         else:
             message = event.body
+        # TODO: better support for edits
         try:
-            if event.source['content']['m.relates_to']['rel_type'] == "m.replace":
+            if (event.source['content']['m.relates_to']['rel_type'] == "m.replace" and
+                    isinstance(message, str)):
                 message = message.removeprefix("* ")
         except KeyError:
             pass
@@ -87,8 +89,10 @@ class MatrixBot:
             message = parse_html(event.formatted_body)
         else:
             message = event.body
+        # TODO: better support for edits
         try:
-            if event.source['content']['m.relates_to']['rel_type'] == "m.replace":
+            if (event.source['content']['m.relates_to']['rel_type'] == "m.replace" and
+                    isinstance(message, str)):
                 message = message.removeprefix("* ")
         except KeyError:
             pass

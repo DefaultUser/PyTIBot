@@ -59,6 +59,10 @@ class MatrixBot:
         self.client.add_event_callback(self.on_notice, RoomMessageNotice)
         self.client.add_event_callback(self.on_memberevent, RoomMemberEvent)
 
+    @staticmethod
+    def is_direct_message_room(room: MatrixRoom) -> bool:
+        return room.is_group and room.member_count == 2
+
     def on_message(self, room: MatrixRoom, event: RoomMessageText) -> None:
         MatrixBot.log.info("{room.display_name} | {event.sender} : {event.body}",
                            room=room, event=event)
@@ -152,6 +156,7 @@ class MatrixBot:
 
     def load_settings(self) -> None:
         MatrixBot.log.info("Loading settings from {path}", path=self.config._path)
+        self.force_dm_to_text = self.config["Connection"].get("force_dm_to_text", False)
         # TODO: setup aliases, triggers, commands
         self.channelwatchers = setup_channelwatchers(self, self.config.get("Channelmodules", {}),
                                                      Backends.MATRIX)
@@ -216,7 +221,7 @@ class MatrixBot:
     @inlineCallbacks
     def get_or_create_direct_message_room(self, user: str) -> str:
         for room_id, room in self.client.rooms.items():
-            if room.is_group and room.member_count == 2 and user in room.users:
+            if MatrixBot.is_direct_message_room(room) and user in room.users:
                 return room_id
         resp = yield future_to_deferred(self.client.room_create(is_direct=True, invite=[user],
             preset=RoomPreset.trusted_private_chat))
@@ -228,13 +233,15 @@ class MatrixBot:
                 return room_id
         else:
             MatrixBot.log.info("No room with alias {target} found", target=target)
-            return
+            return None
 
     @inlineCallbacks
-    def _send_message(self, msgtype: MessageType, target: str, message: Message) -> None:
+    def _send_message(self, msgtype: MessageType, target: str, message: Message):
         # direct messages will stay open until the user leaves the room
         if target.startswith("@"):
             target = yield self.get_or_create_direct_message_room(target)
+            if self.force_dm_to_text:
+                msgtype = MessageType.text
         elif target.startswith("#"):
             target = self.resolve_joined_room_alias(target)
         if target is None:

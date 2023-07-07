@@ -8,3 +8,4 @@ git+https://github.com/gtaylor/python-colormath.git@master
 markovify
 dateparser
 matrix-nio[e2e]
+unidecode

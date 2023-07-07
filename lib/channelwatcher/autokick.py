@@ -19,6 +19,7 @@ from collections import deque, defaultdict
 from string import Template
 import random
 from enum import Enum
+from unidecode import unidecode
 from twisted.logger import Logger
 from twisted.words.protocols import irc
 from twisted.internet import defer, reactor
@@ -54,6 +55,7 @@ class Autokick(abstract.ChannelWatcher):
         self.msg_buffer = defaultdict(lambda: deque([], buffer_len))
         # maximum number of highlights in one message
         self.max_highlights = config.get("max_highlights", 5)
+        self.use_unidecode = config.get("use_unidecode", False)
 
         self.min_delay = config.get("min_delay", 0)
         self.max_delay = config.get("max_delay", 0)
@@ -169,7 +171,9 @@ class Autokick(abstract.ChannelWatcher):
         user = user.lower()
         if user == self.bot.nickname.lower() or user in self.user_whitelist:
             return False
-        message = irc.stripFormatting(message)
+        if self.use_unidecode:
+            message = unidecode(message)
+        print(message)
         temp = re.sub(self.bot.nickname, "BOTNAME", message,
                       flags=re.IGNORECASE)
         if any(pattern.search(temp) for pattern in self.msg_whitelist):

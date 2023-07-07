@@ -63,7 +63,7 @@ class Autokick(abstract.ChannelWatcher):
         # ban
         try:
             self.mode = Autokick.Mode[config.get("mode", "KICK").upper()]
-        except Exception as e:
+        except Exception:
             Autokick.logger.warn("Invalid mode supplied, falling back to kick")
             self.mode = Autokick.Mode.KICK
         self.ban_service = config.get("ban_service", None)
@@ -132,9 +132,9 @@ class Autokick(abstract.ChannelWatcher):
                 delay = random.randint(self.min_delay, self.max_delay)
             except Exception as e:
                 Autokick.logger.warn("Failed to delay autokick ({e})", e=e)
-                delay=0
+                delay = 0
         else:
-            delay=0
+            delay = 0
         reactor.callLater(delay, self._kick_or_ban, user)
 
     def topic(self, user, topic):

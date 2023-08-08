@@ -422,6 +422,7 @@ class GitWebhookServer(Resource):
         action = data["action"]
         payload = None
         repo_name = data["repository"]["name"]
+        issue_url = yield self.url_shortener(data["issue"]["html_url"])
         actioncolor = ColorCodes.darkorange
         if action == "assigned" or action == "unassigned":
             payload = data["issue"]["assignee"]["login"]
@@ -441,7 +442,7 @@ class GitWebhookServer(Resource):
                       action=action, actioncolor=actioncolor,
                       issue_id=str(data["issue"]["number"]),
                       issue_title=data["issue"]["title"],
-                      issue_url=data["issue"]["html_url"])
+                      issue_url=issue_url)
         if payload:
             msg.children.append(": ")
             msg.children.append(payload)

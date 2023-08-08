@@ -65,10 +65,13 @@ class MatrixBot:
         MatrixBot.log.info("{room.display_name} | {event.sender} : {event.body}",
                            room=room, event=event)
         room_id = room.room_id
+        message = event.body
         if event.formatted_body:
-            message = parse_html(event.formatted_body)
-        else:
-            message = event.body
+            try:
+                message = parse_html(event.formatted_body)
+            except Exception as e:
+                MatrixBot.log.warn("Failed to parse Matrix RoomMessageText: "
+                                   f"{event.formatted_body=} | {e=}")
         # TODO: better support for edits
         try:
             if (event.source['content']['m.relates_to']['rel_type'] == "m.replace" and
@@ -88,9 +91,11 @@ class MatrixBot:
         room_id = room.room_id
         message = event.body
         if event.formatted_body:
-            message = parse_html(event.formatted_body)
-        else:
-            message = event.body
+            try:
+                message = parse_html(event.formatted_body)
+            except Exception as e:
+                MatrixBot.log.warn("Failed to parse Matrix RoomMessageNotice: "
+                                   f"{event.formatted_body=} | {e=}")
         # TODO: better support for edits
         try:
             if (event.source['content']['m.relates_to']['rel_type'] == "m.replace" and

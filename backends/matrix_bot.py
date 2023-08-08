@@ -17,22 +17,20 @@ import asyncio
 from twisted.internet.defer import Deferred, ensureDeferred, inlineCallbacks
 from twisted.internet import reactor
 from twisted.logger import Logger
-from twisted.words.protocols import irc
 from nio import AsyncClient, ClientConfig, MatrixRoom, RoomMessageText, RoomMessageNotice, RoomMemberEvent
 from nio import responses as MatrixResponses
 from nio.api import RoomPreset
-import os
 from zope.interface import implementer
 from enum import Enum
-from typing import Optional, Union
+from typing import Optional, Generator
 
 from backends import Backends
 from backends.common import setup_channelwatchers
 from backends.interfaces import IBot
 
-from util.aio_compat import deferred_to_future, future_to_deferred
+from util.aio_compat import future_to_deferred
 from util import filesystem as fs
-from util.formatting import to_matrix, to_plaintext, Tag, Message
+from util.formatting import to_matrix, to_plaintext, Message
 from util.formatting.html import parse_html
 from util.decorators import maybe_deferred
 from util.config import Config
@@ -195,7 +193,7 @@ class MatrixBot:
         return Deferred()
 
     @inlineCallbacks
-    def signedOn(self) -> None:
+    def signedOn(self) -> Generator[None, None, None]:
         yield future_to_deferred(asyncio.ensure_future(self.client.synced.wait()))
         for room in self.config["Connection"]["channels"]:
             if room not in self.client.rooms:
@@ -219,12 +217,12 @@ class MatrixBot:
                 "formatted_body": formatted}
 
     @inlineCallbacks
-    def get_or_create_direct_message_room(self, user: str) -> str:
+    def get_or_create_direct_message_room(self, user: str) -> Generator[str, MatrixRoom, str]:
         for room_id, room in self.client.rooms.items():
             if MatrixBot.is_direct_message_room(room) and user in room.users:
                 return room_id
         resp = yield future_to_deferred(self.client.room_create(is_direct=True, invite=[user],
-            preset=RoomPreset.trusted_private_chat))
+                                        preset=RoomPreset.trusted_private_chat))
         return resp.room_id
 
     def resolve_joined_room_alias(self, target: str) -> Optional[str]:
@@ -262,7 +260,7 @@ class MatrixBot:
         future_to_deferred(self.client.join(channel))
 
     @inlineCallbacks
-    def leave(self, channel: str) -> None:
+    def leave(self, channel: str):
         response = yield future_to_deferred(self.client.room_leave(channel))
         if isinstance(response, MatrixResponses.RoomLeaveError):
             MatrixBot.log.error("Couldn't leave room {channel}", channel=channel)
@@ -274,4 +272,3 @@ class MatrixBot:
 
     def ban(self, channel: str, user: str, reason: str = "") -> None:
         future_to_deferred(self.client.room_ban(channel, user, reason))
-

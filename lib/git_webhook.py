@@ -583,7 +583,7 @@ class GitWebhookServer(Resource):
         msg = self.pr_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=user, action=action,
                       actioncolor=actioncolor,
-                      pr_number=str(data["pull_request"]["number"]),
+                      pr_id=str(data["pull_request"]["number"]),
                       pr_title=data["pull_request"]["title"],
                       pr_url=url, head=head,
                       base=data["pull_request"]["head"]["ref"])

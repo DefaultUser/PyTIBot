@@ -85,7 +85,7 @@ txt_formatter = logging.Formatter('%(asctime)s %(message)s')
 # dateformat for the formatter
 txt_formatter.datefmt = '%H:%M:%S'
 yaml_formatter = YAMLFormatter()
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
 
 
 def txt_namer(name):

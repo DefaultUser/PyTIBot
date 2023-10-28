@@ -586,7 +586,7 @@ class GitWebhookServer(Resource):
                       pr_id=str(data["pull_request"]["number"]),
                       pr_title=data["pull_request"]["title"],
                       pr_url=url, head=head,
-                      base=data["pull_request"]["head"]["ref"])
+                      base=data["pull_request"]["base"]["ref"])
         if payload:
             msg.children.append(": ")
             msg.children.append(payload)

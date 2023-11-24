@@ -79,11 +79,16 @@ to remove from the list, 'ls' or 'list' to show the list"""
 
 
 def join(bot):
-    """Join a channel"""
+    """Join a channel ('join #channel=key' for password protected channels)"""
     def _join(is_admin, channels):
         if is_admin:
-            for c in channels:
-                bot.join(c)
+            for channel in channels:
+                if "=" in channel:
+                    channel, key = channel.split("=", 1)
+                    # TODO: should the key be saved?
+                    bot.join(channel, key)
+                else:
+                    bot.join(channel)
 
     while True:
         args, sender, channel = yield

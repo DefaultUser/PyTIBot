@@ -81,6 +81,9 @@ class IRCBot(irc.IRCClient, object):
         self.channelwatchers = setup_channelwatchers(self, self.config.get("Channelmodules", {}),
                                                      Backends.IRC)
 
+        # channel passwords
+        self.channel_keys = self.config["Connection"].get("channelkeys", dict())
+
         # clear the commands
         del self.commands
         self.commands = {}
@@ -208,7 +211,7 @@ class IRCBot(irc.IRCClient, object):
         if not isinstance(channels, list):
             channels = [channels]
         for channel in channels:
-            self.join(channel)
+            self.join(channel, self.channel_keys.get(channel, None))
 
     def msg(self, target, message, length=None):
         """
@@ -464,7 +467,7 @@ class IRCBot(irc.IRCClient, object):
         self.log.warn("Kicked from {channel} by {kicker} ({reason})",
                       channel=channel, kicker=kicker, reason=message)
         if self.config["Connection"].get("rejoinKicked", False):
-            self.join(channel)
+            self.join(channel, self.channel_keys.get(channel, None))
             if self.config["Actions"]:
                 if msg := self.config["Actions"].get("kickedFrom", None):
                     try:

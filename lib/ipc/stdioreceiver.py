@@ -99,7 +99,10 @@ class STDIOReceiver(LineOnlyReceiver, object):
         """Try to join one or more channels
         Usage: join <channels>"""
         for channel in channels.split():
-            self.botprovider.bot.join(channel)
+            key = None
+            if "=" in channel:
+                channel, key = channel.split("=", 1)
+            self.botprovider.bot.join(channel, key)
 
     def cmd_leave(self, channels):
         """Leave one or more channels

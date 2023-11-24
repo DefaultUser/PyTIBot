@@ -7,6 +7,8 @@ Connection:
   username:
   serverpassword:
   channels:
+  channelkeys:
+    channel1: secret
   adminbyhost: False
   admins:
   ignore:

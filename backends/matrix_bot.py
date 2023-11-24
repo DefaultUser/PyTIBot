@@ -261,7 +261,7 @@ class MatrixBot:
     def notice(self, target: str, message: Message, length=None) -> None:
         self._send_message(MessageType.notice, target, message)
 
-    def join(self, channel: str) -> None:
+    def join(self, channel: str, _) -> None:
         future_to_deferred(self.client.join(channel))
 
     @inlineCallbacks

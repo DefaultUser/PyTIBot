@@ -75,7 +75,10 @@ class PytibotDBusObject(objects.DBusObject):
         """Join the given channels"""
         if self.botprovider.bot:
             for channel in channels:
-                self.botprovider.bot.join(channel)
+                key = None
+                if "=" in channel:
+                    channel, key = channel.split("=", 1)
+                self.botprovider.bot.join(channel, key)
 
     def dbus_leave(self, channels):
         """Leave the given channels"""

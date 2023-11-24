@@ -36,7 +36,7 @@ class IBot(zope.interface.Interface):
     def describe(channel: str, action: str):
         """Do an action/emote"""
 
-    def join(channel: str):
+    def join(channel: str, key: Optional[str]=None):
         """Join a channel"""
 
     def leave(channel: str):

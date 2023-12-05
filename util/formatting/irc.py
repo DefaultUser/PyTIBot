@@ -283,7 +283,7 @@ class TagToIrcFormatter:
         elif tag.tagName == "a" and (href:=tag.attributes.get("href", None)):
             if isinstance(href, Tag):
                 href = common.handle_attribute_tag(href, self._slotDataStack)
-            self.buffer += f" ({href})"
+            self.buffer += f" ( {href} )"
         self._slotDataStack.pop()
 
 

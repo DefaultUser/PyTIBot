@@ -150,6 +150,8 @@ Commands:
   say: say
   random: rand
   fortune: fortune
+  kick: kick
+  ban: ban
 
 Aliases:
   cointoss: random heads tails

@@ -69,21 +69,24 @@ def unmorse(bot):
 
 
 def joke(bot):
-    """Chuck Norris jokes from http://icndb.com"""
-    url = "http://api.icndb.com/jokes/random/1"
+    """Chuck Norris jokes from https://api.chucknorris.io/"""
+    url = "https://api.chucknorris.io/jokes/random"
 
     @defer.inlineCallbacks
-    def _tell_joke(response, channel, name=None):
+    def _tell_joke(response, channel):
+        if response.code < 200 or response.code >= 300:
+            bot.msg(channel, "Failed to fetch joke")
+            return
         data = yield response.json()
-        cnjoke = data['value'][0]['joke']
-        cnjoke = cnjoke.replace("&quot;", "\"")
-        if name:
-            cnjoke = cnjoke.replace("Chuck Norris", name)
+        cnjoke = data['value']
         bot.msg(channel, str(cnjoke), length=510)
 
     while True:
         args, sender, channel = yield
-        get(url).addCallback(_tell_joke, channel, " ".join(args))
+        params = None
+        if args:
+            params = {"name": " ".join(args)}
+        get(url, params=params).addCallback(_tell_joke, channel)
 
 
 if sys.version_info.major == 3 and sys.version_info.minor < 9:

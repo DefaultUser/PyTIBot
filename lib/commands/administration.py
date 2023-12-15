@@ -142,6 +142,8 @@ def kick(bot):
     """Kick a user from a channel (kick <#channel> <user>)"""
     def _do_kick(is_user_admin: bool, sender: str, args: list):
         if not is_user_admin:
+            bot.notice(sender, formatting.colored("You're not my boss",
+                                                  ColorCodes.red))
             return
         if len(args) != 2:
             bot.notice(sender, formatting.colored("Invalid call - wrong number"
@@ -157,6 +159,8 @@ def ban(bot):
     """ban a user from a channel (ban <#channel> <user>)"""
     def _do_ban(is_user_admin: bool, sender: str, args: list):
         if not is_user_admin:
+            bot.notice(sender, formatting.colored("You're not my boss",
+                                                  ColorCodes.red))
             return
         if len(args) != 2:
             bot.notice(sender, formatting.colored("Invalid call - wrong number"

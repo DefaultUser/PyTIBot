@@ -421,7 +421,7 @@ class IRCBot(irc.IRCClient, object):
     def userKicked(self, kickee, channel, kicker, message):
         """Triggered when a user gets kicked"""
         # kick message
-        if self.config["Actions"]:
+        if "Actions" in self.config:
             if msg := self.config["Actions"].get("userKicked", None):
                 try:
                     msg = formatting.from_human_readable(msg)

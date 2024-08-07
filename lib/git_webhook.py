@@ -731,7 +731,24 @@ class GitWebhookServer(Resource):
     @defer.inlineCallbacks
     def on_gitlab_tag_push(self, data):
         repo_name = data["project"]["name"]
-        msg = self.create_stub.clone()
+        before_field = data["before"]
+        before_field_is_commit = before_field != "0" * len(before_field)
+        after_field = data["after"]
+        after_field_is_commit = after_field != "0" * len(after_field)
+        if before_field_is_commit:
+            if after_field_is_commit:
+                # weird case that hopefully never happens
+                msg = Tag('', children=[self.delete_stub.clone(),
+                                        self.create_stub.clone()])
+            else:
+                msg = self.delete_stub.clone()
+        else:
+            if after_field_is_commit:
+                msg = self.create_stub.clone()
+            else:
+                self.log.warn("Received 'tag_push' event where neither 'before' "
+                              "nor 'after' look like commit hashes")
+                return
         msg.fillSlots(repo_name=repo_name, user=data["user_name"],
                       ref_type="tag", ref=data["ref"].split("/", 2)[-1])
         commit_msgs = yield self.format_commits(data["commits"],

@@ -44,9 +44,9 @@ class GitWebhookServer(Resource):
         self.botfactory = botfactory
         self.github_secret = config["GitWebhook"].get("github_secret", None)
         self.gitlab_secret = config["GitWebhook"].get("gitlab_secret", None)
-        self.channels = GitWebhookServer._setup_report_channels(
+        self.channels = GitWebhookServer._setup_repo_config_tree(
             config["GitWebhook"]["channels"])
-        self.confidential_channels = GitWebhookServer._setup_report_channels(
+        self.confidential_channels = GitWebhookServer._setup_repo_config_tree(
             config["GitWebhook"].get("confidential_channels", {}))
         # filter settings
         self.filter_rules = config["GitWebhook"].get("FilterRules", [])
@@ -59,7 +59,7 @@ class GitWebhookServer(Resource):
         self._gh_review_comment_delayed_call = None
         # local hooks and actions
         self.actions = config["GitWebhook"].get("Actions", {})
-        self.hooks = config["GitWebhook"].get("Hooks", {})
+        self.hooks = GitWebhookServer._setup_hooks(config["GitWebhook"].get("Hooks", {}))
         self.rungroup_settings = config["GitWebhook"].get("RungroupSettings",
                                                           {})
         users = config["GitWebhook"].get("hook_report_users", [])
@@ -133,9 +133,9 @@ class GitWebhookServer(Resource):
         self.gitlab_mr_stub = from_human_readable(message_config.get("gitlab_mr_stub", '{reponame_stub} {user_stub} {action_stub} Merge Request !<font color="darkorange"><t:slot name="id"/></font> <a><t:attr name="href"><t:slot name="url"/></t:attr><t:slot name="title"/> (<font color="magenta"><t:slot name="source"/></font>-&gt;<font color="red"><t:slot name="target"/></font>)</a>').format(**crumbs))
 
     @staticmethod
-    def _setup_report_channels(config: dict[str, list[str]]) -> dict[str, dict[str, list[str]]]:
-        channel_setup = {}
-        for key, chanlist in config.items():
+    def _setup_repo_config_tree(config: dict[str, list[str]]) -> dict[str, dict[str, list[str]]]:
+        repo_config_tree: dict = {}
+        for key, subconfig in config.items():
             if "/" in key:
                 space, repo = key.rsplit("/", 1)
             else:
@@ -147,10 +147,32 @@ class GitWebhookServer(Resource):
                 repo = "*"
             space = space.lower()
             repo = repo.lower()
-            if space not in channel_setup:
-                channel_setup[space] = {}
-            channel_setup[space][repo] = chanlist
-        return channel_setup
+            if space not in repo_config_tree:
+                repo_config_tree[space] = {}
+            repo_config_tree[space][repo] = subconfig
+        return repo_config_tree
+
+    @staticmethod
+    def _setup_hooks(config: dict[str, dict]) -> dict[str, dict[str, dict]]:
+        hook_config: dict = {}
+        for eventtype, eventconfig in config.items():
+            hook_config[eventtype] = GitWebhookServer._setup_repo_config_tree(eventconfig)
+        return hook_config
+
+    @staticmethod
+    def _select_repo_config(repo_name, repo_space, config_tree):
+        """
+        Selects a subset of the config_tree for repo_name and repo_space, taking
+        the fallbacks into account.
+        """
+        repo_space = repo_space.lower()
+        repo_name = repo_name.lower()
+        config_space = repo_space if repo_space in config_tree else "*"
+        try:
+            config_repo = repo_name if repo_name in config_tree[config_space] else "*"
+            return config_tree[config_space][config_repo]
+        except KeyError:
+            return None
 
     def render_POST(self, request):
         body = request.content.read()
@@ -263,12 +285,13 @@ class GitWebhookServer(Resource):
         Trigger the defined push hooks
         """
         repo_name = data["project"]["name"]
-        projects = self.hooks.get("Push", [])
-        if repo_name in projects:
-            hooks = projects[repo_name]
-        elif "default" in projects:
-            hooks = projects["default"]
-        else:
+        repo_space = data["project"]["namespace"]
+        push_hooks_config = self.hooks.get("Push", None)
+        if push_hooks_config is None:
+            return
+        hooks = GitWebhookServer._select_repo_config(repo_name, repo_space,
+                                                     push_hooks_config)
+        if hooks is None:
             return
         for hook in hooks:
             filters = hook.get("filter", [])
@@ -315,13 +338,9 @@ class GitWebhookServer(Resource):
         if self.botfactory.bot is None:
             return
         channel_config = self.confidential_channels if confidential else self.channels
-        repo_space = repo_space.lower()
-        repo_name = repo_name.lower()
-        config_space = repo_space if repo_space in channel_config else "*"
-        config_repo = repo_name if repo_name in channel_config[config_space] else "*"
-        try:
-            channels = channel_config[config_space][config_repo]
-        except KeyError:
+        channels = GitWebhookServer._select_repo_config(repo_name, repo_space,
+                                                        channel_config)
+        if channels is None:
             self.log.warn("Recieved webhook for repo [{space}/{repo}], but no chat "
                           "channel is configured for it, ignoring...",
                           space=repo_space, repo=repo_name)

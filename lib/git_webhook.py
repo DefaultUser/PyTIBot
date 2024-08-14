@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2017-2023>  <Sebastian Schmidt>
+# Copyright (C) <2017-2024>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -133,7 +133,7 @@ class GitWebhookServer(Resource):
         self.gitlab_mr_stub = from_human_readable(message_config.get("gitlab_mr_stub", '{reponame_stub} {user_stub} {action_stub} Merge Request !<font color="darkorange"><t:slot name="id"/></font> <a><t:attr name="href"><t:slot name="url"/></t:attr><t:slot name="title"/> (<font color="magenta"><t:slot name="source"/></font>-&gt;<font color="red"><t:slot name="target"/></font>)</a>').format(**crumbs))
 
     @staticmethod
-    def _setup_repo_config_tree(config: dict[str, list[str]]) -> dict[str, dict[str, list[str]]]:
+    def _setup_repo_config_tree(config: dict) -> dict:
         repo_config_tree: dict = {}
         for key, subconfig in config.items():
             if "/" in key:
@@ -147,16 +147,15 @@ class GitWebhookServer(Resource):
                 repo = "*"
             space = space.lower()
             repo = repo.lower()
-            if space not in repo_config_tree:
-                repo_config_tree[space] = {}
-            repo_config_tree[space][repo] = subconfig
+            adjusted_key = f"{space}/{repo}"
+            repo_config_tree[adjusted_key] = subconfig
         return repo_config_tree
 
     @staticmethod
-    def _setup_hooks(config: dict[str, dict]) -> dict[str, dict[str, dict]]:
+    def _setup_hooks(config: dict) -> dict:
         hook_config: dict = {}
         for eventtype, eventconfig in config.items():
-            hook_config[eventtype] = GitWebhookServer._setup_repo_config_tree(eventconfig)
+            hook_config[eventtype.lower()] = GitWebhookServer._setup_repo_config_tree(eventconfig)
         return hook_config
 
     @staticmethod
@@ -167,12 +166,13 @@ class GitWebhookServer(Resource):
         """
         repo_space = repo_space.lower()
         repo_name = repo_name.lower()
-        config_space = repo_space if repo_space in config_tree else "*"
-        try:
-            config_repo = repo_name if repo_name in config_tree[config_space] else "*"
-            return config_tree[config_space][config_repo]
-        except KeyError:
-            return None
+        if selection := config_tree.get(f"{repo_space}/{repo_name}", None):
+            return selection
+        if selection := config_tree.get(f"*/{repo_name}", None):
+            return selection
+        if selection := config_tree.get(f"{repo_space}/*", None):
+            return selection
+        return config_tree.get("*/*", None)
 
     def render_POST(self, request):
         body = request.content.read()
@@ -286,7 +286,7 @@ class GitWebhookServer(Resource):
         """
         repo_name = data["project"]["name"]
         repo_space = data["project"]["namespace"]
-        push_hooks_config = self.hooks.get("Push", None)
+        push_hooks_config = self.hooks.get("push", None)
         if push_hooks_config is None:
             return
         hooks = GitWebhookServer._select_repo_config(repo_name, repo_space,

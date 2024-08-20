@@ -419,6 +419,7 @@ GitWebhook:
       default:
       - action: act1
         # filter out everything that matches a filter
+        # NOTE: the filter is specific to the action, not to the repository
         filter:
         - "branch != master"
       my_project:

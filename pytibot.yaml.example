@@ -123,6 +123,9 @@ GitWebhook:
         - commits.0.title == Update translation
       my_project:
       - action: do_noop # exclude my_project from the default Push hook
+      - action: act1
+        filter: # NOTE: this filter only applies to act1, but not to do_noop
+        - "branch != master"
   Actions:
     act1:
       type: process

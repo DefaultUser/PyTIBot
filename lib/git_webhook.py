@@ -427,20 +427,21 @@ class GitWebhookServer(Resource):
             self.report_to_chat(repo_name,
                                 GitWebhookServer._github_get_namespace(data),
                                 msg)
-        # subset of information that is common for both GitHub and GitLab
-        # only a few useful pieces of information
-        subset = {"commits": data["commits"],
-                  "branch": branch,
-                  "project": {"name": data["repository"]["name"],
-                              "namespace": data["repository"]["full_name"].split(
-                                  "/")[0],
-                              "description": data["repository"]["description"],
-                              "url": data["repository"]["html_url"],
-                              "homepage": data["repository"]["homepage"]},
-                  "pusher": {"name": data["pusher"]["name"],
-                             "username": data["sender"]["login"],
-                             "id": data["sender"]["id"]}}
-        self.push_hooks(subset)
+        # make some common information easier accessible
+        payloaddata = {"service": "github",
+                       "commits": data["commits"],
+                       "branch": branch,
+                       "project": {"name": data["repository"]["name"],
+                                   "namespace": data["repository"]["full_name"].split(
+                                       "/")[0],
+                                   "description": data["repository"]["description"],
+                                   "url": data["repository"]["html_url"],
+                                   "homepage": data["repository"]["homepage"]},
+                       "pusher": {"name": data["pusher"]["name"],
+                                  "username": data["sender"]["login"],
+                                  "id": data["sender"]["id"]},
+                       "full_data": data}
+        self.push_hooks(payloaddata)
 
     @defer.inlineCallbacks
     def on_github_issues(self, data):
@@ -739,19 +740,20 @@ class GitWebhookServer(Resource):
         self.report_to_chat(repo_name,
                             GitWebhookServer._gitlab_get_namespace(data),
                             msg)
-        # subset of information that is common for both GitHUb and GitLab
-        # only a few useful pieces of information
-        subset = {"commits": data["commits"],
-                  "branch": branch,
-                  "project": {"name": data["project"]["name"],
-                              "namespace": data["project"]["namespace"],
-                              "description": data["project"]["description"],
-                              "url": data["project"]["http_url"],
-                              "homepage": data["project"]["homepage"]},
-                  "pusher": {"name": data["user_name"],
-                             "username": data["user_username"],
-                             "id": data["user_id"]}}
-        self.push_hooks(subset)
+        # make some common information easier accessible
+        payloaddata = {"service": "gitlab",
+                       "commits": data["commits"],
+                       "branch": branch,
+                       "project": {"name": data["project"]["name"],
+                                   "namespace": data["project"]["namespace"],
+                                   "description": data["project"]["description"],
+                                   "url": data["project"]["http_url"],
+                                   "homepage": data["project"]["homepage"]},
+                       "pusher": {"name": data["user_name"],
+                                  "username": data["user_username"],
+                                  "id": data["user_id"]},
+                       "full_data": data}
+        self.push_hooks(payloaddata)
 
     @defer.inlineCallbacks
     def on_gitlab_tag_push(self, data):

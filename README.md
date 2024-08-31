@@ -432,7 +432,7 @@ GitWebhook:
       args:
       - "1" # should be strings
       - test
-      - "--foo=${data}" # data of the webhook payload (common subset for github and gitlab) as Json
+      - "--foo=${data}" # data of the webhook payload (common subset for github and gitlab + "full_data" field) as Json
       - "--bar=${data(project.name)} # like above, but limited to the specified field
       rungroup: run1
     do_noop:

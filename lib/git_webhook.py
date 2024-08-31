@@ -19,11 +19,13 @@ from twisted.web.template import Tag, tags
 from twisted.internet import reactor, defer
 from twisted.python.failure import Failure
 from twisted.logger import Logger
+
 import codecs
-from functools import partial
-import json
-import hmac
+from enum import StrEnum
+from functools import partial, partialmethod
 from hashlib import sha1
+import hmac
+import json
 import textwrap
 
 from util.formatting import ColorCodes, good_contrast_with_black, colored, from_human_readable
@@ -39,6 +41,8 @@ class GitWebhookServer(Resource):
     isLeaf = True
     log = Logger()
     GH_ReviewFloodPrevention_Delay = 10
+
+    HookType = StrEnum("HookType", ["Push"])
 
     def __init__(self, botfactory, config):
         self.botfactory = botfactory
@@ -280,17 +284,17 @@ class GitWebhookServer(Resource):
         for user in self.hook_report_users:
             self.botfactory.bot.msg(user, message)
 
-    def push_hooks(self, data):
+    def _run_hooks(self, hook_type: HookType, data):
         """
         Trigger the defined push hooks
         """
         repo_name = data["project"]["name"]
         repo_space = data["project"]["namespace"]
-        push_hooks_config = self.hooks.get("push", None)
-        if push_hooks_config is None:
+        hooks_config = self.hooks.get(hook_type.lower(), None)
+        if hooks_config is None:
             return
         hooks = GitWebhookServer._select_repo_config(repo_name, repo_space,
-                                                     push_hooks_config)
+                                                     hooks_config)
         if hooks is None:
             return
         for hook in hooks:
@@ -299,8 +303,8 @@ class GitWebhookServer(Resource):
                 continue
             action_name = hook.get("action", None)
             if not action_name:
-                self.log.warn("Push hook: Missing action for repo {name}",
-                              name=repo_name)
+                self.log.warn("{hook_type} hook: Missing action for repo {name}",
+                              hook_type=hook_type, name=repo_name)
                 continue
             action = self.actions.get(action_name, None)
             if not action:
@@ -320,19 +324,21 @@ class GitWebhookServer(Resource):
                 self.log.warn("No such action type: {action_type}",
                               action_type=action_type)
 
-        # Push: github_push, gitlab_push
-        # Tag: github_create (ref_type: tag), gitlab_tag_push
-        # implement later
-        # Issue: github_issues (opened, reopened, edited, closed),
-        #        gitlab_issue (open, reopen, update, close)
-        # PullRequest: github_pull_request (opened, reopened, closed, edited,
-        #                                   synchronize),
-        #              github_pull_request_review (review -> state == approved),
-        #              gitlab_merge_request (open, reopen, merge, close, update,
-        #                                    approved)
-        # Comment: github_issue_comment, github_commit_comment,
-        #          github_pull_request_review_comment, gitlab_note
-        # TODO: issue_hooks, tag_hooks, pullrequest_hooks and comment_hooks
+    # Push: github_push, gitlab_push
+    push_hooks = partialmethod(_run_hooks, HookType.Push)
+
+    # Tag: github_create (ref_type: tag), gitlab_tag_push
+    # implement later
+    # Issue: github_issues (opened, reopened, edited, closed),
+    #        gitlab_issue (open, reopen, update, close)
+    # PullRequest: github_pull_request (opened, reopened, closed, edited,
+    #                                   synchronize),
+    #              github_pull_request_review (review -> state == approved),
+    #              gitlab_merge_request (open, reopen, merge, close, update,
+    #                                    approved)
+    # Comment: github_issue_comment, github_commit_comment,
+    #          github_pull_request_review_comment, gitlab_note
+    # TODO: issue_hooks, tag_hooks, pullrequest_hooks and comment_hooks
 
     def report_to_chat(self, repo_name, repo_space, message, confidential=False):
         if self.botfactory.bot is None:

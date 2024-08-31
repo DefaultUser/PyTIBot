@@ -143,7 +143,7 @@ Triggers:
   youtube_api_key: REPLACE_ME
 - simple_trigger:
   - trigger: PyTIBot is great
-    answer: 
+    answer:
     - Thank you, $USER.
     - I know
   - trigger: to be or not to be
@@ -228,7 +228,7 @@ Channelmodules:
   -
     Greeter:
       standard_nicks: [test]
-      patterns: 
+      patterns:
       - "realname == *webchat*" # similar to webhook event filter (nick, user, host, realname)
       - "*!webchat@* # shell like pattern matching"
       - "*!*@gateway/web/*"
@@ -429,7 +429,11 @@ GitWebhook:
       type: process
       command: ./my_process
       path: /some/path/
-      args: ["1", test] # should be strings
+      args:
+      - "1" # should be strings
+      - test
+      - "--foo=${data}" # data of the webhook payload (common subset for github and gitlab) as Json
+      - "--bar=${data(project.name)} # like above, but limited to the specified field
       rungroup: run1
     do_noop:
       type: noop

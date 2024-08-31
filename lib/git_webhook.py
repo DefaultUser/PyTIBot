@@ -421,7 +421,7 @@ class GitWebhookServer(Resource):
             self.report_to_chat(repo_name,
                                 GitWebhookServer._github_get_namespace(data),
                                 msg)
-        # subset of information that is common for both GitHUb and GitLab
+        # subset of information that is common for both GitHub and GitLab
         # only a few useful pieces of information
         subset = {"commits": data["commits"],
                   "branch": branch,

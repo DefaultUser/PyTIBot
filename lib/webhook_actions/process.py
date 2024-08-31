@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2018>  <Sebastian Schmidt>
+# Copyright (C) <2018-2024>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -17,7 +15,9 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from collections import defaultdict, deque
+import json
 import os
+import re
 
 from twisted.logger import Logger
 from twisted.internet import defer
@@ -30,21 +30,39 @@ log = Logger()
 
 running_processes = {}
 process_queue = defaultdict(deque)
+_data_accessor_pattern = re.compile(r"\${data(?:\((\w+(?:\.\w+)*)\))?}")
 
 
-def _run_process(action_id, action):
+def _run_process(action_id, action, payloaddata):
     """
     Actually run the process
     """
+    def replacer(match):
+        accessor = match.group(1)
+        if accessor is None:
+            return json.dumps(payloaddata)
+        temp = payloaddata
+        for frag in accessor.split("."):
+            if isinstance(temp, list) and frag.isnumeric():
+                frag = int(frag)
+            try:
+                temp = temp[frag]
+            except KeyError:
+                raise KeyError(f"Webhook payload doesn't contain {accessor}")
+        return json.dumps(temp)
+
     cmd = action.get("command", None)
     if not cmd:
         raise ValueError("No command for action {} given".format(action_id))
     path = action.get("path", None)
     args = action.get("args", [])
-    # make sure args are strings
+    # make sure args are strings and replace "${data}" and
+    # and "${data(<accessor path>)}" with payload data
     for i, arg in enumerate(args):
         if not isinstance(arg, str):
             args[i] = str(arg)
+        else:
+            args[i] = _data_accessor_pattern.sub(replacer, arg)
     return async_process.start_subprocess(cmd, args, path, log_name=action_id)
 
 
@@ -69,9 +87,9 @@ def _maybe_run_next_process(rungroup):
         return
     if len(process_queue[rungroup]) == 0:
         return
-    action_id, action, d = process_queue[rungroup].pop()
+    action_id, action, payloaddata, d = process_queue[rungroup].pop()
     try:
-        process = _run_process(action_id, action)
+        process = _run_process(action_id, action, payloaddata)
     except Exception as e:
         log.warn("Error starting process {action_id}: {error}",
                  action_id=action_id, error=e)
@@ -82,7 +100,7 @@ def _maybe_run_next_process(rungroup):
         process.proto.finished.addBoth(_on_process_finished, rungroup, d)
 
 
-def _queue_process(action_id, action, runsettings):
+def _queue_process(action_id, action, payloaddata, runsettings):
     """
     Add a new process to the process queue
     """
@@ -100,7 +118,7 @@ def _queue_process(action_id, action, runsettings):
         else:
             log.warn("Stopping processes is only supported on posix OSs, "
                      "Not sending KILL signal")
-    process_queue[rungroup].append((action_id, action, d))
+    process_queue[rungroup].append((action_id, action, payloaddata, d))
     _maybe_run_next_process(rungroup)
     return d
 
@@ -110,5 +128,4 @@ def process(action_id, data, action, runsettings):
     Run a process action.
     Only one process per rungroup at a time (queues additional processes)
     """
-    # TODO: process arguments based on information in the webhook's json
-    return _queue_process(action_id, action, runsettings)
+    return _queue_process(action_id, action, data, runsettings)

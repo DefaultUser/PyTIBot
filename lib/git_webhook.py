@@ -42,7 +42,7 @@ class GitWebhookServer(Resource):
     log = Logger()
     GH_ReviewFloodPrevention_Delay = 10
 
-    HookType = StrEnum("HookType", ["Push"])
+    HookType = StrEnum("HookType", ["Push", "MergeRequest"])
 
     def __init__(self, botfactory, config):
         self.botfactory = botfactory
@@ -326,6 +326,10 @@ class GitWebhookServer(Resource):
 
     # Push: github_push, gitlab_push
     push_hooks = partialmethod(_run_hooks, HookType.Push)
+
+    # NOTE: EXPERIMENTAL
+    # MergeRequest: github_pull_request, gitlab_merge_request
+    merge_request_hooks = partialmethod(_run_hooks, HookType.MergeRequest)
 
     # Tag: github_create (ref_type: tag), gitlab_tag_push
     # implement later
@@ -620,6 +624,23 @@ class GitWebhookServer(Resource):
                             GitWebhookServer._github_get_namespace(data),
                             msg)
 
+        # NOTE: payloaddata is experimental
+        # make some common information easier accessible
+        payloaddata = {"service": "github",
+                       "project": {"name": data["repository"]["name"],
+                                   "namespace": data["repository"]["full_name"].split(
+                                       "/")[0],
+                                   "description": data["repository"]["description"],
+                                   "url": data["repository"]["html_url"],
+                                   "homepage": data["repository"]["homepage"]},
+                       "user": {"name": data["sender"]["login"],
+                                "username": data["sender"]["login"],
+                                "id": data["sender"]["id"]},
+                       "action": action,
+                       "mergeable": data["pull_request"]["mergeable"],
+                       "full_data": data}
+        self.merge_request_hooks(payloaddata)
+
     def _github_PR_review_send_msg(self, is_comment, repo_name, repo_space, user,
                                    pr_number, title, action, head, base, urls):
         review_type = "Review Comment" if is_comment else "Review"
@@ -899,3 +920,19 @@ class GitWebhookServer(Resource):
         self.report_to_chat(repo_name,
                             GitWebhookServer._gitlab_get_namespace(data),
                             msg)
+
+        # NOTE: payloaddata is experimental
+        # make some common information easier accessible
+        payloaddata = {"service": "gitlab",
+                       "project": {"name": data["project"]["name"],
+                                   "namespace": data["project"]["namespace"],
+                                   "description": data["project"]["description"],
+                                   "url": data["project"]["http_url"],
+                                   "homepage": data["project"]["homepage"]},
+                       "user": {"name": data["user"]["name"],
+                                "username": data["user"]["username"],
+                                "id": data["user"]["id"]},
+                       "action": action,
+                       "mergeable": attribs["detailed_merge_status"] == "mergeable",
+                       "full_data": data}
+        self.merge_request_hooks(payloaddata)

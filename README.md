@@ -424,6 +424,9 @@ GitWebhook:
         - "branch != master"
       my_project:
       - action: do_noop # exclude my_project from the default Push hook
+    MergeRequest: # EXPERIMENTAL
+      default:
+      - action: act1
   Actions:
     act1:
       type: process

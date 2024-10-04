@@ -55,7 +55,7 @@ def _run_process(action_id, action, payloaddata):
     if not cmd:
         raise ValueError("No command for action {} given".format(action_id))
     path = action.get("path", None)
-    args = action.get("args", [])
+    args = action.get("args", []).copy() # Copy to avoid replacing "${data}"
     # make sure args are strings and replace "${data}" and
     # and "${data(<accessor path>)}" with payload data
     for i, arg in enumerate(args):

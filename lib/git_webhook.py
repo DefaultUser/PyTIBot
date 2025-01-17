@@ -610,13 +610,14 @@ class GitWebhookServer(Resource):
             action = "converted to draft:"
         url = yield self.url_shortener(data["pull_request"]["html_url"])
         head = GitWebhookServer._github_get_pr_head_display_ref(data["pull_request"])
+        base = data["pull_request"]["base"]["ref"]
         msg = self.pr_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=user, action=action,
                       actioncolor=actioncolor,
                       pr_id=str(data["pull_request"]["number"]),
                       pr_title=data["pull_request"]["title"],
                       pr_url=url, head=head,
-                      base=data["pull_request"]["base"]["ref"])
+                      base=base)
         if payload:
             msg.children.append(": ")
             msg.children.append(payload)
@@ -624,7 +625,6 @@ class GitWebhookServer(Resource):
                             GitWebhookServer._github_get_namespace(data),
                             msg)
 
-        # NOTE: payloaddata is experimental
         # make some common information easier accessible
         payloaddata = {"service": "github",
                        "project": {"name": data["repository"]["name"],
@@ -637,6 +637,8 @@ class GitWebhookServer(Resource):
                                 "username": data["sender"]["login"],
                                 "id": data["sender"]["id"]},
                        "action": action,
+                       "from_branch": head,
+                       "to_branch": base,
                        "mergeable": data["pull_request"]["mergeable"],
                        "full_data": data}
         self.merge_request_hooks(payloaddata)
@@ -910,18 +912,19 @@ class GitWebhookServer(Resource):
             action = "removed approval for"
             actioncolor = ColorCodes.darkorange
         url = yield self.url_shortener(attribs["url"])
+        head = GitWebhookServer._gitlab_get_mr_source_display(attribs)
+        base = attribs["target_branch"]
         msg = self.gitlab_mr_stub.clone()
         msg.fillSlots(repo_name=repo_name, user=data["user"]["name"],
                       action=action, actioncolor=actioncolor,
                       id=str(attribs["iid"]), title=attribs["title"],
-                      source=GitWebhookServer._gitlab_get_mr_source_display(attribs),
-                      target=attribs["target_branch"],
+                      source=head,
+                      target=base,
                       url=url)
         self.report_to_chat(repo_name,
                             GitWebhookServer._gitlab_get_namespace(data),
                             msg)
 
-        # NOTE: payloaddata is experimental
         # make some common information easier accessible
         payloaddata = {"service": "gitlab",
                        "project": {"name": data["project"]["name"],
@@ -933,6 +936,8 @@ class GitWebhookServer(Resource):
                                 "username": data["user"]["username"],
                                 "id": data["user"]["id"]},
                        "action": action,
+                       "from_branch": head,
+                       "to_branch": base,
                        "mergeable": attribs["detailed_merge_status"] == "mergeable",
                        "full_data": data}
         self.merge_request_hooks(payloaddata)

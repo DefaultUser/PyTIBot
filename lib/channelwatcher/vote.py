@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2020-2023>  <Sebastian Schmidt>
+# Copyright (C) <2020-2025>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -78,6 +78,10 @@ PRAGMA foreign_keys = ON;""",
     color TEXT CHECK(color in ("white", "black", "darkblue", "darkgreen", "red", "darkred", "darkmagenta", "darkorange", "yellow", "lime", "darkcyan", "cyan", "blue", "magenta", "darkgray", "lightgray", "")),
     confidential BOOLEAN DEFAULT false CHECK(confidential in (true, false)), -- only for filtering on website
     default_duration_seconds INTEGER
+);""",
+"""CREATE TABLE IF NOT EXISTS Metadata (
+    name TEXT UNIQUE NOT NULL PRIMARY KEY,
+    data TEXT
 );"""] # noqa: E128
 
 
@@ -391,6 +395,8 @@ class Vote(abstract.ChannelWatcher):
     logger = Logger()
     supported_backends = [Backends.IRC, Backends.MATRIX]
 
+    ExpectedDBSchemaVersion = 3
+
     PollEndWarningTime = timedelta(days=2)
     PollDefaultDuration = timedelta(days=15)
     expireTimeRegex = re.compile(r"(extend|reduce)\s+(?:(\d+)\s*d(?:ays?)?)?\s*(?:(\d+)\s*h(?:ours?)?)?$")
@@ -434,6 +440,7 @@ class Vote(abstract.ChannelWatcher):
         self._pending_confirmations = {}
         self._num_active_users = 0
         self._poll_delayed_calls = {}
+        self._db_unusable = False
         self._setup()
 
     def load_message_templates(self, message_config: dict) -> None:
@@ -467,8 +474,45 @@ class Vote(abstract.ChannelWatcher):
     @defer.inlineCallbacks
     def _setup(self):
         yield self.dbpool.runInteraction(Vote.initialize_databases)
+        try:
+            schemaversion = yield self.get_dbschemaversion()
+        except ValueError as e:
+            self._db_unusable = True
+            self.bot.notice(self.channel, "Failed to read database schema "
+                            "version. Vote commands will not be usable")
+            Vote.logger.error("{channel}: Failed to read database schema version: {e}",
+                              channel=self.channel, e=e)
+            return
+        if schemaversion is None:
+            # check if it is an old DB without metadata information
+            if (yield self.count_polls()):
+                self._db_unusable = True
+                msg = ("DB contains polls, but no schema version metadata. "
+                       "Make sure to follow the 'MANUAL INTERVENTION' "
+                       "procedures described in all previous commit messages "
+                       "and run \"INSERT INTO Metadata VALUES ('dbschemaversion', 3);\"")
+                self.bot.notice(self.channel, msg)
+                Vote.logger.error(self.channel + ": " + msg)
+                return
+            # New empty DB
+            yield self.dbpool.runInteraction(Vote.set_dbschemaversion,
+                                             Vote.ExpectedDBSchemaVersion)
+        elif schemaversion < Vote.ExpectedDBSchemaVersion:
+            yield self.update_db(schemaversion)
+        elif schemaversion > Vote.ExpectedDBSchemaVersion:
+            self._db_unusable = True
+            msg = (f"Vote database uses newer schemaversion '{schemaversion}'. "
+                   "Vote functionality is not available")
+            self.bot.notice(self.channel, msg)
+            Vote.logger.error(self.channel + ": " + msg)
+            return
         self.query_active_user_count()
         self.setup_poll_delayed_calls()
+
+    @defer.inlineCallbacks
+    def _update_db(self, schemaversion):
+        # no automatic update for schemaversion < 3
+        pass
 
     @staticmethod
     def format_time(t):
@@ -478,6 +522,12 @@ class Vote(abstract.ChannelWatcher):
     def initialize_databases(cursor):
         for statement in _INIT_DB_STATEMENTS:
             cursor.execute(statement)
+
+    @staticmethod
+    def set_dbschemaversion(cursor, version):
+        cursor.execute("INSERT INTO Metadata (name, version) "
+                       "VALUES ('dbschemaversion', :version);",
+                       {"version": version})
 
     @staticmethod
     def insert_user(cursor, auth, user, privilege):
@@ -621,6 +671,20 @@ class Vote(abstract.ChannelWatcher):
         if decision == VoteDecision.NO:
             return Vote.Colors.no
         return ColorCodes.lightgray
+
+    @defer.inlineCallbacks
+    def get_dbschemaversion(self) -> Optional[int]:
+        version = yield self.dbpool.runQuery("SELECT data FROM Metadata "
+                                             "WHERE name='dbschemaversion';")
+        if not version:
+            return None
+
+        return int(version[0][0])
+
+    @defer.inlineCallbacks
+    def count_polls(self) -> int:
+        count = (yield self.dbpool.runQuery('SELECT COUNT(*) FROM Polls;'))[0][0]
+        return int(count)
 
     @defer.inlineCallbacks
     def get_user_privilege(self, name):
@@ -1480,6 +1544,10 @@ class Vote(abstract.ChannelWatcher):
         pass
 
     def msg(self, user, message):
+        if self._db_unusable:
+            self.bot.notice(user, "Database is in unusable state, please "
+                            "contact an admin to fix it")
+            return
         # TODO: handle formatted messages
         message = formatting.to_plaintext(message)
         if not message.startswith(self.prefix):

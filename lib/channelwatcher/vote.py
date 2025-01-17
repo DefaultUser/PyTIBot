@@ -30,6 +30,7 @@ from threading import Lock
 from inspect import signature, Parameter
 import typing
 from typing import Optional
+import shutil
 
 from . import abstract
 from backends import Backends
@@ -51,14 +52,14 @@ PRAGMA foreign_keys = ON;""",
     id INTEGER PRIMARY KEY,
     description TEXT NOT NULL,
     creator TEXT NOT NULL,
-    vetoed_by TEXT,
-    veto_reason TEXT,
+    vetoed_decided_canceled_by TEXT,
+    veto_decision_cancel_reason TEXT,
     time_start DATETIME DEFAULT (DATETIME('now', 'UTC')), -- always use UTC
     time_end DATETIME DEFAULT (DATETIME('now', 'UTC', '+15 days')), -- always use UTC
     status TEXT CHECK(status in ("RUNNING", "CANCELED", "PASSED", "TIED", "FAILED", "VETOED", "DECIDED")) DEFAULT "RUNNING",
     category INTEGER,
     FOREIGN KEY (creator) REFERENCES Users(id) ON UPDATE CASCADE,
-    FOREIGN KEY (vetoed_by) REFERENCES Users(id) ON UPDATE CASCADE,
+    FOREIGN KEY (vetoed_decided_canceled_by) REFERENCES Users(id) ON UPDATE CASCADE,
     FOREIGN KEY (category) REFERENCES Categories(id) ON DELETE SET NULL
 );""",
 """CREATE TABLE IF NOT EXISTS Votes (
@@ -252,29 +253,13 @@ class PollModifyOptions(OptionsWithoutHandlers):
                 self["value"] = None
 
 
-class PollCancelOptions(OptionsWithoutHandlers):
-    def parseArgs(self, poll_id: int):
-        try:
-            self["poll_id"] = int(poll_id)
-        except ValueError:
-            raise usage.UsageError("PollID has to be an integer")
-
-
-class PollVetoOptions(OptionsWithoutHandlers):
+class PollVetoDecideCancelOptions(OptionsWithoutHandlers):
     def parseArgs(self, poll_id: int, *reason):
         try:
             self["poll_id"] = int(poll_id)
         except ValueError:
             raise usage.UsageError("PollID has to be an integer")
         self["reason"] = " ".join(reason)
-
-
-class PollDecideOptions(OptionsWithoutHandlers):
-    def parseArgs(self, poll_id: int):
-        try:
-            self["poll_id"] = int(poll_id)
-        except ValueError:
-            raise usage.UsageError("PollID has to be an integer")
 
 
 class PollExpireOptions(OptionsWithoutHandlers):
@@ -308,9 +293,9 @@ class PollOptions(OptionsWithoutHandlers):
     subCommands = [
         ['create', 'call', PollCreateOptions, "Create a new poll"],
         ['modify', 'mod', PollModifyOptions, "Modify a poll (admin only)"],
-        ['cancel', None, PollCancelOptions, "Cancel a poll (vote caller only)"],
-        ['veto', None, PollVetoOptions, "Veto a poll (admin only)"],
-        ['decide', None, PollDecideOptions, "Decide a poll (admin only)"],
+        ['cancel', None, PollVetoDecideCancelOptions, "Cancel a poll (vote caller only)"],
+        ['veto', None, PollVetoDecideCancelOptions, "Veto a poll (admin only)"],
+        ['decide', None, PollVetoDecideCancelOptions, "Decide a poll (admin only)"],
         ['expire', None, PollExpireOptions,
             "Change Duration of a poll (admin only)"],
         ['list', 'ls', PollListOptions, "List polls"],
@@ -395,7 +380,7 @@ class Vote(abstract.ChannelWatcher):
     logger = Logger()
     supported_backends = [Backends.IRC, Backends.MATRIX]
 
-    ExpectedDBSchemaVersion = 3
+    ExpectedDBSchemaVersion = 4
 
     PollEndWarningTime = timedelta(days=2)
     PollDefaultDuration = timedelta(days=15)
@@ -433,8 +418,8 @@ class Vote(abstract.ChannelWatcher):
         self.load_message_templates(config.get("MessageTemplates", {}))
         vote_configdir = os.path.join(fs.adirs.user_config_dir, "vote")
         os.makedirs(vote_configdir, exist_ok=True)
-        dbfile = os.path.join(vote_configdir, "{}.sqlite".format(self.channel))
-        self.dbpool = adbapi.ConnectionPool("sqlite3", dbfile,
+        self._dbfile = os.path.join(vote_configdir, "{}.sqlite".format(self.channel))
+        self.dbpool = adbapi.ConnectionPool("sqlite3", self._dbfile,
                                             check_same_thread=False)
         self._lock = Lock()
         self._pending_confirmations = {}
@@ -495,10 +480,10 @@ class Vote(abstract.ChannelWatcher):
                 Vote.logger.error(self.channel + ": " + msg)
                 return
             # New empty DB
-            yield self.dbpool.runInteraction(Vote.set_dbschemaversion,
+            yield self.dbpool.runInteraction(Vote.insert_dbschemaversion,
                                              Vote.ExpectedDBSchemaVersion)
         elif schemaversion < Vote.ExpectedDBSchemaVersion:
-            yield self.update_db(schemaversion)
+            yield self._update_db(schemaversion)
         elif schemaversion > Vote.ExpectedDBSchemaVersion:
             self._db_unusable = True
             msg = (f"Vote database uses newer schemaversion '{schemaversion}'. "
@@ -509,10 +494,29 @@ class Vote(abstract.ChannelWatcher):
         self.query_active_user_count()
         self.setup_poll_delayed_calls()
 
+    @staticmethod
+    def _update_db_3_to_4(cursor):
+        cursor.execute('ALTER TABLE Polls RENAME COLUMN vetoed_by TO '
+                       'vetoed_decided_canceled_by;')
+        cursor.execute('ALTER TABLE Polls RENAME COLUMN veto_reason '
+                       'TO veto_decision_cancel_reason;')
+        Vote.update_dbschemaversion(cursor, 4)
+
     @defer.inlineCallbacks
-    def _update_db(self, schemaversion):
+    def _update_db(self, current_schemaversion):
+        shutil.copy(self._dbfile, f"{self._dbfile}.bak_from_version{current_schemaversion}")
         # no automatic update for schemaversion < 3
-        pass
+        if current_schemaversion == 3:
+            try:
+                yield self.dbpool.runInteraction(Vote._update_db_3_to_4)
+            except Exception as e:
+                self._db_unusable = True
+                msg = ("Failed to update Vote DB from schema version 3 to "
+                       "version 4. Vote functionality will not be available")
+                self.bot.notice(self.channel, msg)
+                Vote.logger.error(self.channel + ": " + msg + f"({e})")
+                return
+            current_schemaversion = 4
 
     @staticmethod
     def format_time(t):
@@ -524,10 +528,16 @@ class Vote(abstract.ChannelWatcher):
             cursor.execute(statement)
 
     @staticmethod
-    def set_dbschemaversion(cursor, version):
-        cursor.execute("INSERT INTO Metadata (name, version) "
+    def insert_dbschemaversion(cursor, version):
+        cursor.execute("INSERT INTO Metadata (name, data) "
                        "VALUES ('dbschemaversion', :version);",
                        {"version": version})
+
+    @staticmethod
+    def update_dbschemaversion(cursor, version):
+        cursor.execute("UPDATE Metadata "
+                       f"SET data={version} "
+                       "WHERE name='dbschemaversion';")
 
     @staticmethod
     def insert_user(cursor, auth, user, privilege):
@@ -569,12 +579,13 @@ class Vote(abstract.ChannelWatcher):
                        'WHERE id=:id;', {"id": poll_id, "time": timestr})
 
     @staticmethod
-    def update_poll_veto(cursor, poll_id, vetoed_by, reason):
+    def update_poll_veto_decide_cancel(cursor, poll_id, issuer, reason, status: PollStatus):
         cursor.execute('UPDATE Polls '
-                       'SET status = "VETOED", vetoed_by = "{vetoed_by}", '
-                       'veto_reason = "{reason}" '
+                       'SET status = "{status}", vetoed_decided_canceled_by = "{issuer}", '
+                       'veto_decision_cancel_reason = "{reason}" '
                        'WHERE id = "{poll_id}";'.format(poll_id=poll_id,
-                                                        vetoed_by=vetoed_by,
+                                                        status=status.name,
+                                                        issuer=issuer,
                                                         reason=reason))
         now = datetime.utcnow()
         Vote.update_poll_time_end(cursor, poll_id, now)
@@ -1053,9 +1064,10 @@ class Vote(abstract.ChannelWatcher):
             self.bot.notice(issuer, "Successfully modified poll")
 
     @defer.inlineCallbacks
-    def cmd_poll_veto(self, issuer, poll_id, reason):
+    def _cmd_poll_veto_or_decide(self, issuer, poll_id, reason, is_veto):
         if not (yield self.is_vote_admin(issuer)):
-            self.bot.notice(issuer, "Only admins can VETO polls")
+            self.bot.notice(issuer,
+                            f"Only admins can {'VETO' if is_veto else 'DECIDE'} polls")
             return
         issuer_auth = yield self.bot.get_auth(issuer)
         with self._lock: # TODO: is this needed?
@@ -1067,50 +1079,33 @@ class Vote(abstract.ChannelWatcher):
                 self.bot.notice(issuer, "Poll doesn't exist")
                 return
             try:
-                # TODO: confirmation?
-                yield self.dbpool.runInteraction(Vote.update_poll_veto, poll_id,
-                                                 issuer_auth, reason)
+                yield self.dbpool.runInteraction(Vote.update_poll_veto_decide_cancel,
+                                                 poll_id, issuer_auth, reason,
+                                                 PollStatus.VETOED if is_veto else PollStatus.DECIDED)
             except Exception as e:
-                self.bot.notice(issuer, "Error vetoing poll, contact the "
+                action = "vetoing" if is_veto else "deciding"
+                self.bot.notice(issuer, f"Error {action} poll, contact the "
                                 "admin")
-                Vote.logger.warn("Error vetoing poll #{id}: {error}",
-                                 id=poll_id, error=e)
+                Vote.logger.warn("Error {action} poll #{id}: {error}",
+                                 action=action, id=poll_id, error=e)
                 return
-            msg = self.poll_vetoed_stub.clone().fillSlots(poll_id=str(poll_id))
+            if is_veto:
+                msg = self.poll_vetoed_stub.clone().fillSlots(poll_id=str(poll_id))
+            else:
+                msg = self.poll_decided_stub.clone().fillSlots(poll_id=str(poll_id))
             self.bot.msg(self.channel, msg)
             if self.notification_channel:
                 self.bot.msg(self.notification_channel, msg)
         self._poll_delayed_call_cancel(poll_id)
 
-    @defer.inlineCallbacks
-    def cmd_poll_decide(self, issuer, poll_id):
-        if not (yield self.is_vote_admin(issuer)):
-            self.bot.notice(issuer, "Only admins can DECIDE polls")
-            return
-        with self._lock: # TODO: is this needed?
-            try:
-                if not (yield self.is_poll_running(poll_id)):
-                    self.bot.notice(issuer, "Poll isn't running")
-                    return
-            except KeyError:
-                self.bot.notice(issuer, "Poll doesn't exist")
-                return
-            try:
-                yield self.dbpool.runInteraction(Vote.update_poll_status, poll_id,
-                                                 PollStatus.DECIDED)
-            except Exception as e:
-                self.bot.notice(issuer, "Error deciding poll, contact the admin")
-                Vote.logger.warn("Error deciding poll #{id}: {error}",
-                                 id=poll_id, error=e)
-                return
-            msg = self.poll_decided_stub.clone().fillSlots(poll_id=str(poll_id))
-            self.bot.msg(self.channel, msg)
-            if self.notification_channel:
-                self.bot.msg(self.notification_channel, msg)
-        self._poll_delayed_call_cancel(poll_id)
+    def cmd_poll_veto(self, issuer, poll_id, reason):
+        self._cmd_poll_veto_or_decide(issuer, poll_id, reason, True)
+
+    def cmd_poll_decide(self, issuer, poll_id, reason):
+        self._cmd_poll_veto_or_decide(issuer, poll_id, reason, False)
 
     @defer.inlineCallbacks
-    def cmd_poll_cancel(self, issuer, poll_id):
+    def cmd_poll_cancel(self, issuer, poll_id, reason):
         with self._lock: # TODO: needed?
             temp = yield self.dbpool.runQuery(
                 'SELECT creator, status FROM Polls '
@@ -1131,7 +1126,8 @@ class Vote(abstract.ChannelWatcher):
                     poll_id, status.name))
                 return
             try:
-                yield self.dbpool.runInteraction(Vote.update_poll_status, poll_id,
+                yield self.dbpool.runInteraction(Vote.update_poll_veto_decide_cancel,
+                                                 poll_id, issuer_auth, reason,
                                                  PollStatus.CANCELED)
             except Exception as e:
                 self.bot.notice(issuer, "Error cancelling poll, contact the "

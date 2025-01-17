@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2021-2023>  <Sebastian Schmidt>
+# Copyright (C) <2021-2025>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -23,7 +23,6 @@ from twisted.logger import Logger
 import os
 from enum import Enum
 from inspect import signature, Parameter
-import typing
 
 from .common import PageElement, BaseResource
 from lib.channelwatcher.vote import PollListStatusFilter, CommandOptions
@@ -48,7 +47,7 @@ class VotePageElement(PageElement):
             color_code = ColorCodes[color]
             fg = ColorCodes.black if good_contrast_with_black(color_code) else ColorCodes.white
             return "color: {fg};background-color: {bg};".format(
-                    fg=ColorsHex[fg], bg=ColorsHex[color_code])
+                fg=ColorsHex[fg], bg=ColorsHex[color_code])
         except Exception as e:
             log.info("Category has invalid color: {color}: {e}",
                      color=color, e=e)
@@ -84,7 +83,7 @@ class VotePageElement(PageElement):
         def _inner(categories):
             try:
                 requested_category = bytes_to_str(request.args[b"category"][0])
-            except:
+            except Exception:
                 requested_category = "ALL"
             yield tag.clone()("ALL", value="ALL")
             for name, color in categories:
@@ -103,7 +102,7 @@ class VotePageElement(PageElement):
     def status_option(self, request, tag):
         try:
             requested_status = bytes_to_str(request.args[b"status"][0])
-        except:
+        except Exception:
             requested_status = "ALL"
         for status in [e.name for e in PollListStatusFilter]:
             kwargs = {"value": status}
@@ -129,8 +128,8 @@ class VotePageElement(PageElement):
                                   style="text-align:center;font-size:150%;"))
                 return
             for (poll_id, category_name, category_color, title, creator, status,
-                    veto_reason, vetoed_by, yes, no, abstain, not_voted,
-                    active_users) in polls:
+                    veto_decision_cancel_reason, vetoed_decided_canceled_by, yes, no,
+                    abstain, not_voted, active_users) in polls:
                 if not category_name:
                     category_name = ""
                 category_options = {}
@@ -141,10 +140,12 @@ class VotePageElement(PageElement):
                     not_voted = active_users - yes - no - abstain
                 vote_count = [tags.span(str(yes), style="color:darkgreen;"), ":",
                               tags.span(str(no), style="color:red;"),
-                              tags.span("({} abstained, {} didn't vote)".format(abstain,
-                                                                      not_voted))]
-                if status == "VETOED":
-                    vote_count = "{} (by {})".format(veto_reason, vetoed_by)
+                              tags.span("({} abstained, {} didn't vote)".format(
+                                  abstain,
+                                  not_voted))]
+                if status == "VETOED" or status == "DECIDED" or status == "CANCELED":
+                    vote_count = "{} (by {})".format(veto_decision_cancel_reason or "No reason given",
+                                                     vetoed_decided_canceled_by or "?")
                 if detail_links:
                     href = f"{poll_id}/"
                     if b"key" in request.args:
@@ -192,7 +193,7 @@ class VotePage(BaseResource):
     def has_key(self, request):
         if not self.key:
             return False
-        if not b"key" in request.args:
+        if b"key" not in request.args:
             return False
         supplied_key = bytes_to_str(request.args[b"key"][0])
         return supplied_key == self.key
@@ -230,17 +231,17 @@ class VotePage(BaseResource):
         else:
             where = ''
         return self.dbpool.runQuery(
-                'SELECT Polls.id, Categories.name, Categories.color, Polls.description, Users.name, Polls.status, '
-                       'Polls.veto_reason, (SELECT name FROM Users WHERE Polls.vetoed_by=id), '
-                       '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="YES"), '
-                       '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="NO"), '
-                       '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="ABSTAIN"), '
-                       '(SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="NONE"), '
-                       '(SELECT count() FROM Users WHERE Users.privilege="USER" OR Users.privilege="ADMIN") '
-                'FROM Polls LEFT JOIN Categories ON Polls.category=Categories.id '
-                           'LEFT JOIN Users ON Polls.creator=Users.id ' +
-                where +
-                'ORDER BY Polls.id DESC;', values)
+            'SELECT Polls.id, Categories.name, Categories.color, Polls.description, Users.name, Polls.status, '
+            '       Polls.veto_decision_cancel_reason, (SELECT name FROM Users WHERE Polls.vetoed_decided_canceled_by=id), '
+            '       (SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="YES"), '
+            '       (SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="NO"), '
+            '       (SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="ABSTAIN"), '
+            '       (SELECT count() FROM Votes WHERE Polls.id=Votes.poll_id AND Votes.vote="NONE"), '
+            '       (SELECT count() FROM Users WHERE Users.privilege="USER" OR Users.privilege="ADMIN") '
+            'FROM Polls LEFT JOIN Categories ON Polls.category=Categories.id '
+            '           LEFT JOIN Users ON Polls.creator=Users.id ' +
+            where +
+            'ORDER BY Polls.id DESC;', values)
 
     def element(self):
         return VotePageElement(self)
@@ -251,7 +252,7 @@ class VotePage(BaseResource):
             return super().getChild(name, request)
         try:
             poll_id = int(name)
-        except:
+        except ValueError:
             return NoResource("Invalid PollID supplied")
         try:
             return VoteDetailPage(name, self, poll_id)
@@ -269,7 +270,7 @@ class VoteDetailPageElement(PageElement):
     def back(self, request, tag):
         href = b"../"
         if b"key" in request.args:
-            href += b"?key="+ request.args[b"key"][0]
+            href += b"?key=" + request.args[b"key"][0]
         return tag("Back", href=href)
 
     @renderer
@@ -324,25 +325,25 @@ class VoteDetailPage(BaseResource):
 
     def poll_timerange(self):
         return self.parent.dbpool.runQuery(
-                'SELECT time_start, time_end FROM Polls WHERE id=:poll_id;',
-                {"poll_id": self.poll_id})
+            'SELECT time_start, time_end FROM Polls WHERE id=:poll_id;',
+            {"poll_id": self.poll_id})
 
     def votes(self, show_confidential=False):
         if show_confidential:
             return self.parent.dbpool.runQuery(
-                    'SELECT Users.name, Votes.vote, Votes.comment '
-                    'FROM Votes LEFT JOIN Users ON Votes.user=Users.id '
-                    'WHERE poll_id=:poll_id;', {"poll_id": self.poll_id})
-        return self.parent.dbpool.runQuery(
                 'SELECT Users.name, Votes.vote, Votes.comment '
-                'FROM Votes LEFT JOIN '
-                    '(SELECT Polls.id, Polls.status, Categories.confidential '
-                        'FROM Polls LEFT JOIN Categories ON Polls.category=Categories.id) AS TEMP '
-                    'on Votes.poll_id=TEMP.id '
-                    'LEFT JOIN Users ON Votes.user=Users.id '
-                'WHERE TEMP.status!="RUNNING" AND NOT TEMP.confidential IS True '
-                'AND Votes.poll_id=:poll_id;',
-                {"poll_id": self.poll_id})
+                'FROM Votes LEFT JOIN Users ON Votes.user=Users.id '
+                'WHERE poll_id=:poll_id;', {"poll_id": self.poll_id})
+        return self.parent.dbpool.runQuery(
+            'SELECT Users.name, Votes.vote, Votes.comment '
+            'FROM Votes LEFT JOIN '
+            '  (SELECT Polls.id, Polls.status, Categories.confidential '
+            '     FROM Polls LEFT JOIN Categories ON Polls.category=Categories.id) AS TEMP '
+            '  on Votes.poll_id=TEMP.id '
+            '  LEFT JOIN Users ON Votes.user=Users.id '
+            'WHERE TEMP.status!="RUNNING" AND NOT TEMP.confidential IS True '
+            'AND Votes.poll_id=:poll_id;',
+            {"poll_id": self.poll_id})
 
     def has_key(self, request):
         return self.parent.has_key(request)
@@ -381,10 +382,10 @@ class VoteCategoryPage(BaseResource):
     def categories(self, show_confidential=False):
         if show_confidential:
             return self.parent.dbpool.runQuery(
-                    'SELECT name, description, color, confidential FROM Categories;')
+                'SELECT name, description, color, confidential FROM Categories;')
         return self.parent.dbpool.runQuery(
-                'SELECT name, description, color, confidential FROM Categories '
-                'WHERE confidential = false;')
+            'SELECT name, description, color, confidential FROM Categories '
+            'WHERE confidential = false;')
 
     def has_key(self, request):
         return self.parent.has_key(request)

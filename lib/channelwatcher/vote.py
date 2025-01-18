@@ -1060,6 +1060,15 @@ class Vote(abstract.ChannelWatcher):
             self.bot.notice(self.channel, msg)
             if self.notification_channel:
                 self.bot.notice(self.notification_channel, msg)
+            res = yield self.dbpool.runQuery('SELECT user FROM Votes WHERE poll_id=:poll_id;',
+                                             {"poll_id": poll_id})
+            users_who_voted = {x[0] for x in res}
+            for user in self.bot.userlist[self.channel]:
+                auth = yield self.bot.get_auth(user)
+                if not auth:
+                    continue
+                if auth in users_who_voted:
+                    self.bot.notice(user, msg)
         else:
             self.bot.notice(issuer, "Successfully modified poll")
 

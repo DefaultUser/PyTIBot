@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2021-2023>  <Sebastian Schmidt>
+# Copyright (C) <2021-2025>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import asyncio
-from twisted.internet.defer import Deferred, ensureDeferred, inlineCallbacks
+from twisted.internet.defer import Deferred, inlineCallbacks
 from twisted.internet import reactor
 from twisted.logger import Logger
 from nio import AsyncClient, ClientConfig, MatrixRoom, RoomMessageText, RoomMessageNotice, RoomMemberEvent
@@ -172,6 +172,11 @@ class MatrixBot:
     def get_auth(self, user: str) -> str:
         # the user handle is already unique
         return user
+
+    @maybe_deferred
+    def get_user_by_auth(self, auth: str) -> Optional[str]:
+        # the user handle is already unique
+        return auth
 
     def get_displayname(self, user: str, channel: str) -> str:
         return self.client.rooms[channel].users[user].display_name

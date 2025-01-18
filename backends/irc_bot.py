@@ -17,20 +17,17 @@
 import re
 from collections import namedtuple
 from twisted.words.protocols import irc
-from twisted.internet import defer, reactor
-from twisted.internet import ssl
-from twisted.web.server import Site
+from twisted.internet import defer
 from twisted.web.template import Tag
 from twisted.logger import Logger
-import sys
 from zope.interface import implementer
+from typing import Optional
 
 from backends import Backends
 from backends.common import setup_channelwatchers
 from backends.interfaces import IBot
 from lib import commands
 from lib import triggers
-from lib import channelwatcher
 from util import decorators
 from util import formatting
 from util.formatting.irc import parse_irc
@@ -259,7 +256,7 @@ class IRCBot(irc.IRCClient, object):
         """Triggered by messages"""
         # strip '!'
         user, temp = user.split('!', 1)
-        userhost = temp.split("@")[-1]
+        # userhost = temp.split("@")[-1]
 
         msg = parse_irc(msg)
         if channel in self.channelwatchers:
@@ -515,6 +512,14 @@ class IRCBot(irc.IRCClient, object):
     def get_displayname(self, user: str, channel: str) -> str:
         return user
 
+    @defer.inlineCallbacks
+    def get_user_by_auth(self, auth: str) -> Optional[str]:
+        for users_in_channel in self.userlist.values():
+            for user in users_in_channel:
+                if (yield self.get_auth(user)) == auth:
+                    return user
+        return None
+
     def remove_user_from_cache(self, user):
         """Remove the info about user from get_auth and user_info cache"""
         key = "({}, {})|{}".format(str(self), str(user.lower()), {})
@@ -528,9 +533,10 @@ class IRCBot(irc.IRCClient, object):
         if nick.lower() not in self._usercallback:
             # Never asked for it
             return
-        self._usercallback[nick.lower()]["userinfo"] = UserInfo(nick=nick, user=user,
-                                                         host=host,
-                                                         realname=realname)
+        self._usercallback[nick.lower()]["userinfo"] = UserInfo(nick=nick,
+                                                                user=user,
+                                                                host=host,
+                                                                realname=realname)
 
     def irc_RPL_ENDOFWHOIS(self, prefix, params):
         user = params[1].lower()

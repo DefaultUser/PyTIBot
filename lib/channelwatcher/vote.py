@@ -790,13 +790,11 @@ class Vote(abstract.ChannelWatcher):
                                          {"poll_id": poll_id})
         users_who_voted = {x[0] for x in res}
         missing_voter_auths = active_users - users_who_voted
-        for user in self.bot.userlist[self.channel]:
-            auth = yield self.bot.get_auth(user)
-            if not auth:
-                continue
-            if auth in missing_voter_auths:
-                msg = self.missing_voter_stub.clone()
-                msg.fillSlots(channel=self.channel, poll_id=str(poll_id))
+        msg = self.missing_voter_stub.clone()
+        msg.fillSlots(channel=self.channel, poll_id=str(poll_id))
+        for auth in missing_voter_auths:
+            user = yield self.bot.get_user_by_auth(auth)
+            if user:
                 self.bot.notice(user, msg)
 
     @defer.inlineCallbacks
@@ -1062,12 +1060,10 @@ class Vote(abstract.ChannelWatcher):
                 self.bot.notice(self.notification_channel, msg)
             res = yield self.dbpool.runQuery('SELECT user FROM Votes WHERE poll_id=:poll_id;',
                                              {"poll_id": poll_id})
-            users_who_voted = {x[0] for x in res}
-            for user in self.bot.userlist[self.channel]:
-                auth = yield self.bot.get_auth(user)
-                if not auth:
-                    continue
-                if auth in users_who_voted:
+            auths_who_voted = {x[0] for x in res}
+            for auth in auths_who_voted:
+                user = yield self.bot.get_user_by_auth(auth)
+                if user:
                     self.bot.notice(user, msg)
         else:
             self.bot.notice(issuer, "Successfully modified poll")

@@ -121,8 +121,7 @@ class GitWebhookServer(Resource):
         crumbs["pr_description_without_href_stub"] = message_config.get("pr_description_without_href_stub", 'Pull Request #<font color="darkorange"><t:slot name="pr_id"/></font> <t:slot name="pr_title"/> (<font color="magenta"><t:slot name="head"/></font>-&gt;<font color="red"><t:slot name="base"/></font>)')
         crumbs["ref_stub"] = message_config.get("ref_stub", '<t:slot name="ref_type"/> <font color="magenta"><t:slot name="ref"/></font>')
 
-        self.push_stub = from_human_readable(message_config.get("push_stub", '{reponame_stub} {user_stub} pushed <t:slot name="num_commits"/> commit(s) to <font color="magenta"><t:slot name="branch"/></font>').format(**crumbs))
-        self.github_push_stub = from_human_readable(message_config.get("github_push_stub", '{reponame_stub} {user_stub} {action_stub} <a><t:attr name="href"><t:slot name="compare_url"/></t:attr><t:slot name="num_commits"/> commit(s) to <font color="magenta"><t:slot name="branch"/></font></a>').format(**crumbs))
+        self.push_stub = from_human_readable(message_config.get("push_stub", '{reponame_stub} {user_stub} {action_stub} <a><t:attr name="href"><t:slot name="compare_url"/></t:attr><t:slot name="num_commits"/> commit(s) to <font color="magenta"><t:slot name="branch"/></font></a>').format(**crumbs))
         self.commit_stub = from_human_readable(message_config.get("commit_stub", '{author_stub}: <a><t:attr name="href"><t:slot name="url"/></t:attr><t:slot name="message"/></a>').format(**crumbs))
         self.issue_stub = from_human_readable(message_config.get("issue_stub", '{reponame_stub} {user_stub} {action_stub} {issue_description_stub}').format(**crumbs))
         self.issue_comment_stub = from_human_readable(message_config.get("issue_comment_stub", '{reponame_stub} {user_stub} {action_stub} <a><t:attr name="href"><t:slot name="comment_url"/></t:attr>comment</a> on {issue_description_stub}').format(**crumbs))
@@ -416,7 +415,7 @@ class GitWebhookServer(Resource):
             if data["forced"]:
                 action = "force pushed"
                 actioncolor = ColorCodes.red
-            msg = self.github_push_stub.clone()
+            msg = self.push_stub.clone()
             # NOTE: num_commits is limited to 20, but GitHub doesn't send the
             # exact number
             msg.fillSlots(repo_name=repo_name, user=data["pusher"]["name"],
@@ -751,10 +750,13 @@ class GitWebhookServer(Resource):
             msg.fillSlots(repo_name=repo_name, user=data["user_name"],
                           ref_type="branch", ref=branch)
         else:
+            compare_url = (f"{data['project']['web_url']}/-/compare/"
+                           f"{data['before'][:8]}...{data['after'][:8]}")
             msg = self.push_stub.clone()
             msg.fillSlots(repo_name=repo_name, user=data["user_name"],
+                          action="pushed", actioncolor=ColorCodes.darkgreen,
                           num_commits=str(data["total_commits_count"]),
-                          branch=branch)
+                          branch=branch, compare_url=compare_url)
         commit_msgs = yield self.format_commits(data["commits"],
                                                 int(data["total_commits_count"]))
         if commit_msgs:

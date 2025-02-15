@@ -750,8 +750,18 @@ class GitWebhookServer(Resource):
             msg.fillSlots(repo_name=repo_name, user=data["user_name"],
                           ref_type="branch", ref=branch)
         else:
+            before_commit_id = data['before'][:8]
+            # GitLab has a weird undocumented feature: When the push event
+            # creates a new branch, the 'before' field only contains zeros.
+            # As GitLab doesn't seem to accept common git syntax for parent
+            # commits, we don't have enough information and need to guess
+            # that the branch used the default branch as base. Changes on the
+            # default branch are not shown on the compare page when before and
+            # after commits are separated by three dots.
+            if before_commit_id == "00000000":
+                before_commit_id = data['project']['default_branch']
             compare_url = (f"{data['project']['web_url']}/-/compare/"
-                           f"{data['before'][:8]}...{data['after'][:8]}")
+                           f"{before_commit_id}...{data['after'][:8]}")
             msg = self.push_stub.clone()
             msg.fillSlots(repo_name=repo_name, user=data["user_name"],
                           action="pushed", actioncolor=ColorCodes.darkgreen,

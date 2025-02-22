@@ -96,12 +96,18 @@ VoteCount = namedtuple("VoteCount", "not_voted abstained yes no")
 PollListStatusFilterType = typing.Literal["RUNNING", "CANCELED", "PASSED", "TIED",
                                           "FAILED", "VETOED", "DECIDED", "ENDED", "ALL"]
 PollListStatusFilter = Enum("PollListStatusFilter", typing.get_args(PollListStatusFilterType))
+PollListStatusFilterNames = typing.get_args(PollListStatusFilterType)
 UserListStatusFilterType = typing.Literal["ADMIN", "ACTIVE", "REVOKED", "ALL"]
 UserListStatusFilter = Enum("UserListStatusFilter", typing.get_args(UserListStatusFilterType))
+UserListStatusFilterNames = typing.get_args(UserListStatusFilterType)
 UserModifyFieldType = typing.Literal["name", "privilege"]
+UserModifyFieldNames = typing.get_args(UserModifyFieldType)
 PollModifyFieldType = typing.Literal["category", "description"]
+PollModifyFieldNames = typing.get_args(PollModifyFieldType)
 VoteDecisionType = typing.Literal["yes", "no", "abstain"]
+VoteDecisionNames = typing.get_args(VoteDecisionType)
 CategoryModifyFieldType = typing.Literal["description", "color", "confidential", "duration"]
+CategoryModifyFieldNames = typing.get_args(CategoryModifyFieldType)
 
 
 ChatHelp = namedtuple("ChatHelp", "subCommands flags params pos_params")
@@ -178,15 +184,18 @@ class UserModifyOptions(OptionsWithoutHandlers):
         self["value"] = value
 
     def postOptions(self):
-        if self["field"] not in ["name", "privilege"]:
-            raise usage.UsageError("Invalid column name specified")
+        if self["field"] not in UserModifyFieldNames:
+            raise usage.UsageError(f"Invalid field specified {UserModifyFieldNames}")
         if self["field"] == "privilege":
             self["value"] = self["value"].upper()
 
 
 class UserListOptions(OptionsWithoutHandlers):
     def parseArgs(self, filter: UserListStatusFilterType = "ACTIVE"):
-        self["filter"] = UserListStatusFilter[filter.upper()]
+        try:
+            self["filter"] = UserListStatusFilter[filter.upper()]
+        except KeyError:
+            raise usage.UsageError(f"Invalid status filter specified {UserListStatusFilterNames}")
 
 
 class UserOptions(OptionsWithoutHandlers):
@@ -210,7 +219,8 @@ class VoteOptions(OptionsWithoutHandlers):
         try:
             self["decision"] = VoteDecision[decision.upper()]
         except KeyError:
-            raise usage.UsageError("Invalid decision specified")
+            raise usage.UsageError("Invalid decision specified "
+                                   f"{VoteDecisionNames}")
         self["comment"] = " ".join(comment)
 
 
@@ -242,12 +252,13 @@ class PollModifyOptions(OptionsWithoutHandlers):
             raise usage.UsageError("PollID has to be an integer")
         self["field"] = field
         if not value:
-            raise usage.UsageError("No value specified")
+            raise usage.UsageError("Too few arguments: <poll id>, <field> and "
+                                   "<new value> required")
         self["value"] = " ".join(value)
 
     def postOptions(self):
-        if self["field"] not in ["category", "description"]:
-            raise usage.UsageError("Invalid column specified")
+        if self["field"] not in PollModifyFieldNames:
+            raise usage.UsageError(f"Invalid field specified {PollModifyFieldNames}")
         elif self["field"] == "category":
             if self["value"].lower() in ["none", "null"]:
                 self["value"] = None
@@ -276,9 +287,16 @@ class PollExpireOptions(OptionsWithoutHandlers):
 class PollListOptions(OptionsWithoutHandlers):
     optParameters = [
         ['status', 's', PollListStatusFilter.RUNNING, "Filter with this status",
-            lambda x: PollListStatusFilter[x.upper()]],
+            lambda x: PollListOptions._parse_opt_status(x)],
         ['category', 'c', None, "Filter with this category"]
     ]
+
+    @staticmethod
+    def _parse_opt_status(name):
+        try:
+            return PollListStatusFilter[name.upper()]
+        except KeyError:
+            raise usage.UsageError(f"Invalid status filter specified {PollListStatusFilterNames}")
 
 
 class PollInfoOptions(OptionsWithoutHandlers):
@@ -323,18 +341,21 @@ class CategoryModifyOptions(OptionsWithoutHandlers):
     def parseArgs(self, name: str, field: CategoryModifyFieldType, *value):
         self["name"] = name
         self["field"] = field
+        if not value:
+            raise usage.UsageError("Too few arguments: <category name>, <field name> "
+                                   "and <new value> required")
         self["value"] = " ".join(value)
 
     def postOptions(self):
-        if self["field"] not in typing.get_args(CategoryModifyFieldType):
-            raise usage.UsageError("Invalid column name specified")
+        if self["field"] not in CategoryModifyFieldNames:
+            raise usage.UsageError(f"Invalid field specified {CategoryModifyFieldNames}")
         if self["field"] == "confidential":
             if self["value"].lower() in ["true", "yes", "1"]:
                 self["value"] = True
             elif self["value"].lower() in ["false", "no", "0"]:
                 self["value"] = False
             else:
-                raise usage.UsageError("Invalid value given")
+                raise usage.UsageError("Invalid value given ('true' or 'false')")
         elif self["field"] == "color":
             if self["value"].lower() in ["none", "null"]:
                 self["value"] = None

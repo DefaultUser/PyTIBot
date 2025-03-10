@@ -23,6 +23,8 @@ from twisted.logger import Logger
 import os
 from enum import Enum
 from inspect import signature, Parameter
+from html import escape as htmlescape
+from urllib.parse import quote as urlquote
 
 from .common import PageElement, BaseResource
 from lib.channelwatcher.vote import PollListStatusFilter, CommandOptions
@@ -296,13 +298,14 @@ class VoteDetailPageElement(PageElement):
     @renderer
     def vote_row(self, request, tag):
         def _inner(votes):
-            for voter, decision, comment in votes:
+            for voter, auth, decision, comment in votes:
                 decision_kwargs = dict()
                 if decision == "YES":
                     decision_kwargs["style"] = "color:darkgreen;"
                 elif decision == "NO":
                     decision_kwargs["style"] = "color:red;"
-                yield tag.clone()(tags.td(voter, class_="vote_user"),
+                yield tag.clone()(tags.td(tags.a(name=urlquote(htmlescape(auth))),
+                                          voter, class_="vote_user"),
                                   tags.td(decision, class_="vote_decision",
                                           **decision_kwargs),
                                   tags.td(modernize_html(comment or ""),
@@ -331,11 +334,11 @@ class VoteDetailPage(BaseResource):
     def votes(self, show_confidential=False):
         if show_confidential:
             return self.parent.dbpool.runQuery(
-                'SELECT Users.name, Votes.vote, Votes.comment '
+                'SELECT Users.name, Users.id, Votes.vote, Votes.comment '
                 'FROM Votes LEFT JOIN Users ON Votes.user=Users.id '
                 'WHERE poll_id=:poll_id;', {"poll_id": self.poll_id})
         return self.parent.dbpool.runQuery(
-            'SELECT Users.name, Votes.vote, Votes.comment '
+            'SELECT Users.name, Users.id, Votes.vote, Votes.comment '
             'FROM Votes LEFT JOIN '
             '  (SELECT Polls.id, Polls.status, Categories.confidential '
             '     FROM Polls LEFT JOIN Categories ON Polls.category=Categories.id) AS TEMP '

@@ -31,6 +31,8 @@ from inspect import signature, Parameter
 import typing
 from typing import Optional
 import shutil
+from html import escape as htmlescape
+from urllib.parse import quote as urlquote
 
 from . import abstract
 from backends import Backends
@@ -472,8 +474,8 @@ class Vote(abstract.ChannelWatcher):
         self.poll_end_stub = from_human_readable(message_config.get("poll_end_stub", '{poll_id_stub} {poll_status_stub}: {description_stub} by {creator_stub}: {final_standing_stub}').format(**crumbs))
         self.poll_list_stub = from_human_readable(message_config.get("poll_list_stub", '{poll_id_stub} by {creator_stub} ({poll_status_stub}): {description_stub}').format(**crumbs))
         self.poll_info_stub = from_human_readable(message_config.get("poll_info_stub", '{poll_id_stub} by {creator_stub} ({poll_status_stub}): {description_stub}<br/>{standing_stub}').format(**crumbs))
-        self.vote_changed_stub = from_human_readable(message_config.get("vote_changed_stub", '{poll_id_stub}: {user_stub} changed vote from <font><t:attr name="color"><t:slot name="previous_decision_color"/></t:attr><t:slot name="previous_decision"/></font> to <font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}').format(**crumbs))
-        self.new_vote_stub = from_human_readable(message_config.get("new_vote_stub", '{poll_id_stub}: {user_stub} voted <font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}').format(**crumbs))
+        self.vote_changed_stub = from_human_readable(message_config.get("vote_changed_stub", '{poll_id_stub}: {user_stub} changed vote from <font><t:attr name="color"><t:slot name="previous_decision_color"/></t:attr><t:slot name="previous_decision"/></font> to <a><t:attr name="href"><t:slot name="url"/></t:attr><font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}</a>').format(**crumbs))
+        self.new_vote_stub = from_human_readable(message_config.get("new_vote_stub", '{poll_id_stub}: {user_stub} voted <a><t:attr name="href"><t:slot name="url"/></t:attr><font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}</a>').format(**crumbs))
         self.current_result_stub = from_human_readable(message_config.get("current_result_stub", 'Current Result: {standing_stub}').format(**crumbs))
         self.already_voted_stub = from_human_readable(message_config.get("already_voted_stub", 'You already voted for this poll (<font><t:attr name="color"><t:slot name="decision_color"/></t:attr><t:slot name="decision"/></font>: {comment_stub}) please confirm, with \'<t:slot name="prefix"/>yes\' or \'<t:slot name="prefix"/>no\'').format(**crumbs))
 
@@ -1376,6 +1378,9 @@ class Vote(abstract.ChannelWatcher):
             self.bot.notice(voter, "Poll #{} is not running ({})".format(poll_id,
                             pollstatus.name))
             return
+        url = self.poll_url(poll_id)
+        if url:
+            url += f"#{urlquote(htmlescape(voterid), safe='')}"
         try:
             query = yield self.dbpool.runQuery(
                 'SELECT vote, comment FROM Votes '
@@ -1407,7 +1412,8 @@ class Vote(abstract.ChannelWatcher):
                               previous_decision_color=Vote.vote_decision_color(previous_decision),
                               decision=decision.name,
                               decision_color=Vote.vote_decision_color(decision),
-                              comment=comment or "No Comment")
+                              comment=comment or "No Comment",
+                              url=url or "N/A")
             else:
                 yield self.dbpool.runInteraction(Vote.insert_vote, poll_id,
                                                  voterid, decision, comment)
@@ -1415,7 +1421,8 @@ class Vote(abstract.ChannelWatcher):
                 msg.fillSlots(poll_id=str(poll_id), user=voter_displayname,
                               decision=decision.name,
                               decision_color=Vote.vote_decision_color(decision),
-                              comment=comment or "No Comment")
+                              comment=comment or "No Comment",
+                              url=url or "N/A")
         except Exception as e:
             self.bot.notice(voter, "An error occured. Please contact the admin.")
             Vote.logger.warn("Encountered error during vote: {}".format(e))

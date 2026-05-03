@@ -1,5 +1,5 @@
 # PyTIBot - IRC Bot using python and the twisted library
-# Copyright (C) <2016-2023>  <Sebastian Schmidt>
+# Copyright (C) <2016-2026>  <Sebastian Schmidt>
 
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,11 +19,12 @@ from zope.interface import implementer
 from twisted.python import usage
 from twisted.plugin import IPlugin
 from twisted.application.service import IServiceMaker, MultiService
-from twisted.application import internet
+from twisted.application import internet, strports
 from twisted.internet import ssl
 from twisted.web.server import Site
 from twisted.logger import Logger
 import os
+from typing import Optional
 
 from backends import Backends
 from backends.irc_factory import IRCFactory
@@ -52,6 +53,28 @@ mandatory_settings = ["server", "nickname", "admins"]
 
 class Options(usage.Options):
     optParameters = [["config", "c", "pytibot.yaml", "The config file to use"]]
+
+
+def make_http_service(factory: Site,
+                      port: int,
+                      interface: Optional[str] = None):
+    port_definition = f"tcp6:{port}"
+    if interface:
+        port_definition += f":interface={interface.replace(':', '\\:')}"
+    return strports.service(port_definition, factory)
+
+
+def make_https_service(factory: Site,
+                       port: int,
+                       privateKey: str,
+                       certKey: Optional[str] = None,
+                       interface: Optional[str] = None):
+    port_definition = f"ssl:{port}:privateKey={privateKey}"
+    if certKey:
+        port_definition += f":certKey={certKey}"
+    if interface:
+        port_definition += f":interface={interface.replace(':', '\\:')}"
+    return strports.service(port_definition, factory)
 
 
 @implementer(IServiceMaker, IPlugin)
@@ -103,14 +126,19 @@ class PyTIBotServiceMaker(object):
         # manhole for debugging
         if "Manhole" in config:
             telnetPort = config.Manhole.get("telnetport", None)
+            # TODO: allow unix sockets for telnet?
             if telnetPort:
                 telnetPort = "tcp:{}".format(telnetPort)
+                if telnetInterface := config.Manhole.get("telnetInterface", None):
+                    telnetPort += f":interface={telnetInterface.replace(':', '\\:')}"
             sshPort = config.Manhole.get("sshport", None)
             sshKeyDir = config.Manhole.get("sshKeyDir", "<USER DATA DIR>")
             sshKeyName = config.Manhole.get("sshKeyName", "server.key")
             sshKeySize = config.Manhole.get("sshKeySize", 4096)
             if sshPort:
                 sshPort = "ssl:{}".format(sshPort)
+                if sshInterface := config.Manhole.get("sshInterface", None):
+                    sshPort += f":interface={sshInterface.replace(':', '\\:')}"
             options = {'namespace': {'get_bot': bot_provider.get_bot},
                        'passwd': os.path.join(fs.adirs.user_config_dir,
                                               'manhole_cred'),
@@ -133,39 +161,48 @@ class PyTIBotServiceMaker(object):
             webhook_server = GitWebhookServer(bot_provider, config)
             factory = Site(webhook_server)
             # https
-            sslport = config["GitWebhook"].get("sslport", None)
+            webhook_sslport = config["GitWebhook"].get("sslport", None)
             privkey = config["GitWebhook"].get("privkey", None)
             cert = config["GitWebhook"].get("certificate", None)
-            if sslport and privkey and cert:
-                sslContext = ssl.DefaultOpenSSLContextFactory(
-                    privkey, cert)
-                webhook_https_sv = internet.SSLServer(sslport, factory,
-                                                      sslContext)
+            webhook_ssl_interface = config["GitWebhook"].get("https_interface", None)
+            if webhook_sslport and privkey:
+                webhook_https_sv = make_https_service(factory,
+                                                      webhook_sslport,
+                                                      privkey,
+                                                      cert,
+                                                      webhook_ssl_interface)
                 webhook_https_sv.setServiceParent(mService)
             # http
-            port = config["GitWebhook"].get("port", None)
-            if port:
-                webhook_http_sv = internet.TCPServer(port, factory)
+            webhook_port = config["GitWebhook"].get("port", None)
+            webhook_interface = config["GitWebhook"].get("interface", None)
+            if webhook_port:
+                webhook_http_sv = make_http_service(factory,
+                                                    webhook_port,
+                                                    webhook_interface)
                 webhook_http_sv.setServiceParent(mService)
 
         if ("HTTPServer" in config and ("port" in config["HTTPServer"] or
                                         "sshport" in config["HTTPServer"])):
             root = http.setup_http_root(config["HTTPServer"]["root"])
-            httpfactory = Site(root)
-            port = config["HTTPServer"].get("port", None)
-            if port:
-                http_sv = internet.TCPServer(port, httpfactory)
+            http_factory = Site(root)
+            http_port = config["HTTPServer"].get("port", None)
+            http_interface = config["HTTPServer"].get("http_interface", None)
+            if http_port:
+                http_sv = make_http_service(http_factory,
+                                            http_port,
+                                            http_interface)
                 http_sv.setServiceParent(mService)
 
-            sslport = config["HTTPServer"].get("sslport", None)
+            http_sslport = config["HTTPServer"].get("sslport", None)
             privkey = config["HTTPServer"].get("privkey", None)
             cert = config["HTTPServer"].get("certificate", None)
-            if sslport and privkey and cert:
-                sslContext = ssl.DefaultOpenSSLContextFactory(
-                    privkey, cert)
-                https_sv = internet.SSLServer(sslport,
-                                              httpfactory,
-                                              sslContext)
+            https_interface = config["HTTPServer"].get("https_interface", None)
+            if http_sslport and privkey:
+                https_sv = make_https_service(http_factory,
+                                              http_sslport,
+                                              privkey,
+                                              cert,
+                                              https_interface)
                 https_sv.setServiceParent(mService)
 
         return mService

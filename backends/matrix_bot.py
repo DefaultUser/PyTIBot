@@ -205,7 +205,7 @@ class MatrixBot:
     @inlineCallbacks
     def signedOn(self) -> Generator[None, None, None]:
         yield future_to_deferred(asyncio.ensure_future(self.client.synced.wait()))
-        for room in self.config["Connection"]["channels"]:
+        for room in self.config["Connection"].get("channels", []):
             if room not in self.client.rooms:
                 self.join(room)
 
@@ -266,7 +266,7 @@ class MatrixBot:
     def notice(self, target: str, message: Message, length=None) -> None:
         self._send_message(MessageType.notice, target, message)
 
-    def join(self, channel: str, _) -> None:
+    def join(self, channel: str, key=None) -> None:
         future_to_deferred(self.client.join(channel))
 
     @inlineCallbacks
